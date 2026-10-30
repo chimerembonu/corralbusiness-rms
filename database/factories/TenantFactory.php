@@ -1,0 +1,27 @@
+<?php
+
+namespace Database\Factories;
+
+use App\Modules\Settings\Models\Tenant;
+use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
+
+/** @extends Factory<Tenant> */
+class TenantFactory extends Factory
+{
+    protected $model = Tenant::class;
+
+    public function definition(): array
+    {
+        $name = fake()->company().' Restaurant';
+
+        return [
+            'name' => $name,
+            'slug' => Str::slug($name).'-'.Str::lower(Str::random(4)),
+            'country' => 'GH',
+            'currency' => 'GHS',
+            'timezone' => 'Africa/Accra',
+            'is_active' => true,
+        ];
+    }
+}

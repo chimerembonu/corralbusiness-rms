@@ -1,0 +1,103 @@
+<?php
+
+namespace App\Modules\Staff\Services;
+
+use App\Modules\Settings\Models\Tenant;
+use App\Modules\Staff\Enums\Permission;
+use App\Modules\Staff\Exceptions\InvalidPinException;
+use App\Modules\Staff\Exceptions\ManagerPinRequiredException;
+use App\Modules\Staff\Exceptions\PinLockedException;
+use App\Modules\Staff\Models\User;
+use App\Modules\Staff\Support\PinHasher;
+use App\Support\Tenancy\TenantContext;
+use App\Support\Tenancy\TenantScope;
+use Illuminate\Support\Facades\RateLimiter;
+
+/**
+ * PIN login for POS / KDS / clock-in screens (CLAUDE.md §3.14):
+ * 5 wrong PINs from the same till → locked for 60 seconds (configurable in config/rms.php).
+ */
+class PinAuthenticator
+{
+    public function __construct(private readonly TenantContext $context) {}
+
+    /**
+     * @param  string  $throttleKey  Identifies the till, e.g. the request IP or device id.
+     *
+     * @throws PinLockedException|InvalidPinException
+     */
+    public function attempt(string $pin, string $throttleKey, Tenant|string|null $tenant = null): User
+    {
+        $tenantId = $tenant instanceof Tenant ? $tenant->getKey() : ($tenant ?? $this->context->tenantId());
+        $limiterKey = $this->limiterKey($tenantId, $throttleKey);
+        $maxAttempts = (int) config('rms.pin.max_attempts', 5);
+
+        if (RateLimiter::tooManyAttempts($limiterKey, $maxAttempts)) {
+            throw new PinLockedException(RateLimiter::availableIn($limiterKey));
+        }
+
+        $user = $this->findByPin($pin, $tenantId);
+
+        if ($user === null || ! $user->is_active || ! $user->verifyPin($pin)) {
+            RateLimiter::hit($limiterKey, (int) config('rms.pin.lockout_seconds', 60));
+            $left = max(0, $maxAttempts - RateLimiter::attempts($limiterKey));
+
+            if ($left === 0) {
+                throw new PinLockedException(RateLimiter::availableIn($limiterKey));
+            }
+
+            throw new InvalidPinException($left);
+        }
+
+        RateLimiter::clear($limiterKey);
+        $user->forceFill(['last_login_at' => now()])->saveQuietly();
+
+        return $user;
+    }
+
+    /**
+     * Manager override: the PIN must belong to someone who holds the given permission
+     * (e.g. Permission::OrdersVoid). Returns the approving user for the audit trail.
+     *
+     * @throws PinLockedException|InvalidPinException|ManagerPinRequiredException
+     */
+    public function authorize(string $pin, Permission|string $permission, string $throttleKey, Tenant|string|null $tenant = null): User
+    {
+        $permission = $permission instanceof Permission ? $permission->value : $permission;
+        $user = $this->attempt($pin, $throttleKey, $tenant);
+
+        if (! $user->can($permission)) {
+            throw new ManagerPinRequiredException($permission);
+        }
+
+        return $user;
+    }
+
+    public function isLocked(string $throttleKey, Tenant|string|null $tenant = null): bool
+    {
+        $tenantId = $tenant instanceof Tenant ? $tenant->getKey() : ($tenant ?? $this->context->tenantId());
+
+        return RateLimiter::tooManyAttempts($this->limiterKey($tenantId, $throttleKey), (int) config('rms.pin.max_attempts', 5));
+    }
+
+    public function secondsUntilUnlocked(string $throttleKey, Tenant|string|null $tenant = null): int
+    {
+        $tenantId = $tenant instanceof Tenant ? $tenant->getKey() : ($tenant ?? $this->context->tenantId());
+
+        return RateLimiter::availableIn($this->limiterKey($tenantId, $throttleKey));
+    }
+
+    private function findByPin(string $pin, ?string $tenantId): ?User
+    {
+        return User::query()
+            ->withoutGlobalScope(TenantScope::class)
+            ->where('tenant_id', $tenantId)
+            ->where('pin_lookup', PinHasher::lookup($tenantId, $pin))
+            ->first();
+    }
+
+    private function limiterKey(?string $tenantId, string $throttleKey): string
+    {
+        return 'pin:'.($tenantId ?? 'global').':'.$throttleKey;
+    }
+}

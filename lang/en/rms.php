@@ -19,4 +19,24 @@ return [
         'kitchen_link' => 'Kitchen display',
         'coming_soon' => 'coming soon',
     ],
+    'roles' => [
+        'owner' => 'Owner',
+        'manager' => 'Manager',
+        'cashier' => 'Cashier',
+        'waiter' => 'Waiter',
+        'kitchen' => 'Kitchen',
+        'rider' => 'Rider',
+        'inventory' => 'Inventory',
+        'accountant' => 'Accountant',
+    ],
+    'pin' => [
+        'invalid' => 'Wrong PIN. :left attempts left.',
+        'locked' => 'Too many wrong PINs. Try again in :seconds seconds.',
+        'manager_required' => 'A manager PIN is required for this action.',
+        'invalid_format' => 'PIN must be :min to :max digits.',
+    ],
+    'tax' => [
+        'kind' => ['vat' => 'VAT', 'levy' => 'Levy'],
+        'base' => ['net' => 'On the net price', 'net_plus_levies' => 'On net price plus levies'],
+    ],
 ];

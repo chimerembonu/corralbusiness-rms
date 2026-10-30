@@ -1,0 +1,24 @@
+<?php
+
+namespace App\Modules\Settings\Models;
+
+use App\Support\Audit\Auditable;
+use App\Support\Models\BusinessModel;
+
+/** Per-tenant module on/off switch (feature flag). */
+class ModuleSetting extends BusinessModel
+{
+    use Auditable;
+
+    protected bool $hasBranch = false;
+
+    protected $fillable = ['module', 'enabled', 'settings'];
+
+    protected function casts(): array
+    {
+        return [
+            'enabled' => 'boolean',
+            'settings' => 'array',
+        ];
+    }
+}
