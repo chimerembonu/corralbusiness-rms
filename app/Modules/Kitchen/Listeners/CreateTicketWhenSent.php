@@ -1,0 +1,16 @@
+<?php
+
+namespace App\Modules\Kitchen\Listeners;
+
+use App\Modules\Kitchen\Services\KitchenService;
+use App\Modules\Orders\Events\OrderSentToKitchen;
+
+class CreateTicketWhenSent
+{
+    public function __construct(private readonly KitchenService $kitchen) {}
+
+    public function handle(OrderSentToKitchen $event): void
+    {
+        $this->kitchen->createTicket($event->order, $event->items);
+    }
+}

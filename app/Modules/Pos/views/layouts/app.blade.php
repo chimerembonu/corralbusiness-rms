@@ -6,8 +6,36 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title ?? __('pos::pos.title') }} · {{ __('rms.product_name') }}</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <script>
+        // Browser-print agent: this till prints "browser" print jobs through a hidden frame (CLAUDE.md §3.8).
+        function browserPrintAgent(nextUrl, token) {
+            return {
+                busy: false,
+                start() { setInterval(() => this.poll(), 8000); },
+                async poll() {
+                    if (this.busy) return;
+                    try {
+                        const res = await fetch(nextUrl, { headers: { 'Accept': 'application/json' } });
+                        if (!res.ok) return;
+                        const data = await res.json();
+                        if (!data.job) return;
+                        this.busy = true;
+                        const frame = document.createElement('iframe');
+                        frame.style.cssText = 'position:fixed;width:0;height:0;border:0;opacity:0;';
+                        frame.src = data.job.url;
+                        frame.onload = async () => {
+                            await fetch(data.job.url.split('/print/jobs/')[0] + '/print/jobs/' + data.job.id + '/printed', { method: 'POST', headers: { 'X-CSRF-TOKEN': token, 'Accept': 'application/json' } });
+                            setTimeout(() => { frame.remove(); this.busy = false; }, 4000);
+                        };
+                        document.body.appendChild(frame);
+                    } catch (e) { this.busy = false; }
+                },
+            };
+        }
+    </script>
 </head>
-<body class="h-full overflow-hidden bg-slate-950 text-slate-100 antialiased select-none touch-manipulation">
+<body class="h-full overflow-hidden bg-slate-950 text-slate-100 antialiased select-none touch-manipulation"
+      @auth x-data="browserPrintAgent('{{ route('printing.next') }}', '{{ csrf_token() }}')" x-init="start()" @endauth>
     <div class="flex h-full flex-col">
         @if ($chrome ?? true)
             <header class="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-slate-800 bg-slate-900 px-3">
@@ -20,6 +48,9 @@
                 <div class="flex items-center gap-2">
                     @auth
                         <span class="hidden rounded-xl bg-slate-800 px-3 py-2 text-sm text-slate-300 md:inline">{{ auth()->user()->name }}</span>
+                        @can(\App\Modules\Staff\Enums\Permission::KitchenView->value)
+                            <a href="{{ route('kitchen.display') }}" class="flex h-11 items-center rounded-xl bg-slate-800 px-4 text-sm font-semibold hover:bg-slate-700">{{ __('kitchen::kitchen.title') }}</a>
+                        @endcan
                         @can(\App\Modules\Staff\Enums\Permission::ReportsView->value)
                             <a href="{{ route('pos.today') }}" class="flex h-11 items-center rounded-xl bg-slate-800 px-4 text-sm font-semibold hover:bg-slate-700">{{ __('pos::pos.nav.today') }}</a>
                         @endcan
@@ -30,6 +61,11 @@
                 </div>
             </header>
         @endif
+        @auth
+            @if ($chrome ?? true)
+                <livewire:printing.printer-problems />
+            @endif
+        @endauth
         <main class="min-h-0 flex-1">
             {{ $slot }}
         </main>

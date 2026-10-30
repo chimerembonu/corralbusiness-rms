@@ -81,6 +81,10 @@
         ],
         "pre-package-uninstall": [
             "Illuminate\\Foundation\\ComposerScripts::prePackageUninstall"
+        ],
+        "rms": [
+            "Composer\\Config::disableProcessTimeout",
+            "npx concurrently -c \"#93c5fd,#c4b5fd\" \"php artisan queue:work --tries=3 --sleep=1 --timeout=90\" \"php artisan reverb:start\" --names=queue,reverb --kill-others"
         ]
     },
     "extra": {

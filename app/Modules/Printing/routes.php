@@ -1,14 +1,17 @@
 <?php
 
+use App\Modules\Pos\Http\EnsurePosUser;
+use App\Modules\Printing\Http\PrintJobController;
 use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
 | Printing module – web routes
 |--------------------------------------------------------------------------
-| Loaded automatically by App\Providers\ModuleServiceProvider inside the
-| 'web' middleware group. Keep controllers/Livewire thin; logic lives in
-| app/Modules/Printing/Services.
 */
 
-// Route::get('/example', ExampleController::class)->name('printing.example');
+Route::prefix('print')->name('printing.')->middleware(EnsurePosUser::class)->group(function () {
+    Route::get('next', [PrintJobController::class, 'next'])->name('next');
+    Route::get('jobs/{job}', [PrintJobController::class, 'show'])->name('job');
+    Route::post('jobs/{job}/printed', [PrintJobController::class, 'printed'])->name('printed');
+});

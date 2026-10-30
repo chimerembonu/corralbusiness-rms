@@ -32,6 +32,12 @@ return [
     // Minimum touch target in pixels for POS / KDS / clock-in screens (CLAUDE.md §3.9).
     'touch_target_px' => 48,
 
+    // Kitchen display: ticket turns amber / red after this many minutes.
+    'kitchen' => [
+        'warn_after_minutes' => 5,
+        'late_after_minutes' => 10,
+    ],
+
     // PIN security (CLAUDE.md §3.14).
     'pin' => [
         'min_length' => 4,

@@ -1,14 +1,15 @@
 <?php
 
+use App\Modules\Kitchen\Http\EnsureKitchenUser;
+use App\Modules\Kitchen\Livewire\KitchenDisplay;
 use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
 | Kitchen module – web routes
 |--------------------------------------------------------------------------
-| Loaded automatically by App\Providers\ModuleServiceProvider inside the
-| 'web' middleware group. Keep controllers/Livewire thin; logic lives in
-| app/Modules/Kitchen/Services.
 */
 
-// Route::get('/example', ExampleController::class)->name('kitchen.example');
+Route::middleware(EnsureKitchenUser::class)->group(function () {
+    Route::get('kitchen', KitchenDisplay::class)->name('kitchen.display');
+});

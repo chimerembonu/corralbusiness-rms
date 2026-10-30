@@ -15,3 +15,9 @@ Read [CLAUDE.md](CLAUDE.md) (rules), [PLAN.md](PLAN.md) (phases) and [PROMPTS.md
 6. Open http://corralbusiness-rms.test
 
 Cheat-sheet of daily commands: CLAUDE.md §6.
+
+Start the background services (printing queue + realtime kitchen updates) with one command and leave it running:
+
+```bash
+composer run rms
+```

@@ -54,7 +54,7 @@ class PinLogin extends Component
         Auth::login($user);
         session()->regenerate();
 
-        $this->redirectRoute('pos.home');
+        $this->redirect(session()->pull('url.intended', route('pos.home')));
     }
 
     private function throttleKey(): string
