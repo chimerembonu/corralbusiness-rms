@@ -15,6 +15,9 @@ class ModifierGroup extends BusinessModel
 
     protected $table = 'menu_modifier_groups';
 
+    /** Tenant-wide table: branch_id is only set when a row is specific to one branch. */
+    protected bool $hasBranch = false;
+
     protected $fillable = ['branch_id', 'name', 'description', 'min_select', 'max_select', 'allow_quantity', 'sort_order', 'is_active'];
 
     /** Defaults so a freshly created model behaves like one loaded from the database. */

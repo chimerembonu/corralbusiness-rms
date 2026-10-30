@@ -15,6 +15,9 @@ class Modifier extends BusinessModel
 
     protected $table = 'menu_modifiers';
 
+    /** Tenant-wide table: branch_id is only set when a row is specific to one branch. */
+    protected bool $hasBranch = false;
+
     protected $fillable = ['branch_id', 'modifier_group_id', 'name', 'price', 'is_default', 'is_sold_out', 'sort_order', 'is_active'];
 
     /** Defaults so a freshly created model behaves like one loaded from the database. */

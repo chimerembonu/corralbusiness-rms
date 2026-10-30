@@ -15,6 +15,9 @@ class Category extends BusinessModel
 
     protected $table = 'menu_categories';
 
+    /** Tenant-wide table: branch_id is only set when a row is specific to one branch. */
+    protected bool $hasBranch = false;
+
     protected $fillable = ['branch_id', 'name', 'description', 'color', 'image_path', 'availability', 'sort_order', 'is_active'];
 
     /** Defaults so a freshly created model behaves like one loaded from the database. */

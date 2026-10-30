@@ -21,6 +21,9 @@ class Item extends BusinessModel
 
     protected $table = 'menu_items';
 
+    /** Tenant-wide table: branch_id is only set when a row is specific to one branch. */
+    protected bool $hasBranch = false;
+
     protected $fillable = [
         'branch_id', 'category_id', 'type', 'name', 'code', 'description', 'price', 'image_path',
         'taxable', 'tax_exempt_codes', 'allergens', 'tags', 'availability',

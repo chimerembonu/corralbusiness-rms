@@ -2,13 +2,18 @@
 
 namespace App\Console\Commands;
 
+use App\Modules\Inventory\Seeders\IngredientsDemoSeeder;
+use App\Modules\Kitchen\Seeders\StationsDemoSeeder;
 use App\Modules\Menu\Seeders\MenuDemoSeeder;
 use App\Modules\Orders\Seeders\DiningTablesDemoSeeder;
+use App\Modules\Pos\Seeders\TillsDemoSeeder;
 use App\Modules\Settings\Models\Branch;
 use App\Modules\Settings\Models\Tenant;
+use App\Modules\Settings\Services\SettingsService;
 use App\Modules\Settings\Services\TenantProvisioner;
 use App\Modules\Staff\Enums\Role;
 use App\Modules\Staff\Models\User;
+use App\Modules\Staff\Seeders\StaffDemoSeeder;
 use App\Support\Tenancy\Tenancy;
 use App\Support\Tenancy\TenantScope;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -31,7 +36,7 @@ class DemoCommand extends Command
         {--admin-pin=1234 : POS PIN for the owner login}
         {--password= : Password for the owner login (generated and shown once if omitted)}';
 
-    protected $description = 'Load the demo Ghanaian restaurant with menu and owner login';
+    protected $description = 'Load the demo Ghanaian restaurant: menu, tables, tills, stations, staff, ingredients and owner login';
 
     public const TENANT_SLUG = 'demo';
 
@@ -67,11 +72,29 @@ class DemoCommand extends Command
         ));
 
         $tables = (new DiningTablesDemoSeeder)->run();
-        $this->components->info("Tables ready: {$tables}.");
+        $tills = (new TillsDemoSeeder)->run();
+        $stations = (new StationsDemoSeeder)->run();
+        $staff = (new StaffDemoSeeder)->run();
+        $ingredients = (new IngredientsDemoSeeder)->run();
+        $this->components->info("Tables: {$tables} · Tills: {$tills} · Stations: {$stations} · Staff: {$staff} · Ingredients: {$ingredients}.");
+
+        $settings = app(SettingsService::class);
+        $settings->set('receipt.header', 'Akwaaba! TIN: C0000000000 (demo)', tenantWide: true);
+        $settings->set('receipt.footer', 'Thank you! Medaase! Please come again.', tenantWide: true);
+        $branch->forceFill(['address' => '12 Oxford Street, Osu, Accra', 'phone' => '+233 30 000 0000'])->save();
+
+        $this->newLine();
+        $this->components->twoColumnDetail('<fg=green>Staff PINs for the demo</>', '');
+        $this->components->twoColumnDetail($this->option('admin-name').' (Owner)', $this->option('admin-pin'));
+        foreach (StaffDemoSeeder::staff() as $member) {
+            $this->components->twoColumnDetail($member['name'].' ('.ucfirst($member['role']).')', $member['pin']);
+        }
 
         $this->newLine();
         $this->line('  Back office: '.url(config('rms.admin_path')));
         $this->line('  Till (POS):  '.url('pos'));
+        $this->line('  Kitchen:     '.url('kitchen'));
+        $this->line('  Start here:  '.url('/'));
 
         return self::SUCCESS;
     }

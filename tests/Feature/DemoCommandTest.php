@@ -30,7 +30,7 @@ it('loads the demo restaurant with menu and owner login, and can run twice', fun
 
     expect(Item::count())->toBe($items)
         ->and(Tenant::count())->toBe(1)
-        ->and(User::withoutGlobalScope(TenantScope::class)->count())->toBe(1);
+        ->and(User::withoutGlobalScope(TenantScope::class)->count())->toBe(11);
 
     Tenancy::forget();
 });

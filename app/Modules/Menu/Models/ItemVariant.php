@@ -15,6 +15,9 @@ class ItemVariant extends BusinessModel
 
     protected $table = 'menu_item_variants';
 
+    /** Tenant-wide table: branch_id is only set when a row is specific to one branch. */
+    protected bool $hasBranch = false;
+
     protected $fillable = ['branch_id', 'item_id', 'name', 'code', 'price', 'is_default', 'sort_order', 'is_active'];
 
     /** Defaults so a freshly created model behaves like one loaded from the database. */

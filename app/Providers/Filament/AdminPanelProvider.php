@@ -34,6 +34,10 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path(config('rms.admin_path', 'admin'))
             ->login()
+            ->brandLogo(fn () => asset(config('rms.brand.logo')))
+            ->darkModeBrandLogo(fn () => asset(config('rms.brand.logo_dark')))
+            ->brandLogoHeight('2.25rem')
+            ->favicon(fn () => asset(config('rms.brand.favicon')))
             ->brandName(config('rms.product_name'))
             ->colors([
                 'primary' => Color::Emerald,

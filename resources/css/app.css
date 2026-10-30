@@ -8,6 +8,9 @@
 @source '../../app/Modules/**/*.php';
 
 @theme {
+    --color-brand: #10b981;
+    --color-brand-accent: #f59e0b;
+    --color-brand-dark: #020617;
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 }

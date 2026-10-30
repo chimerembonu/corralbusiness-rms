@@ -10,6 +10,9 @@ class ComboItem extends BusinessModel
 {
     protected $table = 'menu_combo_items';
 
+    /** Tenant-wide table: branch_id is only set when a row is specific to one branch. */
+    protected bool $hasBranch = false;
+
     protected $fillable = ['branch_id', 'combo_id', 'item_id', 'variant_id', 'quantity', 'sort_order'];
 
     /** Defaults so a freshly created model behaves like one loaded from the database. */

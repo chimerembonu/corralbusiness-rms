@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Orders\Models\DiningTable;
 use App\Modules\Settings\Models\Branch;
 use App\Modules\Settings\Models\Setting;
 use App\Modules\Settings\Models\TaxComponent;
@@ -10,11 +11,14 @@ use App\Support\Tenancy\Tenancy;
 it('gives every business row a version 7 UUID and tenant/branch stamps', function () {
     $branch = provisionTenant();
 
+    $table = DiningTable::create(['name' => 'T1']);
     $setting = Setting::create(['key' => 'receipt.header', 'value' => ['v' => 'Akwaaba!']]);
 
-    expect($setting->id)->toMatch('/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-/')
+    expect($table->id)->toMatch('/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-/')
+        ->and($table->tenant_id)->toBe($branch->tenant_id)
+        ->and($table->branch_id)->toBe($branch->id)
         ->and($setting->tenant_id)->toBe($branch->tenant_id)
-        ->and($setting->branch_id)->toBe($branch->id)
+        ->and($setting->branch_id)->toBeNull() // tenant-wide unless set explicitly
         ->and($branch->tenant->id)->toMatch('/^[0-9a-f-]{36}$/');
 });
 

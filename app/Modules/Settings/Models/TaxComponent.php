@@ -14,6 +14,9 @@ class TaxComponent extends BusinessModel
 {
     use Auditable;
 
+    /** Tenant-wide table: branch_id is only set when a row is specific to one branch. */
+    protected bool $hasBranch = false;
+
     protected $fillable = ['branch_id', 'name', 'code', 'rate_basis_points', 'kind', 'base', 'sort_order', 'is_active'];
 
     /** Defaults so a freshly created model behaves like one loaded from the database. */

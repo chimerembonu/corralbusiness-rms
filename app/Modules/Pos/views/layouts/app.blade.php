@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title ?? __('pos::pos.title') }} · {{ __('rms.product_name') }}</title>
+    <link rel="icon" href="{{ asset(config('rms.brand.favicon')) }}" type="image/svg+xml">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <script>
         // Browser-print agent: this till prints "browser" print jobs through a hidden frame (CLAUDE.md §3.8).
@@ -41,7 +42,7 @@
             <header class="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-slate-800 bg-slate-900 px-3">
                 <div class="flex items-center gap-3">
                     <a href="{{ route('pos.home') }}" class="flex h-11 items-center gap-2 rounded-xl px-3 text-base font-semibold hover:bg-slate-800">
-                        <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500 text-lg font-black text-slate-950">C</span>
+                        <img src="{{ asset(config('rms.brand.mark')) }}" alt="" class="h-8 w-8">
                         <span class="hidden sm:inline">{{ \App\Support\Tenancy\Tenancy::branch()?->name ?? __('rms.product_name') }}</span>
                     </a>
                 </div>

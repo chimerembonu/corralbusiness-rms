@@ -14,6 +14,17 @@ return [
     'company' => 'Corral Systems Limited',
     'version' => '0.1.0',
 
+    // Branding (placeholder until the final Corral Systems identity is ready).
+    'brand' => [
+        'primary' => '#10b981',   // emerald
+        'accent' => '#f59e0b',    // amber
+        'dark' => '#020617',      // slate-950
+        'logo' => 'brand/logo.svg',
+        'logo_dark' => 'brand/logo-dark.svg',
+        'mark' => 'brand/mark.svg',
+        'favicon' => 'favicon.svg',
+    ],
+
     // Money is stored as integers in the smallest unit (pesewas for GHS).
     'currency' => env('RMS_CURRENCY', 'GHS'),
     'currency_symbol' => env('RMS_CURRENCY_SYMBOL', 'GH₵'),
