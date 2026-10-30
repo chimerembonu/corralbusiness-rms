@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Modules\Menu\Seeders\MenuDemoSeeder;
+use App\Modules\Orders\Seeders\DiningTablesDemoSeeder;
 use App\Modules\Settings\Models\Branch;
 use App\Modules\Settings\Models\Tenant;
 use App\Modules\Settings\Services\TenantProvisioner;
@@ -65,8 +66,12 @@ class DemoCommand extends Command
             $counts['categories'], $counts['items'], $counts['variants'], $counts['modifier_groups'], $counts['modifiers']
         ));
 
+        $tables = (new DiningTablesDemoSeeder)->run();
+        $this->components->info("Tables ready: {$tables}.");
+
         $this->newLine();
         $this->line('  Back office: '.url(config('rms.admin_path')));
+        $this->line('  Till (POS):  '.url('pos'));
 
         return self::SUCCESS;
     }

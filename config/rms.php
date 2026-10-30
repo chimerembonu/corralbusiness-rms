@@ -19,6 +19,12 @@ return [
     'currency_symbol' => env('RMS_CURRENCY_SYMBOL', 'GH₵'),
     'currency_minor_units' => 2, // 100 pesewas = 1 cedi
 
+    // Which restaurant/branch THIS store server runs for (slug / branch code). Leave empty when only one exists.
+    'store' => [
+        'tenant' => env('RMS_STORE_TENANT'),
+        'branch' => env('RMS_STORE_BRANCH'),
+    ],
+
     // Filament panel paths.
     'admin_path' => env('RMS_ADMIN_PATH', 'admin'),
     'hq_path' => env('RMS_HQ_PATH', 'hq'),

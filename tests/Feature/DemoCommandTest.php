@@ -2,6 +2,7 @@
 
 use App\Console\Commands\DemoCommand;
 use App\Modules\Menu\Models\Item;
+use App\Modules\Orders\Models\DiningTable;
 use App\Modules\Settings\Models\Tenant;
 use App\Modules\Staff\Models\User;
 use App\Modules\Staff\Services\PinAuthenticator;
@@ -21,6 +22,7 @@ it('loads the demo restaurant with menu and owner login, and can run twice', fun
         ->and(Item::count())->toBeGreaterThan(25)
         ->and(Item::where('code', 'JOL')->first()->variants()->count())->toBe(2)
         ->and(Item::where('code', 'CMB1')->first()->comboItems()->count())->toBe(2)
+        ->and(DiningTable::count())->toBe(12)
         ->and(app(PinAuthenticator::class)->attempt('1234', 'till-1')->id)->toBe($owner->id);
 
     $items = Item::count();
