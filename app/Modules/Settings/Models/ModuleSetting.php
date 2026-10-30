@@ -14,6 +14,9 @@ class ModuleSetting extends BusinessModel
 
     protected $fillable = ['module', 'enabled', 'settings'];
 
+    /** Defaults so a freshly created model behaves like one loaded from the database. */
+    protected $attributes = ['enabled' => true];
+
     protected function casts(): array
     {
         return [

@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Support\Tenancy\SetTenantFromUser;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -54,6 +55,7 @@ class HqPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+                SetTenantFromUser::class,
             ]);
     }
 }

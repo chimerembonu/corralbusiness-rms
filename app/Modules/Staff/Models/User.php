@@ -31,6 +31,9 @@ class User extends Authenticatable implements FilamentUser
 
     protected $fillable = ['tenant_id', 'branch_id', 'name', 'email', 'phone', 'password', 'pin', 'is_active'];
 
+    /** Defaults so a freshly created model behaves like one loaded from the database. */
+    protected $attributes = ['is_active' => true];
+
     protected $hidden = ['password', 'pin', 'pin_lookup', 'remember_token'];
 
     protected array $auditExcept = ['password', 'pin', 'pin_lookup', 'remember_token', 'last_login_at'];

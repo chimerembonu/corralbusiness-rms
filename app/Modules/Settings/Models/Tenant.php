@@ -21,6 +21,9 @@ class Tenant extends Model
 
     protected $fillable = ['name', 'slug', 'country', 'currency', 'timezone', 'settings', 'is_active'];
 
+    /** Defaults so a freshly created model behaves like one loaded from the database. */
+    protected $attributes = ['country' => 'GH', 'currency' => 'GHS', 'timezone' => 'Africa/Accra', 'is_active' => true];
+
     protected array $auditExcept = ['settings'];
 
     protected function casts(): array

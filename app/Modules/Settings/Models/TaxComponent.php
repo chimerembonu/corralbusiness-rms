@@ -16,6 +16,9 @@ class TaxComponent extends BusinessModel
 
     protected $fillable = ['branch_id', 'name', 'code', 'rate_basis_points', 'kind', 'base', 'sort_order', 'is_active'];
 
+    /** Defaults so a freshly created model behaves like one loaded from the database. */
+    protected $attributes = ['kind' => 'vat', 'base' => 'net', 'sort_order' => 0, 'is_active' => true];
+
     protected function casts(): array
     {
         return [

@@ -25,6 +25,9 @@ class Branch extends Model
 
     protected $fillable = ['tenant_id', 'name', 'code', 'address', 'phone', 'email', 'timezone', 'settings', 'is_active'];
 
+    /** Defaults so a freshly created model behaves like one loaded from the database. */
+    protected $attributes = ['is_active' => true];
+
     protected array $auditExcept = ['settings'];
 
     protected function casts(): array
