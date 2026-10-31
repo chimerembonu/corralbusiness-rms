@@ -110,3 +110,16 @@ it('shows today\'s sales to a manager but not to a waiter', function () {
     $this->actingAs($this->owner)->get('/pos/today')->assertOk()->assertSee("Today's sales")->assertSee('Gross sales');
     $this->actingAs($this->waiter)->get('/pos/today')->assertForbidden();
 });
+
+it('lists today\'s orders with their table names', function () {
+    $this->actingAs($this->waiter);
+    $service = app(OrderService::class);
+    $dineIn = $service->open(OrderType::DineIn, $this->waiter, $this->table);
+    $service->addItem($dineIn, $this->menu['coke']);
+    $takeaway = $service->open(OrderType::Takeaway, $this->waiter);
+    $service->addItem($takeaway, $this->menu['coke']);
+
+    $this->actingAs($this->owner)->get('/pos/today')->assertOk()
+        ->assertSee('#'.$dineIn->displayNumber())->assertSee('T1')
+        ->assertSee('#'.$takeaway->displayNumber())->assertSee('Takeaway');
+});

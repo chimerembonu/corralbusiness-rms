@@ -21,9 +21,12 @@ class DailySummaryService
     {
         $branchId = $branch instanceof Branch ? $branch->getKey() : ($branch ?? $this->context->branchId());
 
-        $paid = Order::query()->forBranch($branchId)->forBusinessDate($date)->where('status', OrderStatus::Paid->value)->get();
-        $open = Order::query()->forBranch($branchId)->forBusinessDate($date)->active()->get();
-        $void = Order::query()->forBranch($branchId)->forBusinessDate($date)->where('status', OrderStatus::Void->value)->get();
+        // Eager-load the table so the order list can show "Table 4" without lazy loading (strict mode forbids it).
+        $base = fn () => Order::query()->with('table')->forBranch($branchId)->forBusinessDate($date);
+
+        $paid = $base()->where('status', OrderStatus::Paid->value)->get();
+        $open = $base()->active()->get();
+        $void = $base()->where('status', OrderStatus::Void->value)->get();
 
         $sum = fn (Collection $orders, string $field) => $orders->reduce(fn (Money $c, Order $o) => $c->add($o->{$field}), Money::zero());
 
