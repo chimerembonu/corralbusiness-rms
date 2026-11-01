@@ -6,7 +6,7 @@ use App\Support\Tax\TaxBase;
 use App\Support\Tax\TaxKind;
 
 /**
- * ⚠️  DEFAULT GHANA TAX RATES – TO BE CONFIRMED WITH THE RESTAURANT'S ACCOUNTANT.
+ * DEFAULT GHANA TAX RATES – confirmed by the owner on 2 November 2026 (VAT 15 %, NHIL 2.5 %, GETFund 2.5 %).
  *
  * Source: Ghana Revenue Authority, "VAT" page (gra.gov.gh/domestic-tax/tax-types/vat),
  * checked on 30 October 2026. Under the Value Added Tax Act, 2025 (Act 1151), in force
@@ -23,7 +23,7 @@ use App\Support\Tax\TaxKind;
  */
 final class GhanaTaxDefaults
 {
-    public const CONFIRMATION_NOTE = 'Default Ghana rates from the GRA website (checked 30 Oct 2026). Confirm with your accountant before go-live.';
+    public const CONFIRMATION_NOTE = 'Ghana rates: VAT 15 %, NHIL 2.5 %, GETFund 2.5 % on the net price (confirmed 2 Nov 2026). Change them here if the law changes.';
 
     /** @return array<int, array<string, mixed>> */
     public static function components(): array

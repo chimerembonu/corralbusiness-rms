@@ -8,21 +8,53 @@ CorralBusiness – RMS runs on one small computer inside the restaurant. Tills, 
 - A network cable from the mini PC to the router. Wi-Fi works, but a cable is more reliable.
 - Receipt printers: network (Ethernet) printers are easiest. USB printers plug into the mini PC.
 
-## 2. Install (Ubuntu, about 10 minutes)
+## 2. Install on the Ubuntu mini PC (about 10 minutes)
 
+The code lives in a private GitHub repository (github.com/chimerembonu/corralbusiness-rms), so the mini PC needs either a GitHub login or a copy of the code on a USB stick.
+
+**With a GitHub login:**
 1. Plug the mini PC into the router with a cable and switch it on.
-2. Open a terminal (Ctrl + Alt + T) and run:
+2. Open a terminal (Ctrl + Alt + T) and run these three commands, one at a time:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/corralsystems/corralbusiness-rms/main/install.sh | sudo bash
+sudo apt-get install -y gh git
 ```
+
+```bash
+gh auth login
+```
+
+```bash
+gh repo clone chimerembonu/corralbusiness-rms /opt/corralbusiness-rms && cd /opt/corralbusiness-rms && sudo ./install.sh
+```
+
+**With a USB stick:** copy the project folder from the Mac to the stick, plug it into the mini PC, open a terminal in that folder and run `sudo ./install.sh`.
 
 3. Answer the questions: restaurant name, branch name, your name, email, password and till PIN.
 4. The installer prints the address, for example `http://192.168.8.10`. Open it on a till.
 
-Run the same command again at any time; it keeps your data and settings.
+Run `sudo ./install.sh` again at any time; it keeps your data and settings.
 
-**Mac mini:** install Docker Desktop, copy the code to a folder, create `.env` from `.env.docker.example` (fill the lines marked "set by install"), then run `docker compose up -d` and `docker compose exec app php artisan rms:setup`.
+## 2b. Windows or Mac instead of Ubuntu
+
+The same Docker package runs on a Windows 10/11 PC or a Mac. It is fine for a demo or a small restaurant; Ubuntu is still the recommended choice for the pilot because it needs less memory, restarts by itself after a power cut and costs nothing.
+
+1. Install **Docker Desktop** (docker.com) and start it. On Windows it asks to enable WSL 2; say yes and restart.
+2. Get the code: install GitHub Desktop or `gh`, sign in, and clone `chimerembonu/corralbusiness-rms` to a folder such as `C:\rms` or `~/rms`. Or copy the folder from a USB stick.
+3. Make a copy of `.env.docker.example` called `.env` in that folder and fill in the lines marked "set by install": any long random text for the passwords and keys, `APP_KEY=base64:` followed by 32 random bytes in base64 (run `openssl rand -base64 32` on a Mac, or use the Mac's value), `APP_URL` and `RMS_BIND_IP` set to the computer's Wi-Fi address (Windows: `ipconfig`; Mac: System Settings → Wi-Fi → Details).
+4. Open a terminal in the folder (Windows: PowerShell) and run:
+
+```bash
+docker compose up -d --build
+```
+
+```bash
+docker compose exec app php artisan rms:setup
+```
+
+5. Open `http://<the address>` on the tills. To start again after a reboot, open Docker Desktop (set it to start with the computer) and the app comes back by itself.
+
+Printers: network printers work exactly as on Ubuntu. USB printers on Windows must be shared from Windows and used with connection "Browser" on a till, or plugged into the computer and set up in Docker Desktop's USB sharing (advanced).
 
 ## 3. Give the server a fixed address (do this once)
 
@@ -57,7 +89,7 @@ The app listens only on that address (`RMS_BIND_IP`), never on the internet side
 
 ## 4. Printers
 
-- **Network printer:** plug it into the router. On the mini PC run `./scripts/rms rms:printers:scan`; it lists the printers it finds with their addresses. Add each in Back office → Printers with connection "Network".
+- **Network printer:** plug it into the router. On the server run `./scripts/rms rms:printers:scan`; it lists the printers it finds with their addresses. Add each in Back office → Printers with connection "Network".
 - **USB printer:** plug it into the mini PC, then run:
 
 ```bash

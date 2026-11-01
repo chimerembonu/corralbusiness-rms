@@ -2,8 +2,9 @@
 # ---------------------------------------------------------------------------
 # CorralBusiness – RMS: one-line installer for the store server (Ubuntu 24.04).
 #
-#   curl -fsSL https://raw.githubusercontent.com/<owner>/corralbusiness-rms/main/install.sh | sudo bash
-#   or, from a copy of the code:  sudo ./install.sh
+#   From a copy of the code (USB stick or git clone):  sudo ./install.sh
+#   The repository is private, so clone it first with a GitHub login:
+#     gh auth login && gh repo clone chimerembonu/corralbusiness-rms /opt/corralbusiness-rms
 #
 # What it does, in order:
 #   1. Installs Docker (if missing).
@@ -15,7 +16,7 @@
 # ---------------------------------------------------------------------------
 set -euo pipefail
 
-REPO_URL="${RMS_REPO_URL:-https://github.com/corralsystems/corralbusiness-rms.git}"
+REPO_URL="${RMS_REPO_URL:-https://github.com/chimerembonu/corralbusiness-rms.git}"
 TARGET="${RMS_DIR:-/opt/corralbusiness-rms}"
 BRANCH="${RMS_BRANCH:-main}"
 
