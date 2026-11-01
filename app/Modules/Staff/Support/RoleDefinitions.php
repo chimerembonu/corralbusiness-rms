@@ -14,7 +14,7 @@ final class RoleDefinitions
         $floor = [P::PosAccess, P::OrdersCreate, P::StaffClock, P::KitchenView];
         $manager = array_merge($floor, [
             P::AdminAccess, P::OrdersVoid, P::OrdersDiscount, P::OrdersRefund, P::OrdersPriceEdit,
-            P::DayReopen, P::DayClose, P::PaymentsTake, P::CashDrawer, P::KitchenBump,
+            P::DayReopen, P::DayClose, P::PaymentsTake, P::CashDrawer, P::CashVariance, P::KitchenBump,
             P::MenuManage, P::Menu86, P::InventoryManage, P::InventoryCount, P::CustomersManage,
             P::StaffManage, P::ReportsView, P::ReportsExport, P::SettingsManage,
         ]);
@@ -22,7 +22,7 @@ final class RoleDefinitions
         return [
             Role::Owner->value => P::values(),
             Role::Manager->value => self::values($manager),
-            Role::Cashier->value => self::values(array_merge($floor, [P::PaymentsTake, P::CashDrawer, P::DayClose, P::Menu86, P::CustomersManage])),
+            Role::Cashier->value => self::values(array_merge($floor, [P::PaymentsTake, P::CashDrawer, P::Menu86, P::CustomersManage])), // day close + big variances need a manager PIN
             Role::Waiter->value => self::values(array_merge($floor, [P::Menu86])),
             Role::Kitchen->value => self::values([P::PosAccess, P::StaffClock, P::KitchenView, P::KitchenBump, P::Menu86]),
             Role::Rider->value => self::values([P::PosAccess, P::StaffClock, P::DeliveryRide]),

@@ -6,7 +6,9 @@ use App\Modules\Orders\Models\Order;
 use App\Modules\Orders\Support\TillSettings;
 use App\Modules\Payments\Enums\MomoProvider;
 use App\Modules\Payments\Enums\PaymentMethod;
+use App\Modules\Payments\Services\CashService;
 use App\Modules\Payments\Services\PaymentService;
+use App\Modules\Staff\Enums\Permission;
 use App\Support\Money\Money;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -42,12 +44,21 @@ class PaymentScreen extends Component
 
     public ?string $error = null;
 
-    public function mount(Order $order): void
+    public function mount(Order $order, CashService $cash, TillSettings $settings): void
     {
+        abort_unless(auth()->user()->can(Permission::PaymentsTake->value), 403);
         $this->orderId = $order->id;
 
         if (! $order->isActive()) {
             $this->redirectRoute('pos.receipt', $order);
+
+            return;
+        }
+
+        // The till must be opened (float counted) so every payment lands in a cashier session.
+        if ($settings->requireSession($order->branch_id) && ! $cash->current(auth()->user(), $order->branch_id)) {
+            session()->flash('error', __('payments::payments.cash.errors.no_session'));
+            $this->redirectRoute('pos.cash', ['then' => $order->id]);
         }
     }
 

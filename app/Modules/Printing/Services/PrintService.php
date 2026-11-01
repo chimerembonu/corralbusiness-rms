@@ -3,7 +3,10 @@
 namespace App\Modules\Printing\Services;
 
 use App\Modules\Orders\Models\Order;
+use App\Modules\Payments\Models\CashierSession;
+use App\Modules\Payments\Models\DayClose;
 use App\Modules\Pos\Services\CurrentTill;
+use App\Modules\Printing\Documents\CashReportDocument;
 use App\Modules\Printing\Documents\PrintDocument;
 use App\Modules\Printing\Documents\ReceiptDocument;
 use App\Modules\Printing\Documents\ReceiptSettings;
@@ -14,7 +17,9 @@ use App\Modules\Printing\Enums\PrintJobType;
 use App\Modules\Printing\Jobs\ProcessPrintJob;
 use App\Modules\Printing\Models\Printer;
 use App\Modules\Printing\Models\PrintJob;
+use App\Modules\Settings\Models\Branch;
 use App\Modules\Settings\Services\SettingsService;
+use App\Support\Tenancy\Tenancy;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 
@@ -62,6 +67,32 @@ class PrintService
         }
 
         return Printer::query()->active()->where('branch_id', $branchId)->where('prints_receipts', true)->get();
+    }
+
+    /** @return Collection<int, PrintJob> the cash-up slip, on the till's receipt printer(s). */
+    public function printCashUp(CashierSession $session): Collection
+    {
+        $document = CashReportDocument::cashUp($session);
+
+        return $this->receiptPrinters($session->branch_id)->map(fn (Printer $printer) => $this->enqueue($printer, $document, PrintJobType::CashUp, $session));
+    }
+
+    /** @return Collection<int, PrintJob> X report (the day so far) on the receipt printer(s). */
+    public function printXReport(array $report, ?string $branchId = null): Collection
+    {
+        $branch = Branch::query()->with('tenant')->findOrFail($branchId ?? Tenancy::branchId());
+        $document = CashReportDocument::day($report, __('payments::payments.day.x_report'), $branch->tenant->name, $branch->name);
+
+        return $this->receiptPrinters($branch->id)->map(fn (Printer $printer) => $this->enqueue($printer, $document, PrintJobType::XReport));
+    }
+
+    /** @return Collection<int, PrintJob> the Z report of a closed day. */
+    public function printZReport(DayClose $close): Collection
+    {
+        $close->loadMissing('branch.tenant');
+        $document = CashReportDocument::day($close->report, __('payments::payments.day.z_report'), $close->branch->tenant->name, $close->branch->name, $close->displayNumber());
+
+        return $this->receiptPrinters($close->branch_id)->map(fn (Printer $printer) => $this->enqueue($printer, $document, PrintJobType::ZReport, $close));
     }
 
     /** Pop the cash drawer on the till's receipt printer (or any receipt printer with a drawer). */

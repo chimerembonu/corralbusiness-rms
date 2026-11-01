@@ -9,6 +9,7 @@ use App\Modules\Orders\Models\PromoCode;
 use App\Modules\Orders\Services\DeliveryService;
 use App\Modules\Orders\Services\OrderService;
 use App\Modules\Orders\Support\TillSettings;
+use App\Modules\Payments\Services\CashService;
 use App\Modules\Payments\Services\PaymentService;
 use App\Modules\Pos\Livewire\DeliveriesBoard;
 use App\Modules\Pos\Livewire\OrderScreen;
@@ -17,6 +18,7 @@ use App\Modules\Pos\Livewire\OrderTypeScreen;
 use App\Modules\Pos\Livewire\PaymentScreen;
 use App\Modules\Pos\Livewire\PinLogin;
 use App\Modules\Pos\Livewire\RiderScreen;
+use App\Modules\Pos\Models\Till;
 use App\Modules\Settings\Services\SettingsService;
 use App\Modules\Staff\Enums\Role;
 use App\Modules\Staff\Models\User;
@@ -32,6 +34,11 @@ beforeEach(function () {
     $this->owner->assignRole(Role::Owner->value);
     $this->waiter = User::factory()->forBranch($this->branch)->withPin('2222')->create(['name' => 'Ama']);
     $this->waiter->assignRole(Role::Waiter->value);
+    // A cashier with an open till (float counted), as every payment must land in a cashier session (Phase 1.6).
+    $this->cashier = User::factory()->forBranch($this->branch)->withPin('1111')->create(['name' => 'Kofi']);
+    $this->cashier->assignRole(Role::Cashier->value);
+    $this->till = Till::create(['name' => 'Till 1', 'code' => 'T1']);
+    app(CashService::class)->open($this->till, $this->cashier, Money::fromDecimal('500'), now()->toDateString());
     // The tenant context stays set, as the SetTenantFromUser middleware would do on a real request.
 });
 
@@ -152,7 +159,9 @@ it('takes an order with the item picker, sends it and pays cash to a receipt', f
     expect($order->fresh()->status)->toBe(OrderStatus::Sent)
         ->and($order->fresh()->total)->toBePesewas(20400);
 
-    $screen->call('pay')->assertRedirect(route('pos.pay', $order));
+    $screen->call('pay')->assertSet('error', 'Ask a cashier to take the payment.'); // waiters hand over to a cashier
+    $this->actingAs($this->cashier);
+    Livewire::test(OrderScreen::class, ['order' => $order])->call('pay')->assertRedirect(route('pos.pay', $order));
 
     Livewire::test(PaymentScreen::class, ['order' => $order])
         ->assertSee('GH₵ 204.00')
@@ -235,8 +244,8 @@ it('voids a sent line with a reason and a manager PIN, and fires a held course',
 });
 
 it('takes Mobile Money with a reference, then the rest in cash with a tip', function () {
-    $this->actingAs($this->waiter);
-    $order = app(OrderService::class)->open(OrderType::Takeaway, $this->waiter);
+    $this->actingAs($this->cashier);
+    $order = app(OrderService::class)->open(OrderType::Takeaway, $this->cashier);
     app(OrderService::class)->addItem($order, $this->menu['coke'], quantity: 5); // 60.00
 
     Livewire::test(PaymentScreen::class, ['order' => $order])

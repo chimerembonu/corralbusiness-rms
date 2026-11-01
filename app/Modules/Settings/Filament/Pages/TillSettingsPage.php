@@ -64,6 +64,11 @@ class TillSettingsPage extends Page
             'tips_enabled' => $settings->tipsEnabled(),
             'courses' => $settings->courses(),
             'delivery_fee' => $settings->deliveryFee(),
+            'default_float' => $settings->defaultFloat(),
+            'variance_tolerance' => $settings->varianceTolerance(),
+            'pay_in_reasons' => $settings->payInReasons(),
+            'pay_out_reasons' => $settings->payOutReasons(),
+            'require_session' => $settings->requireSession(),
         ]);
     }
 
@@ -87,6 +92,13 @@ class TillSettingsPage extends Page
                 TagsInput::make('courses')->label($t('courses'))->helperText($t('courses_help')),
                 MoneyInput::make('delivery_fee')->label($t('delivery_fee'))->helperText($t('delivery_fee_help')),
             ]),
+            Section::make($t('cash'))->columns(2)->schema([
+                MoneyInput::make('default_float')->label($t('default_float'))->helperText($t('default_float_help')),
+                MoneyInput::make('variance_tolerance')->label($t('variance_tolerance'))->helperText($t('variance_tolerance_help')),
+                TagsInput::make('pay_in_reasons')->label($t('pay_in_reasons'))->placeholder($t('add_reason')),
+                TagsInput::make('pay_out_reasons')->label($t('pay_out_reasons'))->placeholder($t('add_reason')),
+                Toggle::make('require_session')->label($t('require_session'))->inline(false)->columnSpanFull(),
+            ]),
         ])->statePath('data');
     }
 
@@ -102,6 +114,11 @@ class TillSettingsPage extends Page
         $settings->set(TillSettings::TIPS_ENABLED, (bool) ($data['tips_enabled'] ?? false));
         $settings->set(TillSettings::COURSES, array_values($data['courses'] ?? []));
         $settings->set(TillSettings::DELIVERY_FEE, (int) ($data['delivery_fee'] ?? 0));
+        $settings->set(TillSettings::CASH_DEFAULT_FLOAT, (int) ($data['default_float'] ?? 0));
+        $settings->set(TillSettings::CASH_VARIANCE_TOLERANCE, (int) ($data['variance_tolerance'] ?? 0));
+        $settings->set(TillSettings::CASH_PAY_IN_REASONS, array_values($data['pay_in_reasons'] ?? []));
+        $settings->set(TillSettings::CASH_PAY_OUT_REASONS, array_values($data['pay_out_reasons'] ?? []));
+        $settings->set(TillSettings::CASH_REQUIRE_SESSION, (bool) ($data['require_session'] ?? false));
 
         Notification::make()->success()->title(__('settings::settings.till.saved'))->send();
     }

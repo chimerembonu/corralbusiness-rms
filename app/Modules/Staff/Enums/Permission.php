@@ -17,6 +17,7 @@ enum Permission: string
     case DayClose = 'day.close';
     case PaymentsTake = 'payments.take';
     case CashDrawer = 'payments.cash_drawer';   // pay-in / pay-out / open drawer
+    case CashVariance = 'payments.cash_variance'; // manager PIN: accept a cash-up that is short/over beyond the tolerance
     case KitchenView = 'kitchen.view';
     case KitchenBump = 'kitchen.bump';
     case DeliveryRide = 'delivery.ride';

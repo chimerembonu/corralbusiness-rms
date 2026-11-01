@@ -8,6 +8,9 @@ enum PrintJobType: string
     case KitchenTicket = 'kitchen_ticket';
     case Test = 'test';
     case Drawer = 'drawer';
+    case CashUp = 'cash_up';
+    case XReport = 'x_report';
+    case ZReport = 'z_report';
 
     public function label(): string
     {

@@ -39,6 +39,7 @@ use App\Modules\Orders\Models\Order;
 use App\Modules\Orders\Models\OrderItem;
 use App\Modules\Orders\Models\PromoCode;
 use App\Modules\Orders\Support\TillSettings;
+use App\Modules\Payments\Services\DayCloseService;
 use App\Modules\Settings\Services\CounterService;
 use App\Modules\Settings\Services\TaxService;
 use App\Modules\Staff\Enums\Permission;
@@ -67,9 +68,10 @@ class OrderService
             app(TableService::class)->assertFree($table);
         }
 
-        return DB::transaction(function () use ($type, $by, $table, $covers) {
-            $businessDate = $this->businessDate();
+        $businessDate = $this->businessDate();
+        app(DayCloseService::class)->assertOpen($businessDate, $table?->branch_id ?? $this->context->branchId());
 
+        return DB::transaction(function () use ($type, $by, $table, $covers, $businessDate) {
             $order = new Order([
                 'business_date' => $businessDate,
                 'number' => $this->counters->next('orders', $businessDate),

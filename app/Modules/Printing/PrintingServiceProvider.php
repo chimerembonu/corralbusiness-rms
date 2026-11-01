@@ -3,11 +3,17 @@
 namespace App\Modules\Printing;
 
 use App\Modules\Orders\Events\OrderPaid;
+use App\Modules\Payments\Events\CashierSessionClosed;
+use App\Modules\Payments\Events\CashMovementRecorded;
+use App\Modules\Payments\Events\DayClosed;
 use App\Modules\Payments\Events\PaymentRecorded;
 use App\Modules\Printing\Console\ListPrintQueues;
 use App\Modules\Printing\Contracts\RawSpooler;
+use App\Modules\Printing\Listeners\OpenDrawerOnCashMovement;
 use App\Modules\Printing\Listeners\OpenDrawerOnCashPayment;
+use App\Modules\Printing\Listeners\PrintCashUpSlip;
 use App\Modules\Printing\Listeners\PrintReceiptWhenPaid;
+use App\Modules\Printing\Listeners\PrintZReport;
 use App\Modules\Printing\Services\CupsSpooler;
 use App\Modules\Printing\Services\PrinterDriverRegistry;
 use App\Modules\Printing\Services\WindowsSpooler;
@@ -28,6 +34,9 @@ class PrintingServiceProvider extends ServiceProvider
     protected $listen = [
         OrderPaid::class => [PrintReceiptWhenPaid::class],
         PaymentRecorded::class => [OpenDrawerOnCashPayment::class],
+        CashierSessionClosed::class => [PrintCashUpSlip::class],
+        DayClosed::class => [PrintZReport::class],
+        CashMovementRecorded::class => [OpenDrawerOnCashMovement::class],
     ];
 
     public function register(): void

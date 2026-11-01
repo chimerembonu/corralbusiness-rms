@@ -25,7 +25,11 @@ use Illuminate\Support\Facades\DB;
  */
 class PaymentService
 {
-    public function __construct(private readonly OrderService $orders) {}
+    public function __construct(
+        private readonly OrderService $orders,
+        private readonly CashService $cash,
+        private readonly DayCloseService $days,
+    ) {}
 
     /**
      * Cash: the customer hands over $tendered; the order is credited with min(tendered − tip, balance)
@@ -80,9 +84,13 @@ class PaymentService
             throw new PaymentException(__('payments::payments.errors.provider_required'));
         }
 
-        return DB::transaction(function () use ($order, $method, $amount, $by, $reference, $tendered, $change, $notes, $provider, $tip) {
+        $this->days->assertOpen($order->business_date->toDateString(), $order->branch_id);
+        $session = $this->cash->current($by, $order->branch_id);
+
+        return DB::transaction(function () use ($order, $method, $amount, $by, $reference, $tendered, $change, $notes, $provider, $tip, $session) {
             $payment = new Payment([
                 'order_id' => $order->id,
+                'cashier_session_id' => $session?->id,
                 'method' => $method,
                 'provider' => $method === PaymentMethod::MobileMoney ? $provider : null,
                 'amount' => $amount,
@@ -99,6 +107,9 @@ class PaymentService
 
             $this->syncTotals($order);
             $this->orders->markPaid($order, $order->paid_total, $by);
+            if ($session) {
+                $this->cash->recalculate($session);
+            }
 
             PaymentRecorded::dispatch($payment);
 
@@ -119,13 +130,19 @@ class PaymentService
             throw new PaymentException(__('orders::orders.errors.reason_required'));
         }
 
-        return DB::transaction(function () use ($payment, $reason, $approvedBy) {
+        $session = $this->cash->current($by ?? $approvedBy, $payment->branch_id);
+
+        return DB::transaction(function () use ($payment, $reason, $approvedBy, $session) {
             $payment->forceFill([
                 'status' => PaymentStatus::Refunded,
                 'refunded_at' => now(),
                 'refund_reason' => trim($reason),
                 'refunded_by_id' => $approvedBy->id,
+                'refund_session_id' => $session?->id,
             ])->save();
+            if ($session) {
+                $this->cash->recalculate($session);
+            }
 
             $order = $payment->order()->first();
             $this->syncTotals($order);

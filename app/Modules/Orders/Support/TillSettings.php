@@ -26,6 +26,16 @@ final class TillSettings
 
     public const DELIVERY_FEE = 'delivery.default_fee';                  // pesewas, suggested on every new delivery order
 
+    public const CASH_DEFAULT_FLOAT = 'cash.default_float';              // pesewas suggested when a till is opened
+
+    public const CASH_VARIANCE_TOLERANCE = 'cash.variance_tolerance';    // pesewas; a cash-up short/over by more needs a manager PIN
+
+    public const CASH_PAY_IN_REASONS = 'cash.pay_in_reasons';
+
+    public const CASH_PAY_OUT_REASONS = 'cash.pay_out_reasons';
+
+    public const CASH_REQUIRE_SESSION = 'cash.require_session';          // a till must be opened (float counted) before taking payments
+
     public function __construct(private readonly SettingsService $settings) {}
 
     /** @return array<string, mixed> */
@@ -40,6 +50,11 @@ final class TillSettings
             self::TIPS_ENABLED => true,
             self::COURSES => ['Starters', 'Mains', 'Desserts'],
             self::DELIVERY_FEE => 0,
+            self::CASH_DEFAULT_FLOAT => 50000,
+            self::CASH_VARIANCE_TOLERANCE => 500,
+            self::CASH_PAY_IN_REASONS => ['Change from the bank', 'Float top-up', 'Owner / manager'],
+            self::CASH_PAY_OUT_REASONS => ['Supplier paid in cash', 'Bank deposit', 'Staff advance', 'Petty cash', 'Tips paid to staff'],
+            self::CASH_REQUIRE_SESSION => true,
         ];
     }
 
@@ -84,6 +99,33 @@ final class TillSettings
     public function deliveryFee(?string $branchId = null): int
     {
         return (int) $this->get(self::DELIVERY_FEE, $branchId);
+    }
+
+    public function defaultFloat(?string $branchId = null): int
+    {
+        return (int) $this->get(self::CASH_DEFAULT_FLOAT, $branchId);
+    }
+
+    public function varianceTolerance(?string $branchId = null): int
+    {
+        return (int) $this->get(self::CASH_VARIANCE_TOLERANCE, $branchId);
+    }
+
+    /** @return array<int, string> */
+    public function payInReasons(?string $branchId = null): array
+    {
+        return array_values(array_filter((array) $this->get(self::CASH_PAY_IN_REASONS, $branchId)));
+    }
+
+    /** @return array<int, string> */
+    public function payOutReasons(?string $branchId = null): array
+    {
+        return array_values(array_filter((array) $this->get(self::CASH_PAY_OUT_REASONS, $branchId)));
+    }
+
+    public function requireSession(?string $branchId = null): bool
+    {
+        return (bool) $this->get(self::CASH_REQUIRE_SESSION, $branchId);
     }
 
     /** @return array<int, string> course names, index 0 = course 1 */

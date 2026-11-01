@@ -636,6 +636,11 @@ class OrderScreen extends Component
 
             return;
         }
+        if (! auth()->user()->can(Permission::PaymentsTake->value)) {
+            $this->error = __('pos::pos.cash.pay_needs_cashier');
+
+            return;
+        }
 
         $this->redirectRoute('pos.pay', $this->order);
     }

@@ -1,8 +1,10 @@
 <?php
 
+use App\Modules\Pos\Http\CashReportController;
 use App\Modules\Pos\Http\DrawerController;
 use App\Modules\Pos\Http\EnsurePosUser;
 use App\Modules\Pos\Http\ReceiptController;
+use App\Modules\Pos\Livewire\CashScreen;
 use App\Modules\Pos\Livewire\DeliveriesBoard;
 use App\Modules\Pos\Livewire\OrderScreen;
 use App\Modules\Pos\Livewire\OrdersList;
@@ -34,6 +36,9 @@ Route::prefix('pos')->name('pos.')->group(function () {
         Route::get('deliveries', DeliveriesBoard::class)->name('deliveries');
         Route::get('rider', RiderScreen::class)->name('rider');
         Route::post('drawer', DrawerController::class)->name('drawer');
+        Route::get('cash', CashScreen::class)->name('cash');
+        Route::get('cash/report', [CashReportController::class, 'day'])->name('cash.report');
+        Route::get('cash/sessions/{session}', [CashReportController::class, 'session'])->name('cash.session');
 
         Route::post('logout', function (Request $request) {
             Auth::logout();

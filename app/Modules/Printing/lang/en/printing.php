@@ -8,7 +8,7 @@ return [
     'print_jobs' => 'Print jobs',
     'print' => 'Print',
     'driver' => ['network' => 'Network (LAN) thermal printer', 'usb' => 'USB thermal printer (plugged into the store computer)', 'browser' => 'Browser print (any printer installed on the till)'],
-    'job_type' => ['receipt' => 'Receipt', 'kitchen_ticket' => 'Kitchen ticket', 'test' => 'Test page', 'drawer' => 'Open drawer'],
+    'job_type' => ['receipt' => 'Receipt', 'kitchen_ticket' => 'Kitchen ticket', 'test' => 'Test page', 'drawer' => 'Open drawer', 'cash_up' => 'Cash-up slip', 'x_report' => 'X report', 'z_report' => 'Z report'],
     'status' => ['queued' => 'Queued', 'printing' => 'Printing', 'printed' => 'Printed', 'failed' => 'Failed', 'waiting_browser' => 'Waiting for till'],
     'fields' => [
         'name' => 'Name',

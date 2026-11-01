@@ -64,6 +64,9 @@
                         @can(\App\Modules\Staff\Enums\Permission::DeliveryRide->value)
                             <a href="{{ route('pos.rider') }}" class="flex h-11 items-center rounded-xl bg-slate-800 px-4 text-sm font-semibold hover:bg-slate-700">{{ __('pos::pos.delivery.rider_nav') }}</a>
                         @endcan
+                        @canany([\App\Modules\Staff\Enums\Permission::PaymentsTake->value, \App\Modules\Staff\Enums\Permission::CashDrawer->value, \App\Modules\Staff\Enums\Permission::DayClose->value])
+                            <a href="{{ route('pos.cash') }}" class="flex h-11 items-center rounded-xl bg-slate-800 px-4 text-sm font-semibold hover:bg-slate-700">{{ __('pos::pos.nav.cash') }}</a>
+                        @endcanany
                         @can(\App\Modules\Staff\Enums\Permission::ReportsView->value)
                             <a href="{{ route('pos.today') }}" class="flex h-11 items-center rounded-xl bg-slate-800 px-4 text-sm font-semibold hover:bg-slate-700">{{ __('pos::pos.nav.today') }}</a>
                         @endcan

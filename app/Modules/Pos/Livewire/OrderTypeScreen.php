@@ -82,7 +82,13 @@ class OrderTypeScreen extends Component
 
     public function startTakeaway(OrderService $orders): void
     {
-        $order = $orders->open(OrderType::Takeaway, auth()->user());
+        try {
+            $order = $orders->open(OrderType::Takeaway, auth()->user());
+        } catch (RuntimeException $e) {
+            $this->error = $e->getMessage();
+
+            return;
+        }
 
         $this->redirectRoute('pos.order', $order);
     }
