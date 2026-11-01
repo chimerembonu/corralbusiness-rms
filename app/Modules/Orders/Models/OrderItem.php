@@ -6,6 +6,7 @@ use App\Modules\Menu\Models\Item;
 use App\Modules\Menu\Models\ItemVariant;
 use App\Modules\Orders\Enums\DiscountType;
 use App\Modules\Orders\Enums\OrderItemStatus;
+use App\Modules\Staff\Models\User;
 use App\Support\Models\BusinessModel;
 use App\Support\Money\Money;
 use App\Support\Money\MoneyCast;
@@ -47,6 +48,11 @@ class OrderItem extends BusinessModel
             'item_discount_type' => DiscountType::class,
             'item_discount_value' => 'integer',
         ];
+    }
+
+    public function voidedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'voided_by_id');
     }
 
     public function order(): BelongsTo

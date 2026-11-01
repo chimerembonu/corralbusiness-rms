@@ -113,6 +113,11 @@ class Order extends BusinessModel
         return $this->belongsTo(PromoCode::class, 'promo_code_id');
     }
 
+    public function voidedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'voided_by_id');
+    }
+
     public function discountApprovedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'discount_approved_by_id');
