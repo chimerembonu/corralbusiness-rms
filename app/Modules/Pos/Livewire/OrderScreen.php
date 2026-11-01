@@ -12,6 +12,7 @@ use App\Modules\Orders\Enums\OrderType;
 use App\Modules\Orders\Models\DiningTable;
 use App\Modules\Orders\Models\Order;
 use App\Modules\Orders\Models\OrderItem;
+use App\Modules\Orders\Services\DeliveryService;
 use App\Modules\Orders\Services\OrderService;
 use App\Modules\Orders\Services\TableService;
 use App\Modules\Orders\Support\TillSettings;
@@ -73,6 +74,9 @@ class OrderScreen extends Component
     public array $split = ['mode' => 'items', 'lines' => [], 'seats' => [], 'ways' => 2];
 
     public string $holdName = '';
+
+    /** Delivery details modal (null = closed). */
+    public ?array $delivery = null;
 
     public function mount(Order $order): void
     {
@@ -333,6 +337,9 @@ class OrderScreen extends Component
         $this->error = null;
         $this->notice = null;
         $this->modal = $name;
+        if ($name !== 'delivery') {
+            $this->delivery = null;
+        }
 
         if ($name === 'note') {
             $this->orderNote = (string) $this->order->notes;
@@ -348,6 +355,27 @@ class OrderScreen extends Component
     public function closeModal(): void
     {
         $this->modal = null;
+        $this->delivery = null;
+    }
+
+    public function editDelivery(): void
+    {
+        $o = $this->order;
+        $this->delivery = ['name' => (string) $o->customer_name, 'phone' => (string) $o->customer_phone, 'address' => (string) $o->delivery_address, 'notes' => (string) $o->delivery_notes, 'fee' => $o->delivery_fee->toDecimal()];
+        $this->openModal('delivery');
+    }
+
+    public function saveDelivery(): void
+    {
+        $this->run(function (DeliveryService $delivery) {
+            $fee = Money::fromDecimal($this->delivery['fee'] === '' ? '0' : $this->delivery['fee']);
+            $delivery->setDetails($this->order, $this->delivery['name'], $this->delivery['phone'], $this->delivery['address'], $this->delivery['notes'], $fee, auth()->user());
+            $this->modal = null;
+            $this->delivery = null;
+        });
+        if ($this->error) {
+            $this->modal = 'delivery';
+        }
     }
 
     #[Computed]

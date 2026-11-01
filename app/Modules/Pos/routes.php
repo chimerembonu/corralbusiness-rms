@@ -2,11 +2,13 @@
 
 use App\Modules\Pos\Http\EnsurePosUser;
 use App\Modules\Pos\Http\ReceiptController;
+use App\Modules\Pos\Livewire\DeliveriesBoard;
 use App\Modules\Pos\Livewire\OrderScreen;
 use App\Modules\Pos\Livewire\OrdersList;
 use App\Modules\Pos\Livewire\OrderTypeScreen;
 use App\Modules\Pos\Livewire\PaymentScreen;
 use App\Modules\Pos\Livewire\PinLogin;
+use App\Modules\Pos\Livewire\RiderScreen;
 use App\Modules\Pos\Livewire\TodaySales;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -28,6 +30,8 @@ Route::prefix('pos')->name('pos.')->group(function () {
         Route::get('orders/{order}/receipt', ReceiptController::class)->name('receipt');
         Route::get('today', TodaySales::class)->name('today');
         Route::get('orders', OrdersList::class)->name('orders');
+        Route::get('deliveries', DeliveriesBoard::class)->name('deliveries');
+        Route::get('rider', RiderScreen::class)->name('rider');
 
         Route::post('logout', function (Request $request) {
             Auth::logout();

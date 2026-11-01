@@ -2,6 +2,7 @@
 
 namespace App\Modules\Pos\Livewire;
 
+use App\Modules\Staff\Enums\Permission;
 use App\Modules\Staff\Exceptions\InvalidPinException;
 use App\Modules\Staff\Exceptions\PinLockedException;
 use App\Modules\Staff\Services\PinAuthenticator;
@@ -54,7 +55,8 @@ class PinLogin extends Component
         Auth::login($user);
         session()->regenerate();
 
-        $this->redirect(session()->pull('url.intended', route('pos.home')));
+        $home = $user->can(Permission::OrdersCreate->value) ? route('pos.home') : ($user->can(Permission::DeliveryRide->value) ? route('pos.rider') : route('pos.home'));
+        $this->redirect(session()->pull('url.intended', $home));
     }
 
     private function throttleKey(): string

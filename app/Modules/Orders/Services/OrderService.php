@@ -6,6 +6,7 @@ use App\Modules\Menu\Models\Item;
 use App\Modules\Menu\Models\ItemVariant;
 use App\Modules\Menu\Models\Modifier;
 use App\Modules\Menu\Services\MenuService;
+use App\Modules\Orders\Enums\DeliveryStatus;
 use App\Modules\Orders\Enums\DiscountType;
 use App\Modules\Orders\Enums\OrderItemStatus;
 use App\Modules\Orders\Enums\OrderStatus;
@@ -80,6 +81,11 @@ class OrderService
             ]);
             $order->branch_id = $table?->branch_id ?? $this->context->branchId();
             $order->service_charge_bp = $this->serviceChargeRateFor($type, $order->branch_id);
+            if ($type === OrderType::Delivery) {
+                $order->delivery_status = DeliveryStatus::Pending;
+                $order->delivery_fee = Money::of($this->settings->deliveryFee($order->branch_id));
+                $order->total = $order->delivery_fee;
+            }
             $order->save();
 
             OrderCreated::dispatch($order, $by?->id);

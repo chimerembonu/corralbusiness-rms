@@ -88,6 +88,9 @@ class DemoCommand extends Command
         if ($settings->get(TillSettings::SERVICE_CHARGE_BP) === null) {
             $settings->set(TillSettings::SERVICE_CHARGE_BP, 1000);
         }
+        if ($settings->get(TillSettings::DELIVERY_FEE) === null) {
+            $settings->set(TillSettings::DELIVERY_FEE, 1000);
+        }
         $branch->forceFill(['address' => '12 Oxford Street, Osu, Accra', 'phone' => '+233 30 000 0000'])->save();
 
         $this->newLine();

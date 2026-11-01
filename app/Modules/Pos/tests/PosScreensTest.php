@@ -6,13 +6,18 @@ use App\Modules\Orders\Models\DiningTable;
 use App\Modules\Orders\Models\FloorSection;
 use App\Modules\Orders\Models\Order;
 use App\Modules\Orders\Models\PromoCode;
+use App\Modules\Orders\Services\DeliveryService;
 use App\Modules\Orders\Services\OrderService;
+use App\Modules\Orders\Support\TillSettings;
 use App\Modules\Payments\Services\PaymentService;
+use App\Modules\Pos\Livewire\DeliveriesBoard;
 use App\Modules\Pos\Livewire\OrderScreen;
 use App\Modules\Pos\Livewire\OrdersList;
 use App\Modules\Pos\Livewire\OrderTypeScreen;
 use App\Modules\Pos\Livewire\PaymentScreen;
 use App\Modules\Pos\Livewire\PinLogin;
+use App\Modules\Pos\Livewire\RiderScreen;
+use App\Modules\Settings\Services\SettingsService;
 use App\Modules\Staff\Enums\Role;
 use App\Modules\Staff\Models\User;
 use App\Support\Money\Money;
@@ -267,4 +272,51 @@ it('finds an order, reprints its receipt and refunds a payment with a manager PI
         ->call('approve', '2468')->assertSee('Payment refunded')->assertSee('Refunded');
 
     expect($order->fresh()->status)->toBe(OrderStatus::Refunded);
+});
+
+it('starts a delivery order from the home screen and edits its details on the order', function () {
+    $this->actingAs($this->waiter);
+    app(SettingsService::class)->set(TillSettings::DELIVERY_FEE, 1000);
+
+    Livewire::test(OrderTypeScreen::class)
+        ->call('startDelivery')->assertSet('delivery.fee', '10.00')->assertSee('New delivery')
+        ->set('delivery.name', 'Ama')->set('delivery.phone', '')->set('delivery.address', 'Osu')
+        ->call('openDelivery')->assertSee('phone number')
+        ->set('delivery.phone', '0241234567')->set('delivery.fee', '12')
+        ->call('openDelivery')->assertRedirect();
+
+    $order = Order::withoutGlobalScopes()->where('type', 'delivery')->whereNull('voided_at')->latest('opened_at')->first();
+    expect($order->customer_name)->toBe('Ama')->and($order->delivery_fee)->toBePesewas(1200)->and($order->delivery_status->value)->toBe('pending');
+
+    Livewire::test(OrderScreen::class, ['order' => $order])
+        ->assertSee('Ama · 0241234567')->assertSee('Delivery fee')->assertSee('GH₵ 12.00')
+        ->call('editDelivery')->assertSet('modal', 'delivery')->set('delivery.address', 'Osu, blue gate')->call('saveDelivery')->assertSet('modal', null)->assertSee('Osu, blue gate');
+});
+
+it('assigns a rider on the deliveries board and the rider marks it out and delivered', function () {
+    $rider = User::factory()->forBranch($this->branch)->withPin('4001')->create(['name' => 'Kwesi']);
+    $rider->assignRole(Role::Rider->value);
+    $orders = app(OrderService::class);
+    $order = $orders->open(OrderType::Delivery, $this->waiter);
+    app(DeliveryService::class)->setDetails($order, 'Ama', '024', 'Osu');
+    $orders->addItem($order, $this->menu['coke']);
+
+    $this->actingAs($this->waiter);
+    Livewire::test(DeliveriesBoard::class)
+        ->assertSee('Ama')->assertSee('Preparing')
+        ->call('startAssign', $order->id)->assertSee('Kwesi')
+        ->call('assign', $order->id, $rider->id)->assertSee('Rider Kwesi assigned')->assertSee('Rider assigned');
+
+    // A rider signing in lands on their own screen.
+    auth()->logout();
+    Livewire::test(PinLogin::class)->call('login', '4001')->assertRedirect(route('pos.rider'));
+    $this->get('/pos/deliveries')->assertForbidden();
+
+    Livewire::test(RiderScreen::class)
+        ->assertSee('Ama')->assertSee('Osu')->assertSee('Collect GH₵ 12.00')
+        ->call('markOut', $order->id)->assertSee('Out for delivery')
+        ->call('markDelivered', $order->id)->assertDontSee('Ama');
+
+    expect($order->fresh()->delivery_status->value)->toBe('delivered');
+    $this->actingAs($this->owner)->get(route('pos.receipt', $order))->assertOk()->assertSee('Address: Osu')->assertSee('Kwesi');
 });

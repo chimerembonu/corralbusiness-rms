@@ -11,7 +11,7 @@ class ReceiptController
 {
     public function __invoke(Order $order, SettingsService $settings): View
     {
-        $order->load(['items.modifiers', 'payments', 'table', 'openedBy', 'branch.tenant']);
+        $order->load(['items.modifiers', 'payments', 'table', 'openedBy', 'rider', 'branch.tenant']);
 
         return view('pos::receipt', [
             'order' => $order,

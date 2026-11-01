@@ -5,6 +5,7 @@ namespace App\Modules\Settings\Filament\Pages;
 use App\Modules\Orders\Enums\OrderType;
 use App\Modules\Orders\Support\TillSettings;
 use App\Modules\Settings\Services\SettingsService;
+use App\Support\Filament\MoneyInput;
 use App\Support\Tenancy\Tenancy;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -62,6 +63,7 @@ class TillSettingsPage extends Page
             'void_reasons' => $settings->voidReasons(),
             'tips_enabled' => $settings->tipsEnabled(),
             'courses' => $settings->courses(),
+            'delivery_fee' => $settings->deliveryFee(),
         ]);
     }
 
@@ -83,6 +85,7 @@ class TillSettingsPage extends Page
             Section::make($t('other'))->columns(2)->schema([
                 Toggle::make('tips_enabled')->label($t('tips_enabled'))->inline(false),
                 TagsInput::make('courses')->label($t('courses'))->helperText($t('courses_help')),
+                MoneyInput::make('delivery_fee')->label($t('delivery_fee'))->helperText($t('delivery_fee_help')),
             ]),
         ])->statePath('data');
     }
@@ -98,6 +101,7 @@ class TillSettingsPage extends Page
         $settings->set(TillSettings::VOID_REASONS, array_values($data['void_reasons'] ?? []));
         $settings->set(TillSettings::TIPS_ENABLED, (bool) ($data['tips_enabled'] ?? false));
         $settings->set(TillSettings::COURSES, array_values($data['courses'] ?? []));
+        $settings->set(TillSettings::DELIVERY_FEE, (int) ($data['delivery_fee'] ?? 0));
 
         Notification::make()->success()->title(__('settings::settings.till.saved'))->send();
     }

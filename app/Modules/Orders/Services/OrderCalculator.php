@@ -19,7 +19,8 @@ use App\Support\Tax\TaxResult;
  *  tax             = tax engine on (line_subtotal − discounts), per line, rounded to the pesewa
  *  line_total      = what the customer pays for the line (net + tax, or the inclusive price)
  *  service charge  = rate × (subtotal − discounts), not taxed, unless waived
- *  order total     = Σ line_total + service charge        (tips are recorded on payments, outside the total)
+ *  delivery fee    = flat amount on delivery orders, not taxed
+ *  order total     = Σ line_total + service charge + delivery fee   (tips are recorded on payments, outside the total)
  */
 class OrderCalculator
 {
@@ -67,7 +68,7 @@ class OrderCalculator
         $order->service_charge = $order->service_charge_waived || $order->service_charge_bp <= 0
             ? Money::zero()
             : $subtotal->subtract($discountTotal)->basisPoints($order->service_charge_bp);
-        $order->total = $summary->gross->add($order->service_charge);
+        $order->total = $summary->gross->add($order->service_charge)->add($order->delivery_fee);
         $order->prices_include_tax = $profile->pricesIncludeTax;
     }
 

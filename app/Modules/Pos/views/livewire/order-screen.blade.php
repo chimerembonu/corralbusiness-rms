@@ -6,6 +6,12 @@
             <div>
                 <div class="text-lg font-bold">#{{ $order->displayNumber() }} · {{ $order->table ? __('pos::pos.order.table').' '.$order->table->name : $order->type->label() }}</div>
                 <div class="text-xs text-slate-400">{{ $order->status->label() }} · {{ $order->opened_at->format('H:i') }}@if ($order->table) · {{ __('pos::pos.home.guests', ['count' => $order->covers]) }}@endif</div>
+                @if ($order->isDelivery())
+                    <button type="button" wire:click="editDelivery" class="mt-1 block text-left text-xs text-sky-300 hover:underline">
+                        🛵 {{ $order->customer_name ?: __('pos::pos.delivery.no_name') }} · {{ $order->customer_phone }}<br><span class="text-slate-400">{{ $order->delivery_address }}</span>
+                        @if ($order->delivery_status) · <span class="font-semibold">{{ $order->delivery_status->label() }}</span>@endif
+                    </button>
+                @endif
                 @if ($order->table && $order->table->mergedTables->isNotEmpty())
                     <div class="text-xs font-semibold text-sky-300">{{ __('pos::pos.order.table_sheet.joined_tables', ['tables' => $order->table->mergedTables->pluck('name')->implode(', ')]) }}</div>
                 @endif
@@ -86,6 +92,9 @@
             @endforeach
             @if ($order->service_charge->isPositive() || $order->service_charge_waived)
                 <div class="flex justify-between text-slate-400"><span>{{ __('orders::orders.service_charge') }} {{ rtrim(rtrim(number_format($order->service_charge_bp / 100, 2), '0'), '.') }}%@if ($order->service_charge_waived) <span class="text-amber-300">({{ __('pos::pos.order.waived') }})</span>@endif</span><span>{{ money($order->service_charge) }}</span></div>
+            @endif
+            @if ($order->isDelivery())
+                <div class="flex justify-between text-slate-400"><span>{{ __('orders::orders.delivery_fee') }}</span><span>{{ money($order->delivery_fee) }}</span></div>
             @endif
             @if ($order->paid_total->isPositive())
                 <div class="flex justify-between text-emerald-300"><span>{{ __('pos::pos.pay.paid_so_far') }}</span><span>{{ money($order->paid_total) }}</span></div>
@@ -284,6 +293,11 @@
                 </div>
             </div>
         </div>
+    @endif
+
+    {{-- Delivery details --}}
+    @if ($modal === 'delivery' && $delivery !== null)
+        @include('pos::partials.delivery-form', ['submit' => 'saveDelivery', 'close' => 'closeModal', 'title' => __('pos::pos.delivery.edit_title'), 'button' => __('pos::pos.order.save')])
     @endif
 
     {{-- Void: reason, then manager PIN --}}

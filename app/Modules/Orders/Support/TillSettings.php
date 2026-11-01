@@ -24,6 +24,8 @@ final class TillSettings
 
     public const COURSES = 'orders.courses';                             // ['Starters', 'Mains', 'Desserts']
 
+    public const DELIVERY_FEE = 'delivery.default_fee';                  // pesewas, suggested on every new delivery order
+
     public function __construct(private readonly SettingsService $settings) {}
 
     /** @return array<string, mixed> */
@@ -37,6 +39,7 @@ final class TillSettings
             self::VOID_REASONS => ['Customer changed mind', 'Wrong item entered', 'Kitchen mistake', 'Sold out', 'Customer left'],
             self::TIPS_ENABLED => true,
             self::COURSES => ['Starters', 'Mains', 'Desserts'],
+            self::DELIVERY_FEE => 0,
         ];
     }
 
@@ -76,6 +79,11 @@ final class TillSettings
     public function tipsEnabled(?string $branchId = null): bool
     {
         return (bool) $this->get(self::TIPS_ENABLED, $branchId);
+    }
+
+    public function deliveryFee(?string $branchId = null): int
+    {
+        return (int) $this->get(self::DELIVERY_FEE, $branchId);
     }
 
     /** @return array<int, string> course names, index 0 = course 1 */

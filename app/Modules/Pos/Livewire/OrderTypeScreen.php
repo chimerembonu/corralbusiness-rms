@@ -5,8 +5,11 @@ namespace App\Modules\Pos\Livewire;
 use App\Modules\Orders\Enums\OrderType;
 use App\Modules\Orders\Models\DiningTable;
 use App\Modules\Orders\Models\Order;
+use App\Modules\Orders\Services\DeliveryService;
 use App\Modules\Orders\Services\OrderService;
 use App\Modules\Orders\Services\TableService;
+use App\Modules\Orders\Support\TillSettings;
+use App\Support\Money\Money;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use RuntimeException;
@@ -26,6 +29,9 @@ class OrderTypeScreen extends Component
 
     public int $covers = 2;
 
+    /** Delivery form (null = closed): name, phone, address, notes, fee (cedis). */
+    public ?array $delivery = null;
+
     public function showTables(): void
     {
         $this->mode = 'tables';
@@ -41,6 +47,37 @@ class OrderTypeScreen extends Component
     public function selectSection(?string $sectionId): void
     {
         $this->sectionId = $sectionId ?: null;
+    }
+
+    public function startDelivery(): void
+    {
+        $this->error = null;
+        $this->delivery = ['name' => '', 'phone' => '', 'address' => '', 'notes' => '', 'fee' => Money::of(app(TillSettings::class)->deliveryFee())->toDecimal()];
+    }
+
+    public function closeDelivery(): void
+    {
+        $this->delivery = null;
+    }
+
+    public function openDelivery(OrderService $orders, DeliveryService $delivery): void
+    {
+        $this->error = null;
+
+        try {
+            $fee = Money::fromDecimal($this->delivery['fee'] === '' ? '0' : $this->delivery['fee']);
+            $order = $orders->open(OrderType::Delivery, auth()->user());
+            $delivery->setDetails($order, $this->delivery['name'], $this->delivery['phone'], $this->delivery['address'], $this->delivery['notes'], $fee, auth()->user());
+        } catch (RuntimeException $e) {
+            if (isset($order)) {
+                $orders->void($order, 'Delivery details missing', auth()->user());
+            }
+            $this->error = $e->getMessage();
+
+            return;
+        }
+
+        $this->redirectRoute('pos.order', $order);
     }
 
     public function startTakeaway(OrderService $orders): void

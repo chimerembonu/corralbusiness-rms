@@ -77,6 +77,7 @@ class DailySummaryService
             'orders_refunded' => $refunded->count(),
             'orders_held' => $held->count(),
             'service_charge_total' => $sum($paid, 'service_charge'),
+            'delivery_fee_total' => $sum($paid, 'delivery_fee'),
             'tip_total' => $sum($paid, 'tip_total'),
             'refund_total' => $refunds->reduce(fn (Money $c, Payment $p) => $c->add($p->amount), Money::zero()),
             'gross_sales' => $sum($paid, 'total'),

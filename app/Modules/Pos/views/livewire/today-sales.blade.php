@@ -24,6 +24,13 @@
             <div class="text-xs uppercase tracking-wide text-slate-400">{{ __('pos::pos.today.discounts') }}</div>
             <div class="mt-1 text-2xl font-black text-amber-300">{{ money($summary['discount_total']) }}</div>
         </div>
+        <div class="rounded-2xl bg-slate-900 p-4 ring-1 ring-slate-800">
+            <div class="text-xs uppercase tracking-wide text-slate-400">{{ __('pos::pos.today.extras') }}</div>
+            <div class="mt-1 text-sm"><span class="text-slate-400">{{ __('orders::orders.service_charge') }}</span> <span class="font-bold">{{ money($summary['service_charge_total']) }}</span></div>
+            <div class="text-sm"><span class="text-slate-400">{{ __('orders::orders.delivery_fee') }}</span> <span class="font-bold">{{ money($summary['delivery_fee_total']) }}</span></div>
+            <div class="text-sm"><span class="text-slate-400">{{ __('orders::orders.tip') }}</span> <span class="font-bold">{{ money($summary['tip_total']) }}</span></div>
+            <div class="text-sm"><span class="text-slate-400">{{ __('pos::pos.today.refunds') }}</span> <span class="font-bold text-rose-300">{{ money($summary['refund_total']) }}</span></div>
+        </div>
         @foreach ($summary['tax_lines'] as $tax)
             <div class="rounded-2xl bg-slate-900 p-4 ring-1 ring-slate-800">
                 <div class="text-xs uppercase tracking-wide text-slate-400">{{ $tax['name'] }}</div>

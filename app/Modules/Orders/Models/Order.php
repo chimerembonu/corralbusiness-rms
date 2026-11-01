@@ -2,6 +2,7 @@
 
 namespace App\Modules\Orders\Models;
 
+use App\Modules\Orders\Enums\DeliveryStatus;
 use App\Modules\Orders\Enums\DiscountType;
 use App\Modules\Orders\Enums\OrderItemStatus;
 use App\Modules\Orders\Enums\OrderStatus;
@@ -24,12 +25,13 @@ class Order extends BusinessModel
         'branch_id', 'business_date', 'number', 'type', 'status', 'table_id', 'covers', 'customer_name', 'customer_phone',
         'opened_by_id', 'notes', 'discount_type', 'discount_value', 'discount_reason', 'prices_include_tax', 'opened_at',
         'promo_code_id', 'promo_code', 'service_charge_bp', 'service_charge_waived',
+        'delivery_address', 'delivery_notes', 'delivery_fee', 'delivery_status', 'rider_id',
     ];
 
     protected $attributes = [
         'status' => 'open', 'covers' => 1, 'subtotal' => 0, 'discount_value' => 0, 'discount_total' => 0,
         'service_charge' => 0, 'service_charge_bp' => 0, 'service_charge_waived' => false, 'tax_total' => 0, 'total' => 0,
-        'paid_total' => 0, 'tip_total' => 0, 'refunded_total' => 0, 'prices_include_tax' => false,
+        'paid_total' => 0, 'tip_total' => 0, 'refunded_total' => 0, 'prices_include_tax' => false, 'delivery_fee' => 0,
     ];
 
     protected array $auditExcept = ['tax_lines'];
@@ -56,6 +58,11 @@ class Order extends BusinessModel
             'service_charge_bp' => 'integer',
             'service_charge_waived' => 'boolean',
             'held_at' => 'datetime',
+            'delivery_fee' => MoneyCast::class,
+            'delivery_status' => DeliveryStatus::class,
+            'assigned_at' => 'datetime',
+            'out_at' => 'datetime',
+            'delivered_at' => 'datetime',
             'prices_include_tax' => 'boolean',
             'opened_at' => 'datetime',
             'sent_at' => 'datetime',
@@ -78,6 +85,21 @@ class Order extends BusinessModel
     public function openedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'opened_by_id');
+    }
+
+    public function rider(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'rider_id');
+    }
+
+    public function isDelivery(): bool
+    {
+        return $this->type === OrderType::Delivery;
+    }
+
+    public function scopeDeliveries(Builder $query): Builder
+    {
+        return $query->where('type', OrderType::Delivery->value);
     }
 
     public function promoCode(): BelongsTo

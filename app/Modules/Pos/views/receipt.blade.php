@@ -49,6 +49,12 @@
         @if ($order->openedBy)<div class="row"><span>{{ __('pos::pos.receipt.served_by') }}</span><span>{{ $order->openedBy->name }}</span></div>@endif
         @if ($order->table)<div class="row"><span>{{ __('pos::pos.receipt.guests') }}</span><span>{{ $order->covers }}</span></div>@endif
         @if ($order->customer_name)<div class="row"><span>{{ __('pos::pos.orders.who') }}</span><span>{{ $order->customer_name }}</span></div>@endif
+        @if ($order->isDelivery())
+            <div class="row"><span>{{ __('pos::pos.delivery.phone') }}</span><span>{{ $order->customer_phone }}</span></div>
+            <div>{{ __('pos::pos.delivery.address') }}: {{ $order->delivery_address }}</div>
+            @if ($order->delivery_notes)<div class="muted">{{ $order->delivery_notes }}</div>@endif
+            @if ($order->rider)<div class="row"><span>{{ __('pos::pos.delivery.rider') }}</span><span>{{ $order->rider->name }}</span></div>@endif
+        @endif
         <hr>
         @foreach ($order->items->where('status', '!=', \App\Modules\Orders\Enums\OrderItemStatus::Voided) as $line)
             <div class="row"><span class="l">{{ $line->quantity }} x {{ $line->displayName() }}</span><span>{{ money($line->line_subtotal, false) }}</span></div>
@@ -67,6 +73,9 @@
         @endforeach
         @if ($order->service_charge->isPositive())
             <div class="row"><span>{{ __('pos::pos.receipt.service_charge') }} {{ rtrim(rtrim(number_format($order->service_charge_bp / 100, 2), '0'), '.') }}%</span><span>{{ money($order->service_charge, false) }}</span></div>
+        @endif
+        @if ($order->delivery_fee->isPositive())
+            <div class="row"><span>{{ __('orders::orders.delivery_fee') }}</span><span>{{ money($order->delivery_fee, false) }}</span></div>
         @endif
         <div class="row bold big"><span>{{ __('pos::pos.receipt.total') }}</span><span>{{ config('rms.currency') }} {{ money($order->total, false) }}</span></div>
         <div class="muted center">{{ $order->prices_include_tax ? __('pos::pos.receipt.prices_include_tax') : __('pos::pos.receipt.prices_exclude_tax') }}</div>

@@ -19,6 +19,8 @@ return [
         'tips_enabled' => 'Allow tips at payment',
         'courses' => 'Course names',
         'courses_help' => 'First course goes to the kitchen straight away; later courses wait until the waiter taps “Fire”.',
+        'delivery_fee' => 'Default delivery fee',
+        'delivery_fee_help' => 'Suggested on every new delivery order; the cashier can change it per order. Added after tax.',
         'save' => 'Save settings',
         'saved' => 'Till settings saved.',
     ],

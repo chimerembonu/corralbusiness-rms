@@ -13,10 +13,10 @@
                 <span class="text-3xl font-black">{{ __('pos::pos.home.takeaway') }}</span>
                 <span class="mt-1 text-base font-medium opacity-80">{{ __('pos::pos.home.takeaway_hint') }}</span>
             </button>
-            <div class="flex min-h-40 flex-col items-center justify-center rounded-3xl border-2 border-dashed border-slate-700 p-6 text-slate-500">
+            <button type="button" wire:click="startDelivery" class="flex min-h-40 flex-col items-center justify-center rounded-3xl bg-sky-500 p-6 text-slate-950 hover:bg-sky-400">
                 <span class="text-3xl font-black">{{ __('pos::pos.home.delivery') }}</span>
-                <span class="mt-1 text-base">{{ __('pos::pos.home.delivery_hint') }}</span>
-            </div>
+                <span class="mt-1 text-base font-medium opacity-80">{{ __('pos::pos.home.delivery_hint') }}</span>
+            </button>
         </div>
 
         <section>
@@ -27,7 +27,7 @@
                 <div class="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-6">
                     @foreach ($openOrders as $order)
                         <button type="button" wire:click="resume('{{ $order->id }}')" class="flex min-h-24 flex-col justify-between rounded-2xl bg-slate-900 p-3 text-left ring-1 ring-slate-800 hover:ring-emerald-500">
-                            <span class="text-lg font-bold">#{{ $order->displayNumber() }} <span class="text-sm font-medium text-slate-400">{{ $order->table?->name ?? $order->type->label() }}</span></span>
+                            <span class="text-lg font-bold">#{{ $order->displayNumber() }} <span class="text-sm font-medium text-slate-400">{{ $order->table?->name ?? $order->type->label() }}</span>@if ($order->isDelivery() && $order->delivery_status) <span class="rounded-full bg-sky-500/20 px-2 text-[10px] font-bold uppercase text-sky-300">{{ $order->delivery_status->label() }}</span>@endif</span>
                             @if ($order->customer_name)<span class="truncate text-sm font-semibold text-amber-300">{{ $order->customer_name }}</span>@endif
                             <span class="text-sm text-slate-400">{{ $order->opened_at->format('H:i') }} · {{ $order->isHeld() ? __('pos::pos.home.held') : $order->status->label() }}</span>
                             <span class="text-base font-semibold text-emerald-400">{{ money($order->total) }}</span>
@@ -64,6 +64,11 @@
         @else
             @include('pos::partials.floor-plan', ['tables' => $current['tables'], 'onTap' => 'tapTable'])
         @endif
+    @endif
+
+    {{-- Delivery details --}}
+    @if ($delivery !== null)
+        @include('pos::partials.delivery-form', ['submit' => 'openDelivery', 'close' => 'closeDelivery', 'title' => __('pos::pos.delivery.new_title'), 'button' => __('pos::pos.delivery.start')])
     @endif
 
     {{-- Guest count prompt --}}

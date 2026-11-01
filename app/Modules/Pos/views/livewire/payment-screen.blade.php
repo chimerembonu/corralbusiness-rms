@@ -30,6 +30,9 @@
             @if ($order->service_charge->isPositive())
                 <div class="flex justify-between text-slate-400"><span>{{ __('orders::orders.service_charge') }}</span><span>{{ money($order->service_charge) }}</span></div>
             @endif
+            @if ($order->delivery_fee->isPositive())
+                <div class="flex justify-between text-slate-400"><span>{{ __('orders::orders.delivery_fee') }}</span><span>{{ money($order->delivery_fee) }}</span></div>
+            @endif
             <div class="flex justify-between font-semibold"><span>{{ __('pos::pos.order.total') }}</span><span>{{ money($order->total) }}</span></div>
             @foreach ($order->payments->where('status', 'completed') as $payment)
                 <div class="flex justify-between text-emerald-300"><span>{{ $payment->methodLabel() }}@if ($payment->reference) <span class="text-emerald-300/60">{{ $payment->reference }}</span>@endif</span><span>− {{ money($payment->amount) }}</span></div>
