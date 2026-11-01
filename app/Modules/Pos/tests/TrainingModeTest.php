@@ -59,7 +59,7 @@ it('marks orders taken in training mode and keeps them out of reports, cash and 
     // Receipt and kitchen ticket say so.
     $this->actingAs($this->cashier);
     $this->get(route('pos.receipt', $practice))->assertOk()->assertSee('TRAINING');
-    expect($practice->fresh()->kitchenTickets()->first()->is_training)->toBeTrue();
+    expect(\App\Modules\Kitchen\Models\Ticket::query()->where('order_id', $practice->id)->first()->is_training)->toBeTrue();
     $this->get('/pos/orders')->assertSee('Training');
 });
 
