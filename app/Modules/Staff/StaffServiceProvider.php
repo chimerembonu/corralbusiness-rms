@@ -2,6 +2,7 @@
 
 namespace App\Modules\Staff;
 
+use App\Modules\Staff\Console\AutoClockOut;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 
 /**
@@ -28,5 +29,7 @@ class StaffServiceProvider extends ServiceProvider
     public function boot(): void
     {
         parent::boot();
+
+        $this->commands([AutoClockOut::class]);
     }
 }

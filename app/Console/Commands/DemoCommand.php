@@ -15,6 +15,7 @@ use App\Modules\Settings\Services\SettingsService;
 use App\Modules\Settings\Services\TenantProvisioner;
 use App\Modules\Staff\Enums\Role;
 use App\Modules\Staff\Models\User;
+use App\Modules\Staff\Seeders\RosterDemoSeeder;
 use App\Modules\Staff\Seeders\StaffDemoSeeder;
 use App\Support\Tenancy\Tenancy;
 use App\Support\Tenancy\TenantScope;
@@ -79,7 +80,8 @@ class DemoCommand extends Command
         $staff = (new StaffDemoSeeder)->run();
         $ingredients = (new IngredientsDemoSeeder)->run();
         $promos = (new PromoCodesDemoSeeder)->run();
-        $this->components->info("Tables: {$tables} · Tills: {$tills} · Stations: {$stations} · Staff: {$staff} · Ingredients: {$ingredients} · Promo codes: {$promos}.");
+        $roster = (new RosterDemoSeeder)->run();
+        $this->components->info("Tables: {$tables} · Tills: {$tills} · Stations: {$stations} · Staff: {$staff} · Ingredients: {$ingredients} · Promo codes: {$promos} · Roster shifts: {$roster['shifts']} · Clock-ins: {$roster['entries']}.");
 
         $settings = app(SettingsService::class);
         $settings->set('receipt.header', 'Akwaaba! TIN: C0000000000 (demo)', tenantWide: true);

@@ -38,6 +38,7 @@
             {{ __('pos::pos.login.enter') }}
         </button>
 
+        <a href="{{ route('staff.clock') }}" class="mt-4 flex h-12 items-center justify-center rounded-2xl bg-slate-800 text-sm font-semibold text-amber-200 hover:bg-slate-700">⏱ {{ __('staff::staff.clock.link') }}</a>
         <p class="mt-4 text-center text-xs text-slate-500">{{ __('rms.product_name') }}</p>
     </div>
 </div>

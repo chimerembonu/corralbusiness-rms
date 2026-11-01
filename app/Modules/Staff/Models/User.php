@@ -3,6 +3,7 @@
 namespace App\Modules\Staff\Models;
 
 use App\Modules\Staff\Enums\Permission;
+use App\Modules\Staff\Enums\Role;
 use App\Modules\Staff\Support\PinHasher;
 use App\Support\Audit\Auditable;
 use App\Support\Models\BelongsToTenant;
@@ -12,6 +13,7 @@ use Filament\Panel;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -29,7 +31,7 @@ class User extends Authenticatable implements FilamentUser
     use Notifiable;
     use SoftDeletes;
 
-    protected $fillable = ['tenant_id', 'branch_id', 'name', 'email', 'phone', 'password', 'pin', 'is_active'];
+    protected $fillable = ['tenant_id', 'branch_id', 'name', 'email', 'phone', 'password', 'pin', 'is_active', 'job_title', 'started_on', 'photo_path', 'notes'];
 
     /** Defaults so a freshly created model behaves like one loaded from the database. */
     protected $attributes = ['is_active' => true];
@@ -48,6 +50,7 @@ class User extends Authenticatable implements FilamentUser
             'last_login_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'started_on' => 'date',
         ];
     }
 
@@ -88,6 +91,28 @@ class User extends Authenticatable implements FilamentUser
     public function verifyPin(string $pin): bool
     {
         return $this->pin !== null && Hash::check($pin, $this->pin);
+    }
+
+    public function timeEntries(): HasMany
+    {
+        return $this->hasMany(TimeEntry::class);
+    }
+
+    public function rosterShifts(): HasMany
+    {
+        return $this->hasMany(RosterShift::class);
+    }
+
+    /** The entry still open (clocked in, not yet out), if any. */
+    public function openTimeEntry(): ?TimeEntry
+    {
+        return $this->timeEntries()->open()->latest('clocked_in_at')->first();
+    }
+
+    /** "Cashier" / "Manager, Cashier" from the assigned roles. */
+    public function rolesLabel(): string
+    {
+        return $this->roles->map(fn ($r) => Role::tryFrom($r->name)?->label() ?? $r->name)->join(', ');
     }
 
     public function scopeActive(Builder $query): Builder

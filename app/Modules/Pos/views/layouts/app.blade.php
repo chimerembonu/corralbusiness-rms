@@ -49,6 +49,12 @@
                 <div class="flex items-center gap-2">
                     @auth
                         <span class="hidden rounded-xl bg-slate-800 px-3 py-2 text-sm text-slate-300 md:inline">{{ auth()->user()->name }}@if ($till = app(\App\Modules\Pos\Services\CurrentTill::class)->get()) · {{ $till->name }}@endif</span>
+                        @can(\App\Modules\Staff\Enums\Permission::StaffClock->value)
+                            @php($clockedIn = auth()->user()->openTimeEntry())
+                            <form method="post" action="{{ route('pos.clock') }}">@csrf
+                                <button type="submit" class="flex h-11 items-center rounded-xl px-4 text-sm font-semibold {{ $clockedIn ? 'bg-amber-400/20 text-amber-200 hover:bg-amber-400/30' : 'bg-slate-800 hover:bg-slate-700' }}" title="{{ $clockedIn ? __('staff::staff.clock.since', ['time' => $clockedIn->clocked_in_at->format('H:i')]) : '' }}">{{ $clockedIn ? __('staff::staff.clock.nav_out') : __('staff::staff.clock.nav_in') }}</button>
+                            </form>
+                        @endcan
                         @can(\App\Modules\Staff\Enums\Permission::CashDrawer->value)
                             <form method="post" action="{{ route('pos.drawer') }}">@csrf
                                 <button type="submit" class="flex h-11 items-center rounded-xl bg-slate-800 px-4 text-sm font-semibold hover:bg-slate-700" title="{{ __('pos::pos.drawer.hint') }}">{{ __('pos::pos.drawer.open') }}</button>
