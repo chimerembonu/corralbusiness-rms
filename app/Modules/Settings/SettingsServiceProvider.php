@@ -2,6 +2,7 @@
 
 namespace App\Modules\Settings;
 
+use App\Modules\Settings\Console\SetupCommand;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 
 /**
@@ -28,5 +29,7 @@ class SettingsServiceProvider extends ServiceProvider
     public function boot(): void
     {
         parent::boot();
+
+        $this->commands([SetupCommand::class]);
     }
 }

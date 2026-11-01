@@ -8,6 +8,8 @@ use App\Modules\Payments\Events\CashMovementRecorded;
 use App\Modules\Payments\Events\DayClosed;
 use App\Modules\Payments\Events\PaymentRecorded;
 use App\Modules\Printing\Console\ListPrintQueues;
+use App\Modules\Printing\Console\ScanPrinters;
+use App\Modules\Printing\Contracts\PortProber;
 use App\Modules\Printing\Contracts\RawSpooler;
 use App\Modules\Printing\Listeners\OpenDrawerOnCashMovement;
 use App\Modules\Printing\Listeners\OpenDrawerOnCashPayment;
@@ -16,6 +18,7 @@ use App\Modules\Printing\Listeners\PrintReceiptWhenPaid;
 use App\Modules\Printing\Listeners\PrintZReport;
 use App\Modules\Printing\Services\CupsSpooler;
 use App\Modules\Printing\Services\PrinterDriverRegistry;
+use App\Modules\Printing\Services\SocketPortProber;
 use App\Modules\Printing\Services\WindowsSpooler;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 
@@ -46,6 +49,7 @@ class PrintingServiceProvider extends ServiceProvider
         $this->app->singleton(PrinterDriverRegistry::class);
         // The computer's own print queue: CUPS on Mac/Linux, shares/COM ports on Windows.
         $this->app->singleton(RawSpooler::class, fn () => PHP_OS_FAMILY === 'Windows' ? new WindowsSpooler : new CupsSpooler);
+        $this->app->bind(PortProber::class, SocketPortProber::class);
     }
 
     public function boot(): void
@@ -53,7 +57,7 @@ class PrintingServiceProvider extends ServiceProvider
         parent::boot();
 
         if ($this->app->runningInConsole()) {
-            $this->commands([ListPrintQueues::class]);
+            $this->commands([ListPrintQueues::class, ScanPrinters::class]);
         }
     }
 }

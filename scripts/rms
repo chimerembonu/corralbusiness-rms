@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Shortcut for artisan on the store server:  ./scripts/rms rms:printers:scan
+cd "$(dirname "$0")/.."
+exec docker compose exec app php artisan "$@"
