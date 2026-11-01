@@ -30,11 +30,12 @@ it('opens the floor plan, sections and tables screens in the back office', funct
 });
 
 it('saves a dragged table position and switches sections', function () {
+    // Match the table label markup, not the bare name (a random Livewire id can contain "P1").
     Livewire::test(FloorPlan::class)
-        ->assertSee('T1')->assertDontSee('P1')
+        ->assertSee('<strong>T1</strong>', false)->assertDontSee('<strong>P1</strong>', false)
         ->call('moveTable', $this->t1->id, 7, 4)
         ->call('selectSection', $this->terrace->id)
-        ->assertSee('P1')->assertDontSee('T1');
+        ->assertSee('<strong>P1</strong>', false)->assertDontSee('<strong>T1</strong>', false);
 
     expect([$this->t1->fresh()->pos_x, $this->t1->fresh()->pos_y])->toBe([7, 4]);
 });

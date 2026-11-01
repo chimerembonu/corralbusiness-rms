@@ -46,7 +46,7 @@
                         <span class="hidden sm:inline">{{ \App\Support\Tenancy\Tenancy::branch()?->name ?? __('rms.product_name') }}</span>
                     </a>
                 </div>
-                <div class="flex items-center gap-2">
+                <div class="flex min-w-0 items-center gap-2 overflow-x-auto [&>*]:shrink-0">
                     @auth
                         <span class="hidden rounded-xl bg-slate-800 px-3 py-2 text-sm text-slate-300 md:inline">{{ auth()->user()->name }}@if ($till = app(\App\Modules\Pos\Services\CurrentTill::class)->get()) · {{ $till->name }}@endif</span>
                         @can(\App\Modules\Staff\Enums\Permission::StaffClock->value)
@@ -73,6 +73,9 @@
                         @canany([\App\Modules\Staff\Enums\Permission::PaymentsTake->value, \App\Modules\Staff\Enums\Permission::CashDrawer->value, \App\Modules\Staff\Enums\Permission::DayClose->value])
                             <a href="{{ route('pos.cash') }}" class="flex h-11 items-center rounded-xl bg-slate-800 px-4 text-sm font-semibold hover:bg-slate-700">{{ __('pos::pos.nav.cash') }}</a>
                         @endcanany
+                        @can(\App\Modules\Staff\Enums\Permission::CustomersManage->value)
+                            <a href="{{ route('pos.customers') }}" class="flex h-11 items-center rounded-xl bg-slate-800 px-4 text-sm font-semibold hover:bg-slate-700">{{ __('customers::customers.pos.nav') }}</a>
+                        @endcan
                         @canany([\App\Modules\Staff\Enums\Permission::InventoryCount->value, \App\Modules\Staff\Enums\Permission::InventoryManage->value])
                             <a href="{{ route('pos.stock-take') }}" class="flex h-11 items-center rounded-xl bg-slate-800 px-4 text-sm font-semibold hover:bg-slate-700">{{ __('inventory::inventory.stock_take.phone.nav') }}</a>
                         @endcanany

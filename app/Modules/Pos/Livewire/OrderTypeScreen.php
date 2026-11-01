@@ -2,6 +2,7 @@
 
 namespace App\Modules\Pos\Livewire;
 
+use App\Modules\Customers\Services\CustomerService;
 use App\Modules\Orders\Enums\OrderType;
 use App\Modules\Orders\Models\DiningTable;
 use App\Modules\Orders\Models\Order;
@@ -58,6 +59,38 @@ class OrderTypeScreen extends Component
     public function closeDelivery(): void
     {
         $this->delivery = null;
+    }
+
+    public array $deliveryAddresses = [];
+
+    public ?string $notice = null;
+
+    /** Type the phone, tap Find → name and usual address fill in. */
+    public function lookupDeliveryCustomer(): void
+    {
+        $this->error = null;
+        $customer = app(CustomerService::class)->findByPhone($this->delivery['phone'] ?? '');
+        if (! $customer) {
+            $this->deliveryAddresses = [];
+            $this->notice = __('customers::customers.pos.not_found');
+
+            return;
+        }
+        $this->delivery['name'] = $customer->name;
+        if ($address = $customer->defaultAddress()) {
+            $this->delivery['address'] = $address->address;
+            $this->delivery['notes'] = (string) $address->notes;
+        }
+        $this->deliveryAddresses = $customer->addresses()->get()->map(fn ($a) => ['address' => $a->address, 'notes' => (string) $a->notes, 'label' => $a->label()])->all();
+        $this->notice = __('customers::customers.pos.found', ['name' => $customer->name]);
+    }
+
+    public function useDeliveryAddress(int $index): void
+    {
+        if (isset($this->deliveryAddresses[$index])) {
+            $this->delivery['address'] = $this->deliveryAddresses[$index]['address'];
+            $this->delivery['notes'] = $this->deliveryAddresses[$index]['notes'];
+        }
     }
 
     public function openDelivery(OrderService $orders, DeliveryService $delivery): void

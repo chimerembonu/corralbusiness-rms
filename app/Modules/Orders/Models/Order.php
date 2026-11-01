@@ -2,6 +2,7 @@
 
 namespace App\Modules\Orders\Models;
 
+use App\Modules\Customers\Models\Customer;
 use App\Modules\Orders\Enums\DeliveryStatus;
 use App\Modules\Orders\Enums\DiscountType;
 use App\Modules\Orders\Enums\OrderItemStatus;
@@ -22,7 +23,7 @@ class Order extends BusinessModel
     use Auditable;
 
     protected $fillable = [
-        'branch_id', 'business_date', 'number', 'type', 'status', 'table_id', 'covers', 'customer_name', 'customer_phone',
+        'branch_id', 'business_date', 'number', 'type', 'status', 'table_id', 'covers', 'customer_name', 'customer_phone', 'customer_id',
         'opened_by_id', 'notes', 'discount_type', 'discount_value', 'discount_reason', 'prices_include_tax', 'opened_at',
         'promo_code_id', 'promo_code', 'service_charge_bp', 'service_charge_waived',
         'delivery_address', 'delivery_notes', 'delivery_fee', 'delivery_status', 'rider_id',
@@ -80,6 +81,11 @@ class Order extends BusinessModel
     public function mergedInto(): BelongsTo
     {
         return $this->belongsTo(self::class, 'merged_into_id');
+    }
+
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class);
     }
 
     public function openedBy(): BelongsTo

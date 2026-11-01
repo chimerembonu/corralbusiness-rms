@@ -2,6 +2,7 @@
 
 namespace App\Modules\Payments\Models;
 
+use App\Modules\Customers\Models\Customer;
 use App\Modules\Orders\Models\Order;
 use App\Modules\Payments\Enums\MomoProvider;
 use App\Modules\Payments\Enums\PaymentMethod;
@@ -16,7 +17,7 @@ class Payment extends BusinessModel
 {
     use Auditable;
 
-    protected $fillable = ['branch_id', 'order_id', 'cashier_session_id', 'method', 'provider', 'amount', 'tendered', 'change_given', 'tip', 'reference', 'status', 'received_by_id', 'received_at', 'notes'];
+    protected $fillable = ['branch_id', 'order_id', 'customer_id', 'cashier_session_id', 'method', 'provider', 'amount', 'tendered', 'change_given', 'tip', 'reference', 'status', 'received_by_id', 'received_at', 'notes'];
 
     protected $attributes = ['change_given' => 0, 'tip' => 0, 'status' => 'completed'];
 
@@ -38,6 +39,11 @@ class Payment extends BusinessModel
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);
+    }
+
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class);
     }
 
     public function cashierSession(): BelongsTo

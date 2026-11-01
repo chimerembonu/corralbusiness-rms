@@ -272,6 +272,40 @@
         </div>
     @endif
     {{-- Actions sheet --}}
+    @if ($modal === 'customer')
+        <div class="fixed inset-0 z-40 flex items-end justify-center bg-slate-950/80 p-2 sm:items-center" wire:key="modal-customer">
+            <div class="w-full max-w-xl rounded-3xl bg-slate-900 p-5 ring-1 ring-slate-700">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xl font-bold">{{ __('customers::customers.pos.button') }}</h2>
+                    <button type="button" wire:click="closeModal" class="h-11 w-11 rounded-xl bg-slate-800 text-xl hover:bg-slate-700" aria-label="{{ __('pos::pos.order.close') }}">✕</button>
+                </div>
+                @if ($order->customer)
+                    <div class="mt-3 flex items-center justify-between rounded-2xl bg-emerald-500/10 px-4 py-3 ring-1 ring-emerald-500/40">
+                        <div><div class="font-bold text-emerald-300">{{ $order->customer->name }}</div><div class="text-sm text-slate-400">{{ $order->customer->phone }}@if ($order->customer->owes()) · <span class="text-amber-300">{{ __('customers::customers.pos.owes', ['amount' => money($order->customer->balance())]) }}</span>@endif @if ($order->customer->points_balance) · {{ __('customers::customers.loyalty.points', ['points' => $order->customer->points_balance]) }}@endif</div></div>
+                        <button type="button" wire:click="removeCustomer" class="h-11 rounded-xl bg-slate-800 px-3 text-sm font-semibold hover:bg-slate-700">{{ __('customers::customers.pos.remove') }}</button>
+                    </div>
+                @endif
+                @if ($error)<p class="mt-3 rounded-xl bg-rose-500/15 px-3 py-2 text-sm font-semibold text-rose-300" role="alert">{{ $error }}</p>@endif
+                <input type="search" wire:model.live.debounce.300ms="customerSearch" placeholder="{{ __('customers::customers.pos.search') }}" class="mt-3 h-12 w-full rounded-xl border-0 bg-slate-800 px-4 text-base text-slate-100 placeholder:text-slate-500" autofocus>
+                <ul class="mt-2 max-h-64 space-y-1 overflow-y-auto">
+                    @forelse ($this->customerMatches as $c)
+                        <li><button type="button" wire:click="attachCustomer('{{ $c->id }}')" class="flex h-14 w-full items-center justify-between rounded-xl bg-slate-800 px-4 text-left hover:bg-slate-700"><span><span class="font-bold">{{ $c->name }}</span> <span class="text-sm text-slate-400">{{ $c->phone }}</span></span><span class="text-xs text-slate-400">@if ($c->allow_account){{ __('customers::customers.pos.account_short') }} · @endif{{ $c->orders_count }} × · {{ money($c->total_spent) }}</span></button></li>
+                    @empty
+                        @if (trim($customerSearch) !== '')<li class="px-2 text-sm text-slate-500">{{ __('customers::customers.pos.none_found') }}</li>@endif
+                    @endforelse
+                </ul>
+                <div class="mt-4 border-t border-slate-800 pt-3">
+                    <p class="text-xs uppercase tracking-wide text-slate-400">{{ __('customers::customers.pos.new') }}</p>
+                    <div class="mt-1 flex gap-2">
+                        <input type="text" wire:model="newCustomer.name" placeholder="{{ __('customers::customers.fields.name') }}" class="h-12 w-full min-w-0 rounded-xl border-0 bg-slate-800 px-4 text-base text-slate-100 placeholder:text-slate-500">
+                        <input type="tel" inputmode="tel" wire:model="newCustomer.phone" placeholder="{{ __('customers::customers.fields.phone') }}" class="h-12 w-full min-w-0 rounded-xl border-0 bg-slate-800 px-4 text-base text-slate-100 placeholder:text-slate-500">
+                        <button type="button" wire:click="createCustomer" class="h-12 shrink-0 rounded-xl bg-emerald-500 px-4 font-bold text-slate-950 hover:bg-emerald-400">{{ __('customers::customers.pos.create') }}</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
     @if ($modal === 'actions')
         <div class="fixed inset-0 z-40 flex items-end justify-center bg-slate-950/80 p-2 sm:items-center" wire:key="modal-actions">
             <div class="w-full max-w-2xl rounded-3xl bg-slate-900 p-5 ring-1 ring-slate-700">
@@ -282,6 +316,7 @@
                 <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
                     <button type="button" wire:click="startDiscount" class="flex min-h-24 flex-col items-center justify-center rounded-2xl bg-slate-800 p-3 text-base font-bold hover:bg-slate-700">{{ __('pos::pos.order.discount') }}@if ($order->hasDiscount())<span class="text-xs font-medium text-amber-300">{{ $order->discountLabel() }}</span>@endif</button>
                     <button type="button" wire:click="openModal('promo')" class="flex min-h-24 flex-col items-center justify-center rounded-2xl bg-slate-800 p-3 text-base font-bold hover:bg-slate-700">{{ __('pos::pos.order.promo') }}</button>
+                    <button type="button" wire:click="openModal('customer')" class="flex min-h-24 flex-col items-center justify-center rounded-2xl bg-slate-800 p-3 text-base font-bold hover:bg-slate-700">{{ __('customers::customers.pos.button') }}@if ($order->customer)<span class="line-clamp-1 text-xs font-medium text-emerald-300">{{ $order->customer->name }}</span>@endif</button>
                     <button type="button" wire:click="openModal('note')" class="flex min-h-24 flex-col items-center justify-center rounded-2xl bg-slate-800 p-3 text-base font-bold hover:bg-slate-700">{{ __('pos::pos.order.order_note') }}@if ($order->notes)<span class="line-clamp-1 text-xs font-medium text-amber-300">{{ $order->notes }}</span>@endif</button>
                     @if ($order->service_charge_bp > 0)
                         <button type="button" wire:click="toggleServiceCharge" class="flex min-h-24 flex-col items-center justify-center rounded-2xl bg-slate-800 p-3 text-base font-bold hover:bg-slate-700">{{ $order->service_charge_waived ? __('pos::pos.order.restore_service') : __('pos::pos.order.waive_service') }}<span class="text-xs font-medium text-slate-400">{{ __('pos::pos.order.needs_manager') }}</span></button>

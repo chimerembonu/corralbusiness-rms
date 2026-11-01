@@ -2,6 +2,7 @@
 
 namespace App\Modules\Pos\Livewire;
 
+use App\Modules\Customers\Services\AccountService;
 use App\Modules\Orders\Models\Order;
 use App\Modules\Orders\Support\TillSettings;
 use App\Modules\Payments\Enums\MomoProvider;
@@ -65,7 +66,7 @@ class PaymentScreen extends Component
     #[Computed]
     public function order(): Order
     {
-        return Order::query()->with(['items.modifiers', 'payments', 'table'])->findOrFail($this->orderId);
+        return Order::query()->with(['items.modifiers', 'payments', 'table', 'customer'])->findOrFail($this->orderId);
     }
 
     #[Computed]
@@ -139,6 +140,7 @@ class PaymentScreen extends Component
             match ($this->method) {
                 'momo' => $payments->payMobileMoney($this->order, MomoProvider::from($this->provider ?? ''), $amount, $this->reference, $by, $tip),
                 'card' => $payments->payCard($this->order, $amount, $this->reference, $by, $tip),
+                'account' => app(AccountService::class)->charge($this->order, $amount, $by),
                 default => $payments->payCash($this->order, $amount, $by, $tip),
             };
         } catch (\ValueError) {
@@ -164,8 +166,13 @@ class PaymentScreen extends Component
 
     public function render()
     {
+        $methods = [PaymentMethod::Cash, PaymentMethod::MobileMoney, PaymentMethod::Card];
+        if ($this->order->customer?->allow_account && $this->order->customer->is_active) {
+            $methods[] = PaymentMethod::Account;
+        }
+
         return view('pos::livewire.payment-screen', [
-            'methods' => [PaymentMethod::Cash, PaymentMethod::MobileMoney, PaymentMethod::Card],
+            'methods' => $methods,
             'providers' => MomoProvider::cases(),
         ]);
     }

@@ -48,7 +48,7 @@
         <div class="w-full max-w-md">
             @if ($error)<p class="mb-3 rounded-xl bg-rose-500/15 px-4 py-3 text-sm font-semibold text-rose-300" role="alert">{{ $error }}</p>@endif
 
-            <div class="grid grid-cols-3 gap-2">
+            <div class="grid {{ count($methods) > 3 ? 'grid-cols-4' : 'grid-cols-3' }} gap-2">
                 @foreach ($methods as $m)
                     <button type="button" wire:click="setMethod('{{ $m->value }}')" class="h-14 rounded-2xl text-base font-bold {{ $method === $m->value ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 hover:bg-slate-700' }}">{{ $m->label() }}</button>
                 @endforeach
@@ -61,7 +61,9 @@
                     @endforeach
                 </div>
             @endif
-            @if ($method !== 'cash')
+            @if ($method === 'account' && $order->customer)
+                <p class="mt-3 rounded-xl bg-amber-500/10 px-4 py-3 text-sm text-amber-200">{{ $order->customer->name }} · {{ __('customers::customers.pos.owes', ['amount' => money($order->customer->balance())]) }}@if ($order->customer->credit_limit) · {{ __('customers::customers.fields.credit_limit_short') }} {{ money($order->customer->credit_limit) }}@endif</p>
+            @elseif ($method !== 'cash')
                 <input type="text" wire:model="reference" placeholder="{{ $method === 'momo' ? __('pos::pos.pay.momo_reference') : __('pos::pos.pay.card_reference') }}" class="mt-3 h-12 w-full rounded-xl border-0 bg-slate-800 px-4 text-base text-slate-100 placeholder:text-slate-500">
             @endif
 

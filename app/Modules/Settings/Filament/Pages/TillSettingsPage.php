@@ -69,6 +69,7 @@ class TillSettingsPage extends Page
             'pay_in_reasons' => $settings->payInReasons(),
             'pay_out_reasons' => $settings->payOutReasons(),
             'require_session' => $settings->requireSession(),
+            'loyalty_points' => (int) $settings->get(TillSettings::LOYALTY_POINTS_PER_CEDI),
         ]);
     }
 
@@ -99,6 +100,9 @@ class TillSettingsPage extends Page
                 TagsInput::make('pay_out_reasons')->label($t('pay_out_reasons'))->placeholder($t('add_reason')),
                 Toggle::make('require_session')->label($t('require_session'))->inline(false)->columnSpanFull(),
             ]),
+            Section::make(__('customers::customers.navigation_group'))->columns(2)->schema([
+                TextInput::make('loyalty_points')->label(__('customers::customers.loyalty.setting'))->numeric()->minValue(0)->helperText(__('customers::customers.loyalty.setting_help')),
+            ]),
         ])->statePath('data');
     }
 
@@ -119,6 +123,7 @@ class TillSettingsPage extends Page
         $settings->set(TillSettings::CASH_PAY_IN_REASONS, array_values($data['pay_in_reasons'] ?? []));
         $settings->set(TillSettings::CASH_PAY_OUT_REASONS, array_values($data['pay_out_reasons'] ?? []));
         $settings->set(TillSettings::CASH_REQUIRE_SESSION, (bool) ($data['require_session'] ?? false));
+        $settings->set(TillSettings::LOYALTY_POINTS_PER_CEDI, (int) ($data['loyalty_points'] ?? 0));
 
         Notification::make()->success()->title(__('settings::settings.till.saved'))->send();
     }

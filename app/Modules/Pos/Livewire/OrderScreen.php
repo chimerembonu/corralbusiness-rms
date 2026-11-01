@@ -2,6 +2,8 @@
 
 namespace App\Modules\Pos\Livewire;
 
+use App\Modules\Customers\Models\Customer;
+use App\Modules\Customers\Services\CustomerService;
 use App\Modules\Menu\Models\Item;
 use App\Modules\Menu\Models\ItemVariant;
 use App\Modules\Menu\Models\ModifierGroup;
@@ -75,6 +77,14 @@ class OrderScreen extends Component
 
     public string $holdName = '';
 
+    /** Customer modal: search box and the "new customer" mini form. */
+    public string $customerSearch = '';
+
+    public array $newCustomer = ['name' => '', 'phone' => ''];
+
+    /** Saved addresses of the customer found by phone on the delivery form. */
+    public array $deliveryAddresses = [];
+
     /** Delivery details modal (null = closed). */
     public ?array $delivery = null;
 
@@ -90,7 +100,7 @@ class OrderScreen extends Component
     #[Computed]
     public function order(): Order
     {
-        return Order::query()->with(['items.modifiers', 'table.mergedTables'])->findOrFail($this->orderId);
+        return Order::query()->with(['items.modifiers', 'table.mergedTables', 'customer'])->findOrFail($this->orderId);
     }
 
     #[Computed]
@@ -349,6 +359,78 @@ class OrderScreen extends Component
         }
         if ($name === 'split') {
             $this->split = ['mode' => 'items', 'lines' => [], 'seats' => [], 'ways' => 2];
+        }
+        if ($name === 'customer') {
+            $this->customerSearch = '';
+            $this->newCustomer = ['name' => '', 'phone' => ''];
+        }
+    }
+
+    // ---- Customer --------------------------------------------------------------
+
+    #[Computed]
+    public function customerMatches()
+    {
+        return app(CustomerService::class)->search($this->customerSearch);
+    }
+
+    public function attachCustomer(string $customerId): void
+    {
+        $customer = Customer::query()->findOrFail($customerId);
+        app(CustomerService::class)->attach($this->order, $customer, auth()->user());
+        unset($this->order);
+        $this->modal = null;
+        $this->notice = __('customers::customers.pos.attached', ['name' => $customer->name]);
+    }
+
+    public function removeCustomer(): void
+    {
+        app(CustomerService::class)->detach($this->order, auth()->user());
+        unset($this->order);
+        $this->modal = null;
+        $this->notice = __('customers::customers.pos.removed');
+    }
+
+    public function createCustomer(): void
+    {
+        $this->error = null;
+        try {
+            $customer = app(CustomerService::class)->create($this->newCustomer, auth()->user());
+        } catch (RuntimeException $e) {
+            $this->error = $e->getMessage();
+
+            return;
+        }
+        $this->attachCustomer($customer->id);
+    }
+
+    /** Delivery form: type the phone, tap Find → name and usual address fill in. */
+    public function lookupDeliveryCustomer(): void
+    {
+        $this->error = null;
+        $customer = app(CustomerService::class)->findByPhone($this->delivery['phone'] ?? '');
+        if (! $customer) {
+            $this->deliveryAddresses = [];
+            $this->notice = __('customers::customers.pos.not_found');
+
+            return;
+        }
+        $this->delivery['name'] = $this->delivery['name'] ?: $customer->name;
+        $this->delivery['name'] = $customer->name;
+        $addresses = $customer->addresses()->get();
+        if ($address = $customer->defaultAddress()) {
+            $this->delivery['address'] = $address->address;
+            $this->delivery['notes'] = $this->delivery['notes'] ?: (string) $address->notes;
+        }
+        $this->deliveryAddresses = $addresses->map(fn ($a) => ['address' => $a->address, 'notes' => (string) $a->notes, 'label' => $a->label()])->all();
+        $this->notice = __('customers::customers.pos.found', ['name' => $customer->name]);
+    }
+
+    public function useDeliveryAddress(int $index): void
+    {
+        if (isset($this->deliveryAddresses[$index])) {
+            $this->delivery['address'] = $this->deliveryAddresses[$index]['address'];
+            $this->delivery['notes'] = $this->deliveryAddresses[$index]['notes'];
         }
     }
 

@@ -36,6 +36,8 @@ final class TillSettings
 
     public const CASH_REQUIRE_SESSION = 'cash.require_session';          // a till must be opened (float counted) before taking payments
 
+    public const LOYALTY_POINTS_PER_CEDI = 'loyalty.points_per_cedi';    // 0 = points off
+
     public function __construct(private readonly SettingsService $settings) {}
 
     /** @return array<string, mixed> */
@@ -55,6 +57,7 @@ final class TillSettings
             self::CASH_PAY_IN_REASONS => ['Change from the bank', 'Float top-up', 'Owner / manager'],
             self::CASH_PAY_OUT_REASONS => ['Supplier paid in cash', 'Bank deposit', 'Staff advance', 'Petty cash', 'Tips paid to staff'],
             self::CASH_REQUIRE_SESSION => true,
+            self::LOYALTY_POINTS_PER_CEDI => 0,
         ];
     }
 
