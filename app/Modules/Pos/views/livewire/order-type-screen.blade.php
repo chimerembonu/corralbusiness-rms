@@ -1,4 +1,4 @@
-<div class="flex h-full flex-col gap-4 overflow-y-auto p-4">
+<div class="flex h-full flex-col gap-4 overflow-y-auto p-4" @if ($mode === 'tables') wire:poll.8s @endif>
     @if ($error)
         <p class="rounded-xl bg-rose-500/15 px-4 py-3 text-sm font-semibold text-rose-300" role="alert">{{ $error }}</p>
     @endif
@@ -36,28 +36,55 @@
             @endif
         </section>
     @else
-        <div class="flex items-center gap-3">
+        <div class="flex flex-wrap items-center gap-3">
             <button type="button" wire:click="showHome" class="h-12 rounded-xl bg-slate-800 px-4 font-semibold hover:bg-slate-700">← {{ __('pos::pos.nav.back') }}</button>
             <h2 class="text-xl font-bold">{{ __('pos::pos.home.choose_table') }}</h2>
+            <div class="ml-auto flex flex-wrap items-center gap-3 text-xs font-semibold text-slate-400">
+                <span class="flex items-center gap-1"><span class="h-3 w-3 rounded-full bg-slate-700"></span>{{ __('orders::orders.table_status.free') }}</span>
+                <span class="flex items-center gap-1"><span class="h-3 w-3 rounded-full bg-emerald-500"></span>{{ __('orders::orders.table_status.seated') }}</span>
+                <span class="flex items-center gap-1"><span class="h-3 w-3 rounded-full bg-amber-400"></span>{{ __('orders::orders.table_status.ordered') }}</span>
+                <span class="flex items-center gap-1"><span class="h-3 w-3 rounded-full bg-sky-500"></span>{{ __('orders::orders.table_status.merged') }}</span>
+            </div>
         </div>
-        @foreach ($tables as $section => $sectionTables)
-            <section>
-                @if ($section !== '')<h3 class="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-400">{{ $section }}</h3>@endif
-                <div class="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
-                    @foreach ($sectionTables as $table)
-                        @php($occupied = $table->currentOrder !== null)
-                        <button type="button" wire:click="openTable('{{ $table->id }}')" class="flex min-h-28 flex-col items-center justify-center rounded-2xl p-3 {{ $occupied ? 'bg-amber-500/20 ring-2 ring-amber-400' : 'bg-slate-900 ring-1 ring-slate-800 hover:ring-emerald-500' }}">
-                            <span class="text-2xl font-black">{{ $table->name }}</span>
-                            <span class="text-xs text-slate-400">{{ __('pos::pos.home.seats', ['count' => $table->seats]) }}</span>
-                            @if ($occupied)
-                                <span class="mt-1 text-sm font-semibold text-amber-300">#{{ $table->currentOrder->displayNumber() }} · {{ money($table->currentOrder->total) }}</span>
-                            @else
-                                <span class="mt-1 text-sm font-semibold text-emerald-400">{{ __('pos::pos.home.free') }}</span>
-                            @endif
-                        </button>
+
+        @if ($plan->count() > 1)
+            <nav class="flex gap-2 overflow-x-auto">
+                @foreach ($plan as $group)
+                    @php($id = $group['section']?->id ?? '')
+                    <button type="button" wire:click="selectSection('{{ $id }}')" class="h-12 shrink-0 rounded-xl px-5 text-base font-semibold {{ ($current['section']?->id ?? '') === $id ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 text-slate-200 hover:bg-slate-700' }}">
+                        {{ $group['section']?->name ?? __('orders::orders.no_section') }}
+                    </button>
+                @endforeach
+            </nav>
+        @endif
+
+        @if (! $current || $current['tables']->isEmpty())
+            <p class="rounded-2xl border border-slate-800 p-6 text-center text-slate-500">{{ __('pos::pos.home.no_tables') }}</p>
+        @else
+            @include('pos::partials.floor-plan', ['tables' => $current['tables'], 'onTap' => 'tapTable'])
+        @endif
+    @endif
+
+    {{-- Guest count prompt --}}
+    @if ($coversFor && $coversTable)
+        <div class="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/80 p-4">
+            <div class="w-full max-w-md rounded-3xl bg-slate-900 p-5 ring-1 ring-slate-700">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xl font-bold">{{ __('pos::pos.home.guests_title', ['table' => $coversTable->name]) }}</h2>
+                    <button type="button" wire:click="closeCovers" class="h-11 w-11 rounded-xl bg-slate-800 text-xl hover:bg-slate-700" aria-label="{{ __('pos::pos.order.close') }}">✕</button>
+                </div>
+                <div class="mt-4 flex items-center justify-center gap-4">
+                    <button type="button" wire:click="adjustCovers(-1)" class="h-14 w-14 rounded-2xl bg-slate-800 text-2xl font-bold hover:bg-slate-700" aria-label="Fewer">−</button>
+                    <span class="w-20 text-center text-5xl font-black" data-test="covers">{{ $covers }}</span>
+                    <button type="button" wire:click="adjustCovers(1)" class="h-14 w-14 rounded-2xl bg-slate-800 text-2xl font-bold hover:bg-slate-700" aria-label="More">+</button>
+                </div>
+                <div class="mt-4 grid grid-cols-4 gap-2">
+                    @foreach ([1, 2, 3, 4, 5, 6, 8, 10] as $n)
+                        <button type="button" wire:click="setCovers({{ $n }})" class="h-12 rounded-xl text-lg font-bold {{ $covers === $n ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 hover:bg-slate-700' }}">{{ $n }}</button>
                     @endforeach
                 </div>
-            </section>
-        @endforeach
+                <button type="button" wire:click="openTable" class="mt-5 h-14 w-full rounded-2xl bg-emerald-500 text-lg font-bold text-slate-950 hover:bg-emerald-400">{{ __('pos::pos.home.start_order') }}</button>
+            </div>
+        </div>
     @endif
 </div>

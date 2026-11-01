@@ -2,6 +2,9 @@
 
 namespace App\Modules\Orders;
 
+use App\Modules\Orders\Events\OrderPaid;
+use App\Modules\Orders\Events\OrderVoided;
+use App\Modules\Orders\Listeners\ReleaseMergedTables;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 
 /**
@@ -17,7 +20,8 @@ class OrdersServiceProvider extends ServiceProvider
      * @var array<class-string, array<int, class-string>>
      */
     protected $listen = [
-        //
+        OrderPaid::class => [ReleaseMergedTables::class],
+        OrderVoided::class => [ReleaseMergedTables::class],
     ];
 
     public function register(): void

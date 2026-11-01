@@ -14,6 +14,7 @@ use App\Modules\Orders\Events\ItemAdded;
 use App\Modules\Orders\Events\ItemQuantityChanged;
 use App\Modules\Orders\Events\ItemRemoved;
 use App\Modules\Orders\Events\ItemVoided;
+use App\Modules\Orders\Events\OrderCoversChanged;
 use App\Modules\Orders\Events\OrderCreated;
 use App\Modules\Orders\Events\OrderDiscountApplied;
 use App\Modules\Orders\Events\OrderNotesChanged;
@@ -49,8 +50,8 @@ class OrderService
 
     public function open(OrderType $type, ?User $by = null, ?DiningTable $table = null, int $covers = 1): Order
     {
-        if ($type === OrderType::DineIn && $table && $table->isOccupied()) {
-            throw new OrderLockedException(__('orders::orders.errors.table_occupied', ['table' => $table->name]));
+        if ($type === OrderType::DineIn && $table) {
+            app(TableService::class)->assertFree($table);
         }
 
         return DB::transaction(function () use ($type, $by, $table, $covers) {
@@ -271,6 +272,19 @@ class OrderService
     }
 
     /** Cancel an order. Once something was sent to the kitchen this needs the void permission. */
+    /** Number of guests at the table. */
+    public function setCovers(Order $order, int $covers, ?User $by = null): Order
+    {
+        $this->assertEditable($order);
+
+        $order->covers = max(1, min(99, $covers));
+        $order->save();
+
+        OrderCoversChanged::dispatch($order, $by?->id);
+
+        return $order;
+    }
+
     public function void(Order $order, string $reason, User $by): Order
     {
         $this->assertEditable($order);

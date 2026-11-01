@@ -4,10 +4,13 @@ namespace App\Modules\Kitchen;
 
 use App\Modules\Kitchen\Events\TicketChanged;
 use App\Modules\Kitchen\Listeners\CreateTicketWhenSent;
+use App\Modules\Kitchen\Listeners\FollowOrderToNewTable;
 use App\Modules\Kitchen\Listeners\PrintTicket;
 use App\Modules\Kitchen\Listeners\StrikeVoidedLine;
 use App\Modules\Orders\Events\ItemVoided;
 use App\Modules\Orders\Events\OrderSentToKitchen;
+use App\Modules\Orders\Events\OrderTransferred;
+use App\Modules\Orders\Events\TablesMerged;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 
 /**
@@ -26,6 +29,8 @@ class KitchenServiceProvider extends ServiceProvider
         OrderSentToKitchen::class => [CreateTicketWhenSent::class],
         ItemVoided::class => [StrikeVoidedLine::class],
         TicketChanged::class => [PrintTicket::class],
+        OrderTransferred::class => [FollowOrderToNewTable::class],
+        TablesMerged::class => [FollowOrderToNewTable::class],
     ];
 
     public function register(): void

@@ -8,6 +8,7 @@ enum OrderStatus: string
     case Sent = 'sent';     // at least one item sent to the kitchen
     case Paid = 'paid';     // fully paid
     case Void = 'void';
+    case Merged = 'merged'; // its lines were moved onto another order (table merge)
 
     public function label(): string
     {

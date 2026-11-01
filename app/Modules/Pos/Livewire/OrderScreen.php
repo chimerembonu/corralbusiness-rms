@@ -7,9 +7,11 @@ use App\Modules\Menu\Models\ItemVariant;
 use App\Modules\Menu\Models\ModifierGroup;
 use App\Modules\Menu\Services\MenuService;
 use App\Modules\Orders\Enums\OrderStatus;
+use App\Modules\Orders\Models\DiningTable;
 use App\Modules\Orders\Models\Order;
 use App\Modules\Orders\Models\OrderItem;
 use App\Modules\Orders\Services\OrderService;
+use App\Modules\Orders\Services\TableService;
 use App\Modules\Staff\Exceptions\ManagerPinRequiredException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -38,6 +40,13 @@ class OrderScreen extends Component
 
     public string $noteText = '';
 
+    /** Table sheet: null (closed) | menu | move | merge | covers. */
+    public ?string $tableSheet = null;
+
+    public ?string $sheetSectionId = null;
+
+    public int $covers = 1;
+
     public function mount(Order $order): void
     {
         $this->orderId = $order->id;
@@ -50,7 +59,7 @@ class OrderScreen extends Component
     #[Computed]
     public function order(): Order
     {
-        return Order::query()->with(['items.modifiers', 'table'])->findOrFail($this->orderId);
+        return Order::query()->with(['items.modifiers', 'table.mergedTables'])->findOrFail($this->orderId);
     }
 
     #[Computed]
@@ -228,6 +237,66 @@ class OrderScreen extends Component
     public function closeNote(): void
     {
         $this->noteLineId = null;
+    }
+
+    // ---- Table sheet: move, merge, guests ------------------------------------
+
+    public function openTableSheet(string $mode = 'menu'): void
+    {
+        $this->error = null;
+        $this->notice = null;
+        $this->tableSheet = $mode;
+        $this->sheetSectionId = $this->order->table?->section_id;
+        $this->covers = $this->order->covers;
+    }
+
+    public function closeTableSheet(): void
+    {
+        $this->tableSheet = null;
+    }
+
+    public function selectSheetSection(?string $sectionId): void
+    {
+        $this->sheetSectionId = $sectionId ?: null;
+    }
+
+    public function moveTo(string $tableId): void
+    {
+        $this->run(function (TableService $tables) use ($tableId) {
+            $table = DiningTable::query()->with('currentOrder')->findOrFail($tableId);
+            $tables->transfer($this->order, $table, auth()->user());
+            $this->tableSheet = null;
+            $this->notice = __('pos::pos.order.table_sheet.moved', ['table' => $table->name]);
+        });
+    }
+
+    public function mergeWith(string $tableId): void
+    {
+        $this->run(function (TableService $tables) use ($tableId) {
+            $from = DiningTable::query()->findOrFail($tableId);
+            $tables->merge($from, $this->order->table, auth()->user());
+            $this->tableSheet = null;
+            $this->notice = __('pos::pos.order.table_sheet.merged', ['table' => $from->name]);
+        });
+    }
+
+    public function adjustCovers(int $delta): void
+    {
+        $this->covers = max(1, min(99, $this->covers + $delta));
+    }
+
+    public function saveCovers(): void
+    {
+        $this->run(function (OrderService $orders) {
+            $orders->setCovers($this->order, $this->covers, auth()->user());
+            $this->tableSheet = null;
+        });
+    }
+
+    #[Computed]
+    public function floorPlan()
+    {
+        return $this->tableSheet ? app(TableService::class)->floorPlan($this->order->branch_id) : collect();
     }
 
     // ---- Order actions -------------------------------------------------------

@@ -62,6 +62,12 @@ class Order extends BusinessModel
         return $this->belongsTo(DiningTable::class, 'table_id');
     }
 
+    /** The order this one was merged into (status = merged). */
+    public function mergedInto(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'merged_into_id');
+    }
+
     public function openedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'opened_by_id');

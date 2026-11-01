@@ -5,9 +5,17 @@
         <div class="flex items-center justify-between px-4 py-3">
             <div>
                 <div class="text-lg font-bold">#{{ $order->displayNumber() }} · {{ $order->table ? __('pos::pos.order.table').' '.$order->table->name : $order->type->label() }}</div>
-                <div class="text-xs text-slate-400">{{ $order->status->label() }} · {{ $order->opened_at->format('H:i') }}</div>
+                <div class="text-xs text-slate-400">{{ $order->status->label() }} · {{ $order->opened_at->format('H:i') }}@if ($order->table) · {{ __('pos::pos.home.guests', ['count' => $order->covers]) }}@endif</div>
+                @if ($order->table && $order->table->mergedTables->isNotEmpty())
+                    <div class="text-xs font-semibold text-sky-300">{{ __('pos::pos.order.table_sheet.joined_tables', ['tables' => $order->table->mergedTables->pluck('name')->implode(', ')]) }}</div>
+                @endif
             </div>
-            <button type="button" wire:click="hold" class="h-11 rounded-xl bg-slate-800 px-4 text-sm font-semibold hover:bg-slate-700">{{ __('pos::pos.order.hold') }}</button>
+            <div class="flex gap-2">
+                @if ($order->table)
+                    <button type="button" wire:click="openTableSheet" class="h-11 rounded-xl bg-slate-800 px-4 text-sm font-semibold hover:bg-slate-700">{{ __('pos::pos.order.table_button') }}</button>
+                @endif
+                <button type="button" wire:click="hold" class="h-11 rounded-xl bg-slate-800 px-4 text-sm font-semibold hover:bg-slate-700">{{ __('pos::pos.order.hold') }}</button>
+            </div>
         </div>
 
         @if ($error)<p class="mx-4 mb-2 rounded-xl bg-rose-500/15 px-3 py-2 text-sm font-semibold text-rose-300" role="alert">{{ $error }}</p>@endif
@@ -168,6 +176,60 @@
                 <div class="mt-4 grid grid-cols-2 gap-3">
                     <button type="button" wire:click="closeNote" class="h-14 rounded-2xl bg-slate-800 font-semibold hover:bg-slate-700">{{ __('pos::pos.order.close') }}</button>
                     <button type="button" wire:click="saveNote" class="h-14 rounded-2xl bg-emerald-500 font-bold text-slate-950 hover:bg-emerald-400">{{ __('pos::pos.order.save') }}</button>
+                </div>
+            </div>
+        </div>
+    @endif
+    {{-- Table sheet: move / join / guests --}}
+    @if ($tableSheet && $order->table)
+        <div class="fixed inset-0 z-40 flex items-end justify-center bg-slate-950/80 p-2 sm:items-center" wire:key="table-sheet-{{ $tableSheet }}">
+            <div class="flex max-h-full w-full max-w-4xl flex-col rounded-3xl bg-slate-900 ring-1 ring-slate-700">
+                <div class="flex items-center justify-between px-5 py-4">
+                    <div>
+                        <h2 class="text-xl font-bold">{{ __('pos::pos.order.table_sheet.title', ['table' => $order->table->name]) }}</h2>
+                        @if ($tableSheet === 'move')<p class="text-sm text-slate-400">{{ __('pos::pos.order.table_sheet.move_hint') }}</p>@endif
+                        @if ($tableSheet === 'merge')<p class="text-sm text-slate-400">{{ __('pos::pos.order.table_sheet.merge_hint') }}</p>@endif
+                    </div>
+                    <div class="flex gap-2">
+                        @if ($tableSheet !== 'menu')
+                            <button type="button" wire:click="openTableSheet('menu')" class="h-11 rounded-xl bg-slate-800 px-4 text-sm font-semibold hover:bg-slate-700">← {{ __('pos::pos.nav.back') }}</button>
+                        @endif
+                        <button type="button" wire:click="closeTableSheet" class="h-11 w-11 rounded-xl bg-slate-800 text-xl hover:bg-slate-700" aria-label="{{ __('pos::pos.order.close') }}">✕</button>
+                    </div>
+                </div>
+
+                @if ($error)<p class="mx-5 mb-2 rounded-xl bg-rose-500/15 px-3 py-2 text-sm font-semibold text-rose-300" role="alert">{{ $error }}</p>@endif
+
+                <div class="min-h-0 flex-1 overflow-y-auto px-5 pb-5">
+                    @if ($tableSheet === 'menu')
+                        <div class="grid gap-3 sm:grid-cols-3">
+                            <button type="button" wire:click="openTableSheet('move')" class="flex min-h-28 flex-col items-center justify-center rounded-2xl bg-slate-800 p-4 text-lg font-bold hover:bg-slate-700">{{ __('pos::pos.order.table_sheet.move') }}</button>
+                            <button type="button" wire:click="openTableSheet('merge')" class="flex min-h-28 flex-col items-center justify-center rounded-2xl bg-slate-800 p-4 text-lg font-bold hover:bg-slate-700">{{ __('pos::pos.order.table_sheet.merge') }}</button>
+                            <button type="button" wire:click="openTableSheet('covers')" class="flex min-h-28 flex-col items-center justify-center rounded-2xl bg-slate-800 p-4 text-lg font-bold hover:bg-slate-700">{{ __('pos::pos.order.table_sheet.guests') }}<span class="text-sm font-medium text-slate-400">{{ __('pos::pos.home.guests', ['count' => $order->covers]) }}</span></button>
+                        </div>
+                    @elseif ($tableSheet === 'covers')
+                        <div class="flex items-center justify-center gap-4 py-4">
+                            <button type="button" wire:click="adjustCovers(-1)" class="h-14 w-14 rounded-2xl bg-slate-800 text-2xl font-bold hover:bg-slate-700" aria-label="Fewer">−</button>
+                            <span class="w-20 text-center text-5xl font-black" data-test="covers">{{ $covers }}</span>
+                            <button type="button" wire:click="adjustCovers(1)" class="h-14 w-14 rounded-2xl bg-slate-800 text-2xl font-bold hover:bg-slate-700" aria-label="More">+</button>
+                        </div>
+                        <button type="button" wire:click="saveCovers" class="h-14 w-full rounded-2xl bg-emerald-500 text-lg font-bold text-slate-950 hover:bg-emerald-400">{{ __('pos::pos.order.save') }}</button>
+                    @else
+                        @php($plan = $this->floorPlan)
+                        @php($currentGroup = $plan->first(fn (array $g) => ($g['section']?->id ?? '') === ($sheetSectionId ?? '')) ?? $plan->first())
+                        @if ($plan->count() > 1)
+                            <nav class="mb-3 flex gap-2 overflow-x-auto">
+                                @foreach ($plan as $group)
+                                    @php($id = $group['section']?->id ?? '')
+                                    <button type="button" wire:click="selectSheetSection('{{ $id }}')" class="h-11 shrink-0 rounded-xl px-4 text-sm font-semibold {{ ($currentGroup['section']?->id ?? '') === $id ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 text-slate-200 hover:bg-slate-700' }}">{{ $group['section']?->name ?? __('orders::orders.no_section') }}</button>
+                                @endforeach
+                            </nav>
+                        @endif
+                        @if ($currentGroup)
+                            @php($blocked = $currentGroup['tables']->filter(fn ($t) => $t->id === $order->table_id || $t->isMerged() || ($tableSheet === 'move' && $t->isOccupied()))->pluck('id')->all())
+                            @include('pos::partials.floor-plan', ['tables' => $currentGroup['tables'], 'onTap' => $tableSheet === 'move' ? 'moveTo' : 'mergeWith', 'highlight' => $order->table_id, 'disabled' => $blocked])
+                        @endif
+                    @endif
                 </div>
             </div>
         </div>
