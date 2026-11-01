@@ -17,7 +17,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 # System packages: image support (GD, for receipt logos), intl, zip, MySQL, CUPS client (USB printers), netcat (startup checks).
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        git unzip curl ca-certificates cups-client netcat-openbsd \
+        git unzip curl ca-certificates cups-client netcat-openbsd default-mysql-client \
         libpng-dev libjpeg-dev libfreetype6-dev libzip-dev libicu-dev libonig-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j"$(nproc)" gd pdo_mysql bcmath intl zip pcntl sockets opcache exif \

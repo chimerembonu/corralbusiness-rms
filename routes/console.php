@@ -10,3 +10,6 @@ Artisan::command('inspire', function () {
 
 // Staff who forgot to clock out are clocked out automatically after 16 hours (Phase 2.1).
 Schedule::command('rms:staff:auto-clock-out')->hourly();
+
+// Nightly backup of the database and uploads to storage/backups (Phase 3.2). Old ones are pruned after 14 days.
+Schedule::command('rms:backup --note=nightly')->dailyAt('02:30');

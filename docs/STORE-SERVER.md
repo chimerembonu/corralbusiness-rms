@@ -113,7 +113,30 @@ Add the printer in Back office → Printers with connection "USB" and address `R
 
 If the computer restarts (power cut), everything comes back by itself.
 
-## 6. Tills and screens
+## 6. Backups and restore
+
+A backup is one zip file with the whole database plus uploaded logos and pictures. One is taken every night at 02:30 into `storage/backups` on the server; old ones are removed after 14 days. The nightly backup only protects you if a copy also leaves the server, so once a week do one of these:
+
+- **USB stick:** plug a stick into the server and run `sudo ./scripts/backup-to-usb.sh`. Wait for "Done", then remove the stick.
+- **Download:** in the back office open Settings → Backups and tap **Download** next to the newest backup; save it on your laptop or in cloud storage.
+
+| Task | Command (in /opt/corralbusiness-rms) |
+|---|---|
+| Back up now | `./scripts/rms rms:backup` |
+| Back up now and copy to a USB stick | `sudo ./scripts/backup-to-usb.sh` |
+| See the backups on the server | `./scripts/rms rms:backups` |
+| Restore the newest backup | `./scripts/rms rms:restore` |
+| Restore a particular file | `./scripts/rms rms:restore rms-backup-2026-11-13-023000.zip` |
+
+**Restoring after a disaster (new computer), in under 10 minutes:**
+1. Install the app on the new computer (section 2) and answer the setup questions with anything; the restore replaces them.
+2. Copy the backup zip to `/opt/corralbusiness-rms/storage/backups/` (from the USB stick: `sudo cp /media/*/*/rms-backup-*.zip /opt/corralbusiness-rms/storage/backups/`). If the folder does not exist yet, the Docker volume holds it: use `sudo docker compose cp /media/<user>/<stick>/rms-backup-2026-11-13-023000.zip app:/var/www/html/storage/backups/`.
+3. Run `./scripts/rms rms:restore rms-backup-2026-11-13-023000.zip` and answer **yes**.
+4. Open the till; everything is back as at the time of the backup. The state from just before the restore is kept as another backup in case you chose the wrong file.
+
+The back office can restore too (Settings → Backups → Restore, owner only, type RESTORE), and can take an uploaded backup file.
+
+## 7. Tills and screens
 
 - Any browser works: Chrome or Chromium on Windows, Android tablets, iPads, phones.
 - Till: `http://<server>/pos` · Kitchen: `http://<server>/kitchen` · Clock in: `http://<server>/clock` · Back office: `http://<server>/admin`.

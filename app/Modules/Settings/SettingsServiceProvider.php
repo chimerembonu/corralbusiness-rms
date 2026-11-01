@@ -2,6 +2,9 @@
 
 namespace App\Modules\Settings;
 
+use App\Modules\Settings\Console\BackupCommand;
+use App\Modules\Settings\Console\ListBackupsCommand;
+use App\Modules\Settings\Console\RestoreCommand;
 use App\Modules\Settings\Console\SetupCommand;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 
@@ -30,6 +33,6 @@ class SettingsServiceProvider extends ServiceProvider
     {
         parent::boot();
 
-        $this->commands([SetupCommand::class]);
+        $this->commands([SetupCommand::class, BackupCommand::class, RestoreCommand::class, ListBackupsCommand::class]);
     }
 }
