@@ -24,7 +24,8 @@ class PrintTicket
             : TicketDocument::fromTicket($event->ticket);
 
         $printers = Printer::query()->withoutGlobalScopes()->whereNull('deleted_at')
-            ->where('branch_id', $event->ticket->branch_id)->where('is_active', true)->where('prints_kitchen_tickets', true)->get();
+            ->where('branch_id', $event->ticket->branch_id)->where('is_active', true)->where('prints_kitchen_tickets', true)->get()
+            ->filter(fn (Printer $p) => empty($p->station_ids) || in_array($event->ticket->station_id, $p->station_ids, true));
 
         foreach ($printers as $printer) {
             $this->printing->enqueue($printer, $document, PrintJobType::KitchenTicket, $event->ticket);

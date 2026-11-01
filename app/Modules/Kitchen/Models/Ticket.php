@@ -15,6 +15,11 @@ class Ticket extends BusinessModel
 
     protected $fillable = ['branch_id', 'order_id', 'station_id', 'order_number', 'order_type', 'table_name', 'server_name', 'status', 'notes', 'sent_at'];
 
+    public function station(): BelongsTo
+    {
+        return $this->belongsTo(Station::class, 'station_id');
+    }
+
     protected $attributes = ['status' => 'new'];
 
     protected function casts(): array
@@ -25,6 +30,7 @@ class Ticket extends BusinessModel
             'sent_at' => 'datetime',
             'started_at' => 'datetime',
             'done_at' => 'datetime',
+            'served_at' => 'datetime',
         ];
     }
 
@@ -68,6 +74,6 @@ class Ticket extends BusinessModel
     /** @return array<string, mixed> for broadcasting */
     public function toBroadcast(): array
     {
-        return ['id' => $this->id, 'order_number' => $this->order_number, 'status' => $this->status->value];
+        return ['id' => $this->id, 'order_number' => $this->order_number, 'status' => $this->status->value, 'station_id' => $this->station_id];
     }
 }

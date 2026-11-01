@@ -11,8 +11,11 @@ final class TicketDocument
 {
     public static function fromTicket(Ticket $ticket): PrintDocument
     {
-        $ticket->loadMissing('items');
+        $ticket->loadMissing(['items', 'station']);
         $doc = PrintDocument::make(__('printing::printing.kitchen_title', ['number' => $ticket->displayNumber()]));
+        if ($ticket->station) {
+            $doc->center()->bold()->text('[ '.strtoupper($ticket->station->name).' ]')->normal();
+        }
 
         $where = $ticket->table_name ? __('pos::pos.order.table').' '.$ticket->table_name : OrderType::from($ticket->order_type)->label();
         $doc->center()->bold()->big()->text('#'.$ticket->displayNumber().'  '.$where)->normal()

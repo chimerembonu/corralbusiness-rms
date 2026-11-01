@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Kitchen\Http\EnsureKitchenUser;
+use App\Modules\Kitchen\Livewire\ExpoDisplay;
 use App\Modules\Kitchen\Livewire\KitchenDisplay;
 use Illuminate\Support\Facades\Route;
 
@@ -12,4 +13,5 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware(EnsureKitchenUser::class)->group(function () {
     Route::get('kitchen', KitchenDisplay::class)->name('kitchen.display');
+    Route::get('kitchen/expo', ExpoDisplay::class)->name('kitchen.expo');
 });

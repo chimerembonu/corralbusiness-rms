@@ -17,6 +17,7 @@ return [
         'address_hint' => 'Network: the printer\'s IP address, e.g. 192.168.8.50 (port 9100 is assumed; add :9100 to change). Browser: leave empty.',
         'paper_width' => 'Paper width',
         'prints_receipts' => 'Prints customer receipts',
+        'stations' => 'Kitchen stations', 'stations_hint' => 'Leave empty to print every station’s tickets here.',
         'prints_kitchen_tickets' => 'Prints kitchen tickets',
         'has_cash_drawer' => 'Cash drawer attached',
         'is_active' => 'Active',

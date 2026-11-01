@@ -11,6 +11,6 @@ class CreateTicketWhenSent
 
     public function handle(OrderSentToKitchen $event): void
     {
-        $this->kitchen->createTicket($event->order, $event->items);
+        $this->kitchen->createTickets($event->order, $event->items);
     }
 }

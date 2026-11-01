@@ -2,6 +2,7 @@
 
 namespace App\Modules\Printing\Filament\Resources\Printers;
 
+use App\Modules\Kitchen\Models\Station;
 use App\Modules\Printing\Enums\PrinterDriverType;
 use App\Modules\Printing\Filament\Resources\Printers\Pages\CreatePrinter;
 use App\Modules\Printing\Filament\Resources\Printers\Pages\EditPrinter;
@@ -72,7 +73,11 @@ class PrinterResource extends Resource
                 Select::make('paper_width')->label(__('printing::printing.fields.paper_width'))->options([80 => '80 mm', 58 => '58 mm'])->default(80)->required(),
                 Toggle::make('is_active')->label(__('printing::printing.fields.is_active'))->default(true)->inline(false),
                 Toggle::make('prints_receipts')->label(__('printing::printing.fields.prints_receipts'))->inline(false),
-                Toggle::make('prints_kitchen_tickets')->label(__('printing::printing.fields.prints_kitchen_tickets'))->inline(false),
+                Toggle::make('prints_kitchen_tickets')->label(__('printing::printing.fields.prints_kitchen_tickets'))->inline(false)->live(),
+                Select::make('station_ids')->label(__('printing::printing.fields.stations'))->multiple()
+                    ->options(fn () => Station::query()->active()->ordered()->pluck('name', 'id'))
+                    ->helperText(__('printing::printing.fields.stations_hint'))
+                    ->visible(fn (Get $get) => (bool) $get('prints_kitchen_tickets')),
                 Toggle::make('has_cash_drawer')->label(__('printing::printing.fields.has_cash_drawer'))->inline(false),
             ]),
         ]);
