@@ -23,7 +23,7 @@
                             <tr wire:click="open('{{ $order->id }}')" class="cursor-pointer {{ $openId === $order->id ? 'bg-slate-800/60' : 'hover:bg-slate-900' }}">
                                 <td class="px-3 py-3 font-semibold">#{{ $order->displayNumber() }}</td>
                                 <td class="px-2 py-3 text-slate-400">{{ $order->opened_at->format('d/m H:i') }}</td>
-                                <td class="px-2 py-3">{{ $order->table?->name ?? $order->type->label() }}@if ($order->customer_name) <span class="text-slate-400">· {{ $order->customer_name }}</span>@endif</td>
+                                <td class="px-2 py-3">{{ $order->table?->name ?? $order->type->label() }}@if ($order->customer_name) <span class="text-slate-400">· {{ $order->customer_name }}</span>@endif @if ($order->is_training)<span class="rounded bg-amber-400 px-1.5 py-0.5 text-[10px] font-black uppercase text-slate-950">{{ __('pos::pos.training.badge') }}</span>@endif</td>
                                 <td class="px-2 py-3"><span class="rounded-full px-2 py-0.5 text-xs font-bold {{ match ($order->status->value) { 'paid' => 'bg-emerald-500/20 text-emerald-300', 'void', 'refunded' => 'bg-rose-500/20 text-rose-300', 'merged' => 'bg-sky-500/20 text-sky-300', default => 'bg-amber-500/20 text-amber-300' } }}">{{ $order->status->label() }}</span></td>
                                 <td class="px-2 py-3 text-right font-semibold">{{ money($order->total) }}</td>
                             </tr>

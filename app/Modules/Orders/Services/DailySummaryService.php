@@ -22,7 +22,7 @@ class DailySummaryService
         $branchId = $branch instanceof Branch ? $branch->getKey() : ($branch ?? $this->context->branchId());
 
         // Eager-load the table so the order list can show "Table 4" without lazy loading (strict mode forbids it).
-        $base = fn () => Order::query()->with('table')->forBranch($branchId)->forBusinessDate($date);
+        $base = fn () => Order::query()->with('table')->real()->forBranch($branchId)->forBusinessDate($date);
 
         $paid = $base()->where('status', OrderStatus::Paid->value)->get();
         $open = $base()->active()->get();
@@ -30,7 +30,7 @@ class DailySummaryService
         $refunded = $base()->where('status', OrderStatus::Refunded->value)->get();
         $held = $open->filter(fn (Order $o) => $o->isHeld());
 
-        $refunds = Payment::query()->forBranch($branchId)->where('status', 'refunded')
+        $refunds = Payment::query()->real()->forBranch($branchId)->where('status', 'refunded')
             ->whereIn('order_id', $paid->pluck('id')->merge($refunded->pluck('id')))->get();
 
         $sum = fn (Collection $orders, string $field) => $orders->reduce(fn (Money $c, Order $o) => $c->add($o->{$field}), Money::zero());
@@ -47,7 +47,7 @@ class DailySummaryService
             'type' => $type, 'count' => $orders->count(), 'total' => $sum($orders, 'total'),
         ])->values()->all();
 
-        $payments = Payment::query()->forBranch($branchId)
+        $payments = Payment::query()->real()->forBranch($branchId)
             ->whereIn('order_id', $paid->pluck('id'))
             ->where('status', 'completed')
             ->get()

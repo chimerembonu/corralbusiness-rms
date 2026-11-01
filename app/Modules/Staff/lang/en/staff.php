@@ -122,4 +122,60 @@ return [
             'voids' => 'Cancelled', 'payments' => 'Payments taken', 'taken' => 'Amount taken', 'tips' => 'Tips',
         ],
     ],
+    'cheat_sheet' => [
+        'title' => 'Staff cheat-sheet',
+        'button' => 'Cheat-sheet',
+        'button_pdf' => 'Cheat-sheet (PDF)',
+        'printed' => 'Printed :date',
+        'till_link' => 'Till:',
+        'kitchen_link' => 'Kitchen screen:',
+        'clock_link' => 'Clock in/out:',
+        'admin_link' => 'Back office:',
+        'tills' => 'Tills:',
+        'stations' => 'Stations:',
+        'sections' => [
+            'floor' => [
+                'for' => 'Waiters and cashiers',
+                'title' => 'Taking orders and payments',
+                'topics' => [
+                    ['heading' => 'Start of shift', 'steps' => ['Clock in: open the clock screen, type your PIN, tap Clock in / out.', 'Open the till page, choose the till you are on, type your PIN.', 'Cashiers: tap Cash, then Open till, count the float in the drawer and confirm.']],
+                    ['heading' => 'Dine-in order', 'steps' => ['Tap Dine-in, tap the table, enter the number of guests.', 'Tap items; choose size and extras in the pop-up; add a note if the guest asked for something special.', 'Tap Send to kitchen. The kitchen sees it at once.', 'To add more later, open the table again and tap more items, then Send again.']],
+                    ['heading' => 'Takeaway or delivery', 'steps' => ['Tap Takeaway (or Delivery and fill the phone, name and address; tap Find to reuse a known customer).', 'Add items, tap Send to kitchen, then Pay when the customer pays.']],
+                    ['heading' => 'Payment', 'steps' => ['Tap Pay. Choose Cash, Mobile Money or Card.', 'Cash: type what the customer handed over; the change shows. Mobile Money: pick the network and type the transaction ID.', 'Tap Complete payment. The receipt prints; the drawer opens for cash.', 'Splitting the bill: Actions → Split bill, by items, by seats or into equal shares.']],
+                    ['heading' => 'Mistakes and changes', 'steps' => ['Remove a line before sending: tap the line, then Remove.', 'After sending, a void needs a reason and a manager PIN (Actions → Void).', 'Discounts: Actions → Discount, pick the reason; big discounts need a manager PIN.', 'Hold an order for later: Actions → Hold, type the customer name; find it on the home screen under On hold.']],
+                    ['heading' => 'End of shift', 'steps' => ['Cashiers: Cash → Cash up. Count the notes and coins on the sheet and tap Close till.', 'Clock out on the clock screen with your PIN.']],
+                ],
+                'warn' => 'Never share your PIN. Every void, discount and refund is recorded with the name of the person who approved it.',
+            ],
+            'kitchen' => [
+                'for' => 'Kitchen',
+                'title' => 'The kitchen screen',
+                'topics' => [
+                    ['heading' => 'Getting started', 'steps' => ['Open the kitchen screen on the station tablet and sign in with your PIN.', 'Pick your station at the top (Grill, Fry, Bar…). Each station sees only its own items.']],
+                    ['heading' => 'Working a ticket', 'steps' => ['New tickets appear on the left with a time. Tap Start when you begin, Done when the food is ready.', 'Tickets turn amber after 5 minutes and red after 10: do those first.', 'Tap All day to see how many of each dish are still to be made across all tickets.', 'Made a mistake? Tap a done ticket under Recent and tap Recall.']],
+                    ['heading' => 'Expo (pass)', 'steps' => ['The expo screen shows every order and whether all its stations are done.', 'Tap Served when the plates have gone out.']],
+                ],
+                'warn' => 'A ticket marked TRAINING is practice. Do not cook it.',
+            ],
+            'rider' => [
+                'for' => 'Riders',
+                'title' => 'Deliveries',
+                'topics' => [
+                    ['heading' => 'Your deliveries', 'steps' => ['Sign in on any till or phone with your PIN; you land on My deliveries.', 'Tap an order to see the address, phone and notes. Tap Out for delivery when you leave.', 'Tap Delivered when the customer has the food, or Failed with the reason if nobody was there.', 'Collect cash as shown on the order and hand it to the cashier when you are back.']],
+                ],
+            ],
+            'manager' => [
+                'for' => 'Managers',
+                'title' => 'Running the day',
+                'topics' => [
+                    ['heading' => 'Approvals', 'steps' => ['Voids, refunds, big discounts, waived service charge and cash-ups that are short need your PIN on the till. Type it on the keypad when asked.', 'Check Reports → Voids, discounts & refunds in the back office every day.']],
+                    ['heading' => 'Closing the day', 'steps' => ['Make sure every open order is paid or cancelled and every till is cashed up (Cash screen shows what is left).', 'On the Cash screen tap Close day (Z report) and enter your PIN. The Z report prints.', 'If something comes in late, Reopen day from the same screen with your PIN and a reason.']],
+                    ['heading' => 'Stock', 'steps' => ['Receive deliveries under Inventory → Purchases → Receive goods.', 'Do a stock take at least weekly: Inventory → Stock takes → Start, count on a phone or print the sheet, then Complete.', 'Watch the Low stock card on the dashboard.']],
+                    ['heading' => 'Staff', 'steps' => ['Add staff and PINs under Staff. Build next week under Staff → Roster and print it.', 'Check Timesheets on payday; correct a missed clock-out with a reason.']],
+                    ['heading' => 'Training new staff', 'steps' => ['On the till home screen tap Start training mode and enter your PIN. Everything taken on that till is marked TRAINING and does not count.', 'Tap End training mode before real trade starts on that till.']],
+                    ['heading' => 'Backups and help', 'steps' => ['Once a week download a backup from Settings → Backups or run the USB backup on the server.', 'Keep the server plugged in with the network cable. If a screen says it cannot connect, check the Wi-Fi first.']],
+                ],
+            ],
+        ],
+    ],
 ];

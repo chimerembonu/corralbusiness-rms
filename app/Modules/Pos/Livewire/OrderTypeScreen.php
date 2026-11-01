@@ -10,6 +10,10 @@ use App\Modules\Orders\Services\DeliveryService;
 use App\Modules\Orders\Services\OrderService;
 use App\Modules\Orders\Services\TableService;
 use App\Modules\Orders\Support\TillSettings;
+use App\Modules\Pos\Concerns\AsksForManagerPin;
+use App\Modules\Pos\Services\TrainingMode;
+use App\Modules\Staff\Enums\Permission;
+use App\Modules\Staff\Models\User;
 use App\Support\Money\Money;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -19,6 +23,8 @@ use RuntimeException;
 #[Layout('pos::layouts.app', ['title' => 'New order'])]
 class OrderTypeScreen extends Component
 {
+    use AsksForManagerPin;
+
     public string $mode = 'home'; // home | tables
 
     public ?string $sectionId = null;
@@ -111,6 +117,20 @@ class OrderTypeScreen extends Component
         }
 
         $this->redirectRoute('pos.order', $order);
+    }
+
+    /** Switch this device in or out of training mode (manager PIN). */
+    public function toggleTraining(TrainingMode $training): void
+    {
+        $on = ! $training->isOn();
+        $this->askManager(Permission::TrainingMode, 'trainingApproved', [$on], $on ? __('pos::pos.training.turn_on') : __('pos::pos.training.turn_off'));
+    }
+
+    public function trainingApproved(User $manager, bool $on): void
+    {
+        app(TrainingMode::class)->set($on);
+        activity('training_mode')->causedBy(auth()->user())->withProperties(['on' => $on, 'approved_by' => $manager->id])->log($on ? 'training_on' : 'training_off');
+        $this->redirectRoute('pos.home');
     }
 
     public function startTakeaway(OrderService $orders): void

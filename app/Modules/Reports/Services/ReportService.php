@@ -28,7 +28,7 @@ class ReportService
     /** @return Collection<int, Order> paid orders (and refunded ones, which were paid first) in the range */
     public function paidOrders(string $from, string $to, ?string $branchId = null): Collection
     {
-        return Order::query()->where('branch_id', $branchId ?? $this->context->branchId())
+        return Order::query()->real()->where('branch_id', $branchId ?? $this->context->branchId())
             ->whereDate('business_date', '>=', $from)->whereDate('business_date', '<=', $to)
             ->whereIn('status', [OrderStatus::Paid->value, OrderStatus::Refunded->value])
             ->with('table')->get();
@@ -42,8 +42,8 @@ class ReportService
         $paid = $orders->where('status', OrderStatus::Paid);
         $sum = fn (BaseCollection $rows, string $field) => (int) $rows->sum(fn (Order $o) => $o->{$field}->amount);
 
-        $voids = Order::query()->where('branch_id', $branchId)->whereDate('business_date', '>=', $from)->whereDate('business_date', '<=', $to)->where('status', OrderStatus::Void->value)->get();
-        $refunds = Payment::query()->where('branch_id', $branchId)->where('status', PaymentStatus::Refunded->value)
+        $voids = Order::query()->real()->where('branch_id', $branchId)->whereDate('business_date', '>=', $from)->whereDate('business_date', '<=', $to)->where('status', OrderStatus::Void->value)->get();
+        $refunds = Payment::query()->real()->where('branch_id', $branchId)->where('status', PaymentStatus::Refunded->value)
             ->whereBetween('refunded_at', [$from.' 00:00:00', $to.' 23:59:59'])->get();
         $days = max(1, (int) CarbonImmutable::parse($from)->diffInDays(CarbonImmutable::parse($to)) + 1);
 
@@ -162,7 +162,7 @@ class ReportService
     public function byPaymentMethod(string $from, string $to, ?string $branchId = null): array
     {
         $branchId ??= $this->context->branchId();
-        $payments = Payment::query()->where('branch_id', $branchId)->whereBetween('received_at', [$from.' 00:00:00', $to.' 23:59:59'])->get();
+        $payments = Payment::query()->real()->where('branch_id', $branchId)->whereBetween('received_at', [$from.' 00:00:00', $to.' 23:59:59'])->get();
 
         return $payments->groupBy(fn (Payment $p) => $p->method->value.($p->provider ? ':'.$p->provider->value : ''))->map(fn (BaseCollection $own, string $key) => [
             'method' => $key,
@@ -191,13 +191,13 @@ class ReportService
     public function voidsAndDiscounts(string $from, string $to, ?string $branchId = null): array
     {
         $branchId ??= $this->context->branchId();
-        $inRange = fn ($q) => $q->where('branch_id', $branchId)->whereDate('business_date', '>=', $from)->whereDate('business_date', '<=', $to);
+        $inRange = fn ($q) => $q->real()->where('branch_id', $branchId)->whereDate('business_date', '>=', $from)->whereDate('business_date', '<=', $to);
 
         $voidedOrders = Order::query()->tap($inRange)->where('status', OrderStatus::Void->value)->with(['voidedBy', 'openedBy'])->orderBy('voided_at')->get();
         $orderIds = Order::query()->tap($inRange)->pluck('id');
         $voidedLines = OrderItem::query()->withoutGlobalScopes()->whereIn('order_id', $orderIds)->where('status', OrderItemStatus::Voided->value)->with(['order', 'voidedBy'])->orderBy('voided_at')->get();
         $discounted = Order::query()->tap($inRange)->whereIn('status', [OrderStatus::Paid->value, OrderStatus::Refunded->value])->where('discount_total', '>', 0)->with(['discountApprovedBy', 'openedBy'])->orderBy('paid_at')->get();
-        $refunds = Payment::query()->where('branch_id', $branchId)->where('status', PaymentStatus::Refunded->value)
+        $refunds = Payment::query()->real()->where('branch_id', $branchId)->where('status', PaymentStatus::Refunded->value)
             ->whereBetween('refunded_at', [$from.' 00:00:00', $to.' 23:59:59'])->with(['order', 'refundedBy'])->orderBy('refunded_at')->get();
 
         return [

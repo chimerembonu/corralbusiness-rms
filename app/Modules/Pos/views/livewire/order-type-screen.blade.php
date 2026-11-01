@@ -93,4 +93,10 @@
             </div>
         </div>
     @endif
+    @can(\App\Modules\Staff\Enums\Permission::TrainingMode->value)
+        <div class="flex justify-end">
+            <button type="button" wire:click="toggleTraining" class="h-11 rounded-xl px-4 text-sm font-semibold {{ app(\App\Modules\Pos\Services\TrainingMode::class)->isOn() ? 'bg-amber-400 text-slate-950 hover:bg-amber-300' : 'bg-slate-800 text-slate-400 hover:bg-slate-700' }}">{{ app(\App\Modules\Pos\Services\TrainingMode::class)->isOn() ? __('pos::pos.training.turn_off') : __('pos::pos.training.turn_on') }}</button>
+        </div>
+    @endcan
+    @include('pos::partials.manager-pin')
 </div>

@@ -128,7 +128,7 @@ class DayCloseService
         $branchId ??= $this->context->branchId();
         $blockers = [];
 
-        $openOrders = Order::query()->where('branch_id', $branchId)->forBusinessDate($date)->active()->count();
+        $openOrders = Order::query()->real()->where('branch_id', $branchId)->forBusinessDate($date)->active()->count();
         if ($openOrders > 0) {
             $blockers[] = trans_choice('payments::payments.day.blockers.open_orders', $openOrders, ['count' => $openOrders]);
         }

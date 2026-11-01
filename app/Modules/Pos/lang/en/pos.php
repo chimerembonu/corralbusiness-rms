@@ -3,6 +3,14 @@
 return [
     'title' => 'Till',
     'nav' => ['new_order' => 'New order', 'today' => "Today's sales", 'orders' => 'Orders', 'lock' => 'Lock', 'back' => 'Back', 'admin' => 'Back office', 'cash' => 'Cash'],
+    'training' => [
+        'banner' => 'Training mode – orders on this till do not count',
+        'badge' => 'Training',
+        'receipt' => 'TRAINING – NOT A RECEIPT',
+        'turn_on' => 'Start training mode on this till',
+        'turn_off' => 'End training mode',
+        'ticket' => 'TRAINING – DO NOT COOK',
+    ],
     'tills' => [
         'till' => 'Till',
         'tills' => 'Tills',

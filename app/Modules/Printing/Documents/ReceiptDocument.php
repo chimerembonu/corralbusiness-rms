@@ -36,6 +36,9 @@ final class ReceiptDocument
             $doc->text($line);
         }
         $footer = $settings->footer;
+        if ($order->is_training) {
+            $doc->center()->bold()->big()->text('*** '.__('pos::pos.training.receipt').' ***')->normal();
+        }
         if ($reprint) {
             $doc->bold()->text('*** '.__('pos::pos.receipt.reprint').' ***')->bold(false);
         }

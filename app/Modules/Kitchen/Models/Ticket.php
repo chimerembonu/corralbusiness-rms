@@ -13,7 +13,7 @@ class Ticket extends BusinessModel
 {
     protected $table = 'kitchen_tickets';
 
-    protected $fillable = ['branch_id', 'order_id', 'station_id', 'order_number', 'order_type', 'table_name', 'server_name', 'status', 'notes', 'sent_at'];
+    protected $fillable = ['branch_id', 'order_id', 'station_id', 'order_number', 'order_type', 'table_name', 'server_name', 'status', 'is_training', 'notes', 'sent_at'];
 
     public function station(): BelongsTo
     {
@@ -25,6 +25,7 @@ class Ticket extends BusinessModel
     protected function casts(): array
     {
         return [
+            'is_training' => 'boolean',
             'order_number' => 'integer',
             'status' => TicketStatus::class,
             'sent_at' => 'datetime',

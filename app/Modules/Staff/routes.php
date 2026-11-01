@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Pos\Http\EnsurePosUser;
+use App\Modules\Staff\Http\CheatSheetController;
 use App\Modules\Staff\Http\PosClockController;
 use App\Modules\Staff\Http\RosterPrintController;
 use App\Modules\Staff\Livewire\ClockScreen;
@@ -21,3 +22,6 @@ Route::post('pos/clock', PosClockController::class)->middleware(EnsurePosUser::c
 
 // Printable week roster for managers (opens from Back office → Roster → Print).
 Route::get('staff/roster/print', RosterPrintController::class)->middleware(['auth', SetTenantFromUser::class])->name('staff.roster.print');
+
+// Staff cheat-sheet (one page per role, with this restaurant's real addresses). Add ?pdf=1 for a PDF.
+Route::get('staff/cheat-sheet', CheatSheetController::class)->middleware(['auth', SetTenantFromUser::class])->name('staff.cheat-sheet');

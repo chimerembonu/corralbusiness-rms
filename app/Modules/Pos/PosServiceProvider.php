@@ -2,6 +2,7 @@
 
 namespace App\Modules\Pos;
 
+use App\Modules\Pos\Services\TrainingMode;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 
 /**
@@ -23,6 +24,9 @@ class PosServiceProvider extends ServiceProvider
     public function register(): void
     {
         parent::register();
+
+        // One answer per request: the till that opens an order and the service that marks it must agree.
+        $this->app->singleton(TrainingMode::class);
     }
 
     public function boot(): void

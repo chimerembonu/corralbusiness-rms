@@ -153,7 +153,12 @@ Instead of typing everything, fill in a spreadsheet. In the back office open **S
 
 From the server's terminal the same works with `./scripts/rms rms:import menu menu.xlsx --dry-run` then without `--dry-run`.
 
-## 9. Tills and screens
+## 9. Training new staff and the cheat-sheet
+
+- **Training mode**: on the till home screen a manager taps **Start training mode** and enters their PIN. From then on, every order on that till is marked TRAINING on screen, on receipts and on kitchen tickets, and counts in no report, cash-up or stock. Other tills keep trading normally. Tap **End training mode** (manager PIN) before real service on that till.
+- **Cheat-sheet**: Back office → Staff → **Cheat-sheet (PDF)** gives one page per role (waiters and cashiers, kitchen, riders, managers) with this restaurant's own addresses and till names. Print it and pin it up by the tills and in the kitchen.
+
+## 10. Tills and screens
 
 - Any browser works: Chrome or Chromium on Windows, Android tablets, iPads, phones.
 - Till: `http://<server>/pos` · Kitchen: `http://<server>/kitchen` · Clock in: `http://<server>/clock` · Back office: `http://<server>/admin`.

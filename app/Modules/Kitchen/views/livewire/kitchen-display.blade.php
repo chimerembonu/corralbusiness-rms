@@ -56,7 +56,7 @@
                             <div class="flex items-center gap-2">
                                 <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-950/20 text-sm font-bold">{{ $index + 1 }}</span>
                                 <span class="text-lg font-black">#{{ $ticket->displayNumber() }}</span>
-                                <span class="text-sm font-semibold">{{ $ticket->table_name ? __('pos::pos.order.table').' '.$ticket->table_name : \App\Modules\Orders\Enums\OrderType::from($ticket->order_type)->label() }}</span>
+                                <span class="text-sm font-semibold">{{ $ticket->table_name ? __('pos::pos.order.table').' '.$ticket->table_name : \App\Modules\Orders\Enums\OrderType::from($ticket->order_type)->label() }}@if ($ticket->is_training) <span class="rounded bg-amber-400 px-1.5 py-0.5 text-[10px] font-black uppercase text-slate-950">{{ __('pos::pos.training.badge') }}</span>@endif</span>
                                 @if ($station === null && $ticket->station)<span class="rounded-full bg-slate-950/25 px-2 text-xs font-bold uppercase">{{ $ticket->station->name }}</span>@endif
                             </div>
                             <span class="font-mono text-lg font-bold tabular-nums" x-text="age({{ $ticket->sent_at->getTimestampMs() }})">{{ gmdate('i:s', $ticket->ageSeconds()) }}</span>

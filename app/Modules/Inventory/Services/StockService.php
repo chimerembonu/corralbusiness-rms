@@ -140,6 +140,9 @@ class StockService
      */
     public function deductForSale(Order $order, BaseCollection $lines, ?User $by = null): int
     {
+        if ($order->is_training) {
+            return 0; // practice orders never touch stock
+        }
         $count = 0;
         foreach ($lines as $line) {
             $item = $line->item_id ? Item::query()->find($line->item_id) : null;
@@ -156,7 +159,7 @@ class StockService
     /** A sent line was voided (or its order cancelled): the stock comes back. */
     public function restockLine(Order $order, OrderItem $line, ?User $by = null): ?StockMovement
     {
-        if ($line->sent_at === null) {
+        if ($line->sent_at === null || $order->is_training) {
             return null; // never deducted
         }
         $item = $line->item_id ? Item::query()->find($line->item_id) : null;

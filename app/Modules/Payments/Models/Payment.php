@@ -11,13 +11,14 @@ use App\Modules\Staff\Models\User;
 use App\Support\Audit\Auditable;
 use App\Support\Models\BusinessModel;
 use App\Support\Money\MoneyCast;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Payment extends BusinessModel
 {
     use Auditable;
 
-    protected $fillable = ['branch_id', 'order_id', 'customer_id', 'cashier_session_id', 'method', 'provider', 'amount', 'tendered', 'change_given', 'tip', 'reference', 'status', 'received_by_id', 'received_at', 'notes'];
+    protected $fillable = ['branch_id', 'order_id', 'customer_id', 'cashier_session_id', 'is_training', 'method', 'provider', 'amount', 'tendered', 'change_given', 'tip', 'reference', 'status', 'received_by_id', 'received_at', 'notes'];
 
     protected $attributes = ['change_given' => 0, 'tip' => 0, 'status' => 'completed'];
 
@@ -32,8 +33,14 @@ class Payment extends BusinessModel
             'provider' => MomoProvider::class,
             'refunded_at' => 'datetime',
             'status' => PaymentStatus::class,
+            'is_training' => 'boolean',
             'received_at' => 'datetime',
         ];
+    }
+
+    public function scopeReal(Builder $query): Builder
+    {
+        return $query->where($this->qualifyColumn('is_training'), false);
     }
 
     public function order(): BelongsTo

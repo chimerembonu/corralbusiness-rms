@@ -91,6 +91,7 @@ class PaymentService
             $payment = new Payment([
                 'order_id' => $order->id,
                 'cashier_session_id' => $session?->id,
+                'is_training' => (bool) $order->is_training,
                 'method' => $method,
                 'provider' => $method === PaymentMethod::MobileMoney ? $provider : null,
                 'amount' => $amount,

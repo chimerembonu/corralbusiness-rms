@@ -221,9 +221,9 @@ class CashService
     public function recalculate(CashierSession $session): CashierSession
     {
         // Every cash payment taken in the session went into the drawer, even if refunded later (refunds count separately).
-        $sales = Payment::query()->withoutGlobalScopes()->where('cashier_session_id', $session->id)
+        $sales = Payment::query()->withoutGlobalScopes()->where('is_training', false)->where('cashier_session_id', $session->id)
             ->where('method', PaymentMethod::Cash->value)->get();
-        $refunds = Payment::query()->withoutGlobalScopes()->where('refund_session_id', $session->id)
+        $refunds = Payment::query()->withoutGlobalScopes()->where('is_training', false)->where('refund_session_id', $session->id)
             ->where('method', PaymentMethod::Cash->value)->where('status', PaymentStatus::Refunded->value)->get();
         $movements = CashMovement::query()->withoutGlobalScopes()->where('cashier_session_id', $session->id)->get();
 
@@ -246,7 +246,7 @@ class CashService
     /** @return array<int, array{method: string, count: int, total: int, tips: int}> every payment method taken in the session */
     public function totalsByMethod(CashierSession $session): array
     {
-        return Payment::query()->withoutGlobalScopes()->where('cashier_session_id', $session->id)->get()
+        return Payment::query()->withoutGlobalScopes()->where('is_training', false)->where('cashier_session_id', $session->id)->get()
             ->groupBy(fn (Payment $p) => $p->method->value)
             ->map(fn ($payments, string $method) => [
                 'method' => $method,

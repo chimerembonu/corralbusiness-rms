@@ -15,6 +15,7 @@ enum Permission: string
     case OrdersPriceEdit = 'orders.price_edit'; // manager PIN override
     case DayReopen = 'day.reopen';              // manager PIN override
     case DayClose = 'day.close';
+    case TrainingMode = 'pos.training';        // switch a till into training mode (orders don't count)
     case PaymentsTake = 'payments.take';
     case CashDrawer = 'payments.cash_drawer';   // pay-in / pay-out / open drawer
     case CashVariance = 'payments.cash_variance'; // manager PIN: accept a cash-up that is short/over beyond the tolerance

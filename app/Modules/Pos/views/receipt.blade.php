@@ -43,6 +43,7 @@
         @if ($settings->taxNumber)<div class="center muted">{{ __('pos::pos.receipt.tax_number') }}: {{ $settings->taxNumber }}</div>@endif
         @foreach ($settings->headerLines() as $line)<div class="center muted">{{ $line }}</div>@endforeach
         <hr>
+        @if ($order->is_training)<div class="void">{{ __('pos::pos.training.receipt') }}</div>@endif
         @if ($order->status === \App\Modules\Orders\Enums\OrderStatus::Void)<div class="void">{{ __('pos::pos.receipt.void') }}</div>@endif
         @if ($order->status === \App\Modules\Orders\Enums\OrderStatus::Refunded)<div class="void">{{ __('pos::pos.receipt.refunded') }}</div>@endif
         @if ($reprint ?? false)<div class="center bold">{{ __('pos::pos.receipt.reprint_banner') }}</div>@endif

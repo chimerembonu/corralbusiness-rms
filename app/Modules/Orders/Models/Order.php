@@ -23,7 +23,7 @@ class Order extends BusinessModel
     use Auditable;
 
     protected $fillable = [
-        'branch_id', 'business_date', 'number', 'type', 'status', 'table_id', 'covers', 'customer_name', 'customer_phone', 'customer_id',
+        'branch_id', 'business_date', 'number', 'type', 'status', 'is_training', 'table_id', 'covers', 'customer_name', 'customer_phone', 'customer_id',
         'opened_by_id', 'notes', 'discount_type', 'discount_value', 'discount_reason', 'prices_include_tax', 'opened_at',
         'promo_code_id', 'promo_code', 'service_charge_bp', 'service_charge_waived',
         'delivery_address', 'delivery_notes', 'delivery_fee', 'delivery_status', 'rider_id',
@@ -41,6 +41,7 @@ class Order extends BusinessModel
     {
         return [
             'business_date' => 'date',
+            'is_training' => 'boolean',
             'number' => 'integer',
             'type' => OrderType::class,
             'status' => OrderStatus::class,
@@ -173,6 +174,12 @@ class Order extends BusinessModel
             : money($this->discount_value);
 
         return $this->promo_code ? $this->promo_code.' ('.$amount.')' : $amount;
+    }
+
+    /** Real trade only: training orders are left out of reports and cash. */
+    public function scopeReal(Builder $query): Builder
+    {
+        return $query->where($this->qualifyColumn('is_training'), false);
     }
 
     public function scopeActive(Builder $query): Builder

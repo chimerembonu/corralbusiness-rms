@@ -45,6 +45,7 @@ class KitchenService
                 'order_type' => $order->type->value,
                 'table_name' => $order->table?->name,
                 'server_name' => $order->openedBy?->name,
+                'is_training' => (bool) $order->is_training,
                 'notes' => $order->isDelivery()
                     ? trim(($order->customer_name ? $order->customer_name.' · ' : '').$order->delivery_address.($order->notes ? ' · '.$order->notes : ''))
                     : $order->notes,

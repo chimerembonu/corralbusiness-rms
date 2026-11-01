@@ -40,6 +40,7 @@ use App\Modules\Orders\Models\OrderItem;
 use App\Modules\Orders\Models\PromoCode;
 use App\Modules\Orders\Support\TillSettings;
 use App\Modules\Payments\Services\DayCloseService;
+use App\Modules\Pos\Services\TrainingMode;
 use App\Modules\Settings\Services\CounterService;
 use App\Modules\Settings\Services\TaxService;
 use App\Modules\Staff\Enums\Permission;
@@ -81,6 +82,7 @@ class OrderService
                 'opened_by_id' => $by?->id,
                 'opened_at' => now(),
             ]);
+            $order->is_training = app(TrainingMode::class)->isOn();
             $order->branch_id = $table?->branch_id ?? $this->context->branchId();
             $order->service_charge_bp = $this->serviceChargeRateFor($type, $order->branch_id);
             if ($type === OrderType::Delivery) {

@@ -13,6 +13,9 @@ final class TicketDocument
     {
         $ticket->loadMissing(['items', 'station']);
         $doc = PrintDocument::make(__('printing::printing.kitchen_title', ['number' => $ticket->displayNumber()]));
+        if ($ticket->is_training) {
+            $doc->center()->bold()->big()->text('*** '.__('pos::pos.training.ticket').' ***')->normal();
+        }
         if ($ticket->station) {
             $doc->center()->bold()->text('[ '.strtoupper($ticket->station->name).' ]')->normal();
         }

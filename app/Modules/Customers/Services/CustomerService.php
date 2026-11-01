@@ -136,7 +136,7 @@ class CustomerService
     /** Recount orders, spend and last visit from paid orders (called when an order is paid). */
     public function syncStats(Customer $customer): Customer
     {
-        $paid = Order::query()->withoutGlobalScopes()->where('customer_id', $customer->id)->where('status', OrderStatus::Paid->value);
+        $paid = Order::query()->withoutGlobalScopes()->where('is_training', false)->where('customer_id', $customer->id)->where('status', OrderStatus::Paid->value);
 
         $customer->forceFill([
             'orders_count' => (clone $paid)->count(),
@@ -150,7 +150,7 @@ class CustomerService
     /** Called when an order is paid: stats, then loyalty points. */
     public function recordPaidOrder(Order $order): void
     {
-        if (! $order->customer_id) {
+        if (! $order->customer_id || $order->is_training) {
             return;
         }
         $customer = Customer::query()->withoutGlobalScopes()->find($order->customer_id);

@@ -23,11 +23,11 @@ class StaffSalesService
     {
         $branchId ??= $this->context->branchId();
 
-        $orders = Order::query()->where('branch_id', $branchId)->whereDate('business_date', '>=', $from)->whereDate('business_date', '<=', $to)
+        $orders = Order::query()->real()->where('branch_id', $branchId)->whereDate('business_date', '>=', $from)->whereDate('business_date', '<=', $to)
             ->whereIn('status', [OrderStatus::Paid->value, OrderStatus::Void->value, OrderStatus::Refunded->value])->get()
             ->groupBy('opened_by_id');
 
-        $payments = Payment::query()->where('branch_id', $branchId)
+        $payments = Payment::query()->real()->where('branch_id', $branchId)
             ->whereBetween('received_at', [$from.' 00:00:00', $to.' 23:59:59'])
             ->where('status', PaymentStatus::Completed->value)->get()
             ->groupBy('received_by_id');
