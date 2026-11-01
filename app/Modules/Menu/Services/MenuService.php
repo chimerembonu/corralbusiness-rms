@@ -12,6 +12,7 @@ use App\Support\Money\Money;
 use App\Support\Tenancy\TenantContext;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Cache;
 
 /** Menu reads used by the POS and online ordering, plus 86-ing. */
 class MenuService
@@ -73,10 +74,26 @@ class MenuService
         return true;
     }
 
-    /** Categories with their orderable items for the POS grid. */
+    /**
+     * Categories with their orderable items for the POS grid. Cached per branch for a minute
+     * (every menu change clears it, see MenuCacheBuster), so a till render costs one query, not ~60.
+     */
     public function catalogFor(Branch|string|null $branch = null, ?CarbonInterface $at = null): Collection
     {
-        $at ??= now();
+        $branchId = $this->branchId($branch);
+        if ($at !== null) {
+            return $this->buildCatalog($branchId, $at); // an explicit moment is never cached
+        }
+
+        return Cache::remember(self::catalogCacheKey($branchId), now()->addMinute(), fn () => $this->buildCatalog($branchId, now()));
+    }
+
+    private function buildCatalog(?string $branchId, CarbonInterface $at): Collection
+    {
+        // Items hidden at this branch, fetched once instead of once per item.
+        $hidden = $branchId
+            ? BranchPrice::query()->where('branch_id', $branchId)->whereNull('variant_id')->where('is_available', false)->pluck('item_id')->flip()
+            : collect();
 
         return Category::query()
             ->active()
@@ -84,10 +101,30 @@ class MenuService
             ->with(['items' => fn ($q) => $q->active()->with(['variants', 'modifierGroups.modifiers'])])
             ->get()
             ->filter(fn (Category $c) => $c->availabilityRule()->isAvailableAt($at))
-            ->each(function (Category $category) use ($at, $branch) {
-                $category->setRelation('items', $category->items->filter(fn (Item $i) => $this->isOrderable($i, $at, $branch))->values());
+            ->each(function (Category $category) use ($at, $hidden) {
+                $category->setRelation('items', $category->items
+                    ->each(fn (Item $i) => $i->setRelation('category', $category))
+                    ->filter(fn (Item $i) => ! $i->is_sold_out && ! $hidden->has($i->id) && $i->availabilityRule()->isAvailableAt($at))
+                    ->values());
             })
             ->values();
+    }
+
+    public static function catalogCacheKey(?string $branchId): string
+    {
+        $tenantId = app(TenantContext::class)->tenantId();
+        $version = Cache::get("menu.catalog.version.{$tenantId}", 1);
+
+        return "menu.catalog.{$tenantId}.".($branchId ?? 'all').".v{$version}";
+    }
+
+    /** Forget every cached catalog of the current restaurant (called whenever the menu changes). */
+    public static function forgetCatalog(): void
+    {
+        $tenantId = app(TenantContext::class)->tenantId();
+        if ($tenantId) {
+            Cache::forever("menu.catalog.version.{$tenantId}", (int) Cache::get("menu.catalog.version.{$tenantId}", 1) + 1);
+        }
     }
 
     /** "86" an item (sold out) or put it back on sale. */

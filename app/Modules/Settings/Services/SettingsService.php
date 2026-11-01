@@ -52,6 +52,9 @@ class SettingsService
         $this->forgetCache($branchId);
     }
 
+    /** Per-request copy (shared by every instance), so a till render reads the cache table once instead of on every setting. */
+    private static array $memo = [];
+
     /** @return array<string, mixed> merged tenant + branch values */
     public function all(?string $branchId = null): array
     {
@@ -61,7 +64,7 @@ class SettingsService
             return [];
         }
 
-        return Cache::remember($this->cacheKey($tenantId, $branchId), now()->addHour(), function () use ($branchId) {
+        return self::$memo[$this->cacheKey($tenantId, $branchId)] ??= Cache::remember($this->cacheKey($tenantId, $branchId), now()->addHour(), function () use ($branchId) {
             $rows = Setting::query()
                 ->forBranchOrTenant($branchId)
                 ->orderByRaw('branch_id is null desc') // tenant rows first so branch rows overwrite
@@ -99,6 +102,7 @@ class SettingsService
 
     public function forgetCache(?string $branchId = null): void
     {
+        self::$memo = [];
         $tenantId = $this->context->tenantId();
         if ($tenantId === null) {
             return;

@@ -136,7 +136,13 @@ A backup is one zip file with the whole database plus uploaded logos and picture
 
 The back office can restore too (Settings → Backups → Restore, owner only, type RESTORE), and can take an uploaded backup file.
 
-## 7. Tills and screens
+## 7. Checking speed (load test)
+
+`./scripts/rms rms:load-test --orders=120` simulates a lunch service on the demo restaurant (6 tills taking orders, kitchen bumping, screens loading) and prints how long each step takes and how many database queries it needs. Nothing is kept afterwards. The targets are: adding an item under 200 ms, the till screen under 1 s, the kitchen screen under 2 s. Run it on the mini PC after installing; if a step is far above its target, send the table to the developer.
+
+For a true many-users test from another computer on the Wi-Fi, install `apache2-utils` and run, for example, `ab -n 500 -c 30 http://192.168.8.10/pos/login` (30 tills at once, 500 page loads); the "Time per request" line should stay well under one second.
+
+## 8. Tills and screens
 
 - Any browser works: Chrome or Chromium on Windows, Android tablets, iPads, phones.
 - Till: `http://<server>/pos` · Kitchen: `http://<server>/kitchen` · Clock in: `http://<server>/clock` · Back office: `http://<server>/admin`.
