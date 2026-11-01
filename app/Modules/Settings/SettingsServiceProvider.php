@@ -3,6 +3,7 @@
 namespace App\Modules\Settings;
 
 use App\Modules\Settings\Console\BackupCommand;
+use App\Modules\Settings\Console\ImportCommand;
 use App\Modules\Settings\Console\ListBackupsCommand;
 use App\Modules\Settings\Console\RestoreCommand;
 use App\Modules\Settings\Console\SetupCommand;
@@ -33,6 +34,6 @@ class SettingsServiceProvider extends ServiceProvider
     {
         parent::boot();
 
-        $this->commands([SetupCommand::class, BackupCommand::class, RestoreCommand::class, ListBackupsCommand::class]);
+        $this->commands([SetupCommand::class, BackupCommand::class, RestoreCommand::class, ListBackupsCommand::class, ImportCommand::class]);
     }
 }

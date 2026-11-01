@@ -142,7 +142,18 @@ The back office can restore too (Settings → Backups → Restore, owner only, t
 
 For a true many-users test from another computer on the Wi-Fi, install `apache2-utils` and run, for example, `ab -n 500 -c 30 http://192.168.8.10/pos/login` (30 tills at once, 500 page loads); the "Time per request" line should stay well under one second.
 
-## 8. Tills and screens
+## 8. Loading the real menu, ingredients and staff
+
+Instead of typing everything, fill in a spreadsheet. In the back office open **Settings → Import data**:
+
+1. Choose what to import (Menu items, Ingredients or Staff) and tap **Download template**. It opens in Excel, Numbers or Google Sheets and has example rows: replace them with yours and keep the first row as it is.
+2. Menu: one row per item; an item with sizes gets one row per size with the size name and size price. Put "yes" in Count stock for bottled drinks.
+3. Save as .xlsx (or .csv), upload it on the same page and tap **Check (preview)**. Each row shows New, Update or Error with the reason.
+4. Fix any errors in the spreadsheet and upload again, then tap **Import now**. Importing the same file twice updates rows instead of duplicating them.
+
+From the server's terminal the same works with `./scripts/rms rms:import menu menu.xlsx --dry-run` then without `--dry-run`.
+
+## 9. Tills and screens
 
 - Any browser works: Chrome or Chromium on Windows, Android tablets, iPads, phones.
 - Till: `http://<server>/pos` · Kitchen: `http://<server>/kitchen` · Clock in: `http://<server>/clock` · Back office: `http://<server>/admin`.
