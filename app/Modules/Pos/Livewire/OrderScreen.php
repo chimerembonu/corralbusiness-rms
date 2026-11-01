@@ -6,13 +6,20 @@ use App\Modules\Menu\Models\Item;
 use App\Modules\Menu\Models\ItemVariant;
 use App\Modules\Menu\Models\ModifierGroup;
 use App\Modules\Menu\Services\MenuService;
+use App\Modules\Orders\Enums\DiscountType;
 use App\Modules\Orders\Enums\OrderStatus;
+use App\Modules\Orders\Enums\OrderType;
 use App\Modules\Orders\Models\DiningTable;
 use App\Modules\Orders\Models\Order;
 use App\Modules\Orders\Models\OrderItem;
 use App\Modules\Orders\Services\OrderService;
 use App\Modules\Orders\Services\TableService;
+use App\Modules\Orders\Support\TillSettings;
+use App\Modules\Pos\Concerns\AsksForManagerPin;
+use App\Modules\Staff\Enums\Permission;
 use App\Modules\Staff\Exceptions\ManagerPinRequiredException;
+use App\Modules\Staff\Models\User;
+use App\Support\Money\Money;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -23,6 +30,8 @@ use RuntimeException;
 #[Layout('pos::layouts.app', ['title' => 'Order'])]
 class OrderScreen extends Component
 {
+    use AsksForManagerPin;
+
     #[Locked]
     public string $orderId;
 
@@ -46,6 +55,24 @@ class OrderScreen extends Component
     public ?string $sheetSectionId = null;
 
     public int $covers = 1;
+
+    /** Which modal is open: null | actions | void | discount | promo | note | split | hold. */
+    public ?string $modal = null;
+
+    /** Void modal: ['line_id' => ?string, 'reason' => string] (line_id null = whole order). */
+    public array $void = ['line_id' => null, 'reason' => ''];
+
+    /** Discount modal: ['line_id' => ?string, 'type' => percent|fixed, 'value' => "10", 'reason' => string]. */
+    public array $discount = ['line_id' => null, 'type' => 'percent', 'value' => '', 'reason' => ''];
+
+    public string $promoCode = '';
+
+    public string $orderNote = '';
+
+    /** Split modal: ['mode' => items|seats|even, 'lines' => [id…], 'seats' => [n…], 'ways' => 2]. */
+    public array $split = ['mode' => 'items', 'lines' => [], 'seats' => [], 'ways' => 2];
+
+    public string $holdName = '';
 
     public function mount(Order $order): void
     {
@@ -299,6 +326,271 @@ class OrderScreen extends Component
         return $this->tableSheet ? app(TableService::class)->floorPlan($this->order->branch_id) : collect();
     }
 
+    // ---- Modals ----------------------------------------------------------------
+
+    public function openModal(string $name): void
+    {
+        $this->error = null;
+        $this->notice = null;
+        $this->modal = $name;
+
+        if ($name === 'note') {
+            $this->orderNote = (string) $this->order->notes;
+        }
+        if ($name === 'hold') {
+            $this->holdName = (string) $this->order->customer_name;
+        }
+        if ($name === 'split') {
+            $this->split = ['mode' => 'items', 'lines' => [], 'seats' => [], 'ways' => 2];
+        }
+    }
+
+    public function closeModal(): void
+    {
+        $this->modal = null;
+    }
+
+    #[Computed]
+    public function settings(): TillSettings
+    {
+        return app(TillSettings::class);
+    }
+
+    // ---- Lines: course, seat, void, discount ----------------------------------
+
+    /** Tap the course chip: none → 2 → 3 → none. */
+    public function cycleCourse(string $lineId): void
+    {
+        $this->run(function (OrderService $orders) use ($lineId) {
+            $line = $this->line($lineId);
+            $max = max(2, count($this->settings->courses($this->order->branch_id)));
+            $next = ($line->course ?? 1) + 1;
+            $orders->setCourse($this->order, $line, $next > $max ? null : $next, auth()->user());
+        });
+    }
+
+    /** Tap the seat chip: none → 1 → 2 … → covers → none. */
+    public function cycleSeat(string $lineId): void
+    {
+        $this->run(function (OrderService $orders) use ($lineId) {
+            $line = $this->line($lineId);
+            $next = ($line->seat ?? 0) + 1;
+            $orders->setSeat($this->order, $line, $next > max(1, $this->order->covers) ? null : $next, auth()->user());
+        });
+    }
+
+    public function fireCourse(int $course): void
+    {
+        $this->run(function (OrderService $orders) use ($course) {
+            $orders->fireCourse($this->order, $course, auth()->user());
+            $this->notice = __('pos::pos.order.course_fired', ['number' => $course]);
+        });
+    }
+
+    /** Open the void modal for a sent line (pending lines are simply removed). */
+    public function startVoid(?string $lineId = null): void
+    {
+        $this->void = ['line_id' => $lineId, 'reason' => ''];
+        $this->openModal('void');
+    }
+
+    public function chooseVoidReason(string $reason): void
+    {
+        $this->void['reason'] = $reason;
+    }
+
+    /** Reason chosen → ask a manager, then void. */
+    public function confirmVoid(): void
+    {
+        if (blank($this->void['reason'])) {
+            $this->error = __('orders::orders.errors.reason_required');
+
+            return;
+        }
+
+        $this->modal = null;
+        $title = $this->void['line_id']
+            ? __('pos::pos.approval.void_line', ['item' => $this->line($this->void['line_id'])->displayName()])
+            : __('pos::pos.approval.void_order', ['number' => $this->order->displayNumber()]);
+
+        $this->askManager(Permission::OrdersVoid, 'voidApproved', [$this->void['line_id'], $this->void['reason']], $title);
+    }
+
+    public function voidApproved(User $manager, ?string $lineId, string $reason): void
+    {
+        if ($lineId) {
+            $this->run(fn (OrderService $orders) => $orders->voidItem($this->order, $this->line($lineId), $reason, $manager, auth()->user()));
+
+            return;
+        }
+
+        try {
+            app(OrderService::class)->void($this->order, $reason, $manager);
+            $this->redirectRoute('pos.home');
+        } catch (RuntimeException $e) {
+            $this->error = $e->getMessage();
+        }
+    }
+
+    public function startDiscount(?string $lineId = null): void
+    {
+        $this->error = null;
+        $line = $lineId ? $this->line($lineId) : null;
+        $this->discount = [
+            'line_id' => $lineId,
+            'type' => ($line ? $line->item_discount_type : $this->order->discount_type)?->value ?? 'percent',
+            'value' => '',
+            'reason' => $line ? (string) $line->item_discount_reason : (string) ($this->order->promo_code ? '' : $this->order->discount_reason),
+        ];
+        $current = $line ? ($line->hasItemDiscount() ? $line->item_discount_value : 0) : ($this->order->promo_code ? 0 : $this->order->discount_value);
+        if ($current > 0) {
+            $this->discount['value'] = $this->discount['type'] === 'percent' ? rtrim(rtrim(number_format($current / 100, 2), '0'), '.') : Money::of($current)->toDecimal();
+        }
+        $this->openModal('discount');
+    }
+
+    public function setDiscountType(string $type): void
+    {
+        $this->discount['type'] = $type;
+        $this->discount['value'] = '';
+    }
+
+    public function setDiscountValue(string $value): void
+    {
+        $this->discount['value'] = $value;
+    }
+
+    public function chooseDiscountReason(string $reason): void
+    {
+        $this->discount['reason'] = $reason;
+    }
+
+    /** Apply; if the discount is above the threshold, the manager keypad opens and we retry with their approval. */
+    public function applyDiscount(): void
+    {
+        $value = $this->discountValueInUnits();
+        $args = [$this->discount['line_id'], $this->discount['type'], $value, $this->discount['reason']];
+
+        $this->withManagerFallback(
+            fn () => $this->discountApproved(null, ...$args),
+            Permission::OrdersDiscount, 'discountApproved', $args,
+            __('pos::pos.approval.discount', ['amount' => $this->discount['value'].($this->discount['type'] === 'percent' ? '%' : '')]),
+        );
+    }
+
+    public function discountApproved(?User $manager, ?string $lineId, string $type, int $value, string $reason): void
+    {
+        $this->error = null;
+        $kind = $value > 0 ? DiscountType::from($type) : null;
+
+        try {
+            $orders = app(OrderService::class);
+            if ($lineId) {
+                $orders->applyItemDiscount($this->order, $this->line($lineId), $kind, $value, $reason ?: null, auth()->user(), $manager);
+            } else {
+                $orders->applyDiscount($this->order, $kind, $value, $reason ?: null, auth()->user(), $manager);
+            }
+            $this->modal = null;
+            unset($this->order);
+        } catch (ManagerPinRequiredException $e) {
+            throw $e;
+        } catch (RuntimeException $e) {
+            $this->error = $e->getMessage();
+            if ($manager) {
+                $this->modal = 'discount';
+            }
+        }
+    }
+
+    public function removeDiscount(?string $lineId = null): void
+    {
+        $this->run(function (OrderService $orders) use ($lineId) {
+            if ($lineId) {
+                $orders->applyItemDiscount($this->order, $this->line($lineId), null, 0, null, auth()->user());
+            } else {
+                $orders->removeDiscount($this->order, auth()->user());
+            }
+            $this->modal = null;
+        });
+    }
+
+    public function applyPromoCode(): void
+    {
+        $this->run(function (OrderService $orders) {
+            $orders->applyPromoCode($this->order, $this->promoCode, auth()->user());
+            $this->promoCode = '';
+            $this->modal = null;
+            $this->notice = __('pos::pos.order.promo_applied');
+        });
+        if ($this->error) {
+            $this->modal = 'promo';
+        }
+    }
+
+    public function saveOrderNote(): void
+    {
+        $this->run(function (OrderService $orders) {
+            $orders->setNotes($this->order, trim($this->orderNote) ?: null, auth()->user());
+            $this->modal = null;
+        });
+    }
+
+    // ---- Service charge --------------------------------------------------------
+
+    public function toggleServiceCharge(): void
+    {
+        $waive = ! $this->order->service_charge_waived;
+        $this->modal = null;
+        $this->askManager(Permission::OrdersDiscount, 'serviceChargeApproved', [$waive], $waive ? __('pos::pos.approval.waive_service') : __('pos::pos.approval.restore_service'));
+    }
+
+    public function serviceChargeApproved(User $manager, bool $waive): void
+    {
+        $this->run(fn (OrderService $orders) => $orders->setServiceChargeWaived($this->order, $waive, $manager, auth()->user()));
+    }
+
+    // ---- Split bill -------------------------------------------------------------
+
+    public function setSplitMode(string $mode): void
+    {
+        $this->split['mode'] = $mode;
+    }
+
+    public function toggleSplitLine(string $lineId): void
+    {
+        $lines = $this->split['lines'];
+        $this->split['lines'] = in_array($lineId, $lines, true) ? array_values(array_diff($lines, [$lineId])) : [...$lines, $lineId];
+    }
+
+    public function toggleSplitSeat(int $seat): void
+    {
+        $seats = $this->split['seats'];
+        $this->split['seats'] = in_array($seat, $seats, true) ? array_values(array_diff($seats, [$seat])) : [...$seats, $seat];
+    }
+
+    public function setSplitWays(int $ways): void
+    {
+        $this->split['ways'] = max(2, min(12, $ways));
+    }
+
+    /** Move the chosen lines (or seats) to a new bill and open it. */
+    public function confirmSplit(): void
+    {
+        $this->run(function (OrderService $orders) {
+            $new = $this->split['mode'] === 'seats'
+                ? $orders->splitBySeats($this->order, array_map('intval', $this->split['seats']), auth()->user())
+                : $orders->split($this->order, $this->split['lines'], auth()->user());
+            $this->modal = null;
+            $this->redirectRoute('pos.order', $new);
+        });
+    }
+
+    /** Pay in N equal shares: handled on the payment screen. */
+    public function splitEvenly(): void
+    {
+        $this->redirectRoute('pos.pay', [$this->order, 'ways' => $this->split['ways']]);
+    }
+
     // ---- Order actions -------------------------------------------------------
 
     public function send(): void
@@ -320,21 +612,66 @@ class OrderScreen extends Component
         $this->redirectRoute('pos.pay', $this->order);
     }
 
+    /** Hold: takeaway orders ask for a name first so they can be found again. */
     public function hold(): void
     {
-        $this->redirectRoute('pos.home');
+        if ($this->order->type !== OrderType::DineIn && $this->modal !== 'hold') {
+            $this->openModal('hold');
+
+            return;
+        }
+
+        $this->confirmHold();
     }
 
+    public function confirmHold(): void
+    {
+        try {
+            app(OrderService::class)->hold($this->order, trim($this->holdName) ?: null, auth()->user());
+            $this->redirectRoute('pos.home');
+        } catch (RuntimeException $e) {
+            $this->error = $e->getMessage();
+        }
+    }
+
+    /** Cancel: an untouched order just closes; once sent to the kitchen it needs a reason and a manager. */
     public function cancelOrder(): void
     {
+        if ($this->order->status === OrderStatus::Sent) {
+            $this->startVoid(null);
+
+            return;
+        }
+
         try {
             app(OrderService::class)->void($this->order, __('pos::pos.order.cancelled_at_till'), auth()->user());
             $this->redirectRoute('pos.home');
         } catch (ManagerPinRequiredException $e) {
-            $this->error = $e->getMessage();
+            $this->startVoid(null);
         } catch (RuntimeException $e) {
             $this->error = $e->getMessage();
         }
+    }
+
+    /** Courses that were sent but not fired yet, for the "Fire course N" buttons. */
+    #[Computed]
+    public function heldCourses(): array
+    {
+        return $this->order->items
+            ->filter(fn (OrderItem $l) => $l->isSent() && ($l->course ?? 1) > 1 && $l->fired_at === null)
+            ->pluck('course')->unique()->sort()->values()->all();
+    }
+
+    private function discountValueInUnits(): int
+    {
+        $raw = trim((string) $this->discount['value']);
+        if ($raw === '' || ! is_numeric($raw)) {
+            return 0;
+        }
+
+        return $this->discount['type'] === 'percent'
+            ? (int) round((float) $raw * 100)             // 10 → 1000 basis points
+            : Money::fromDecimal($raw)->amount;             // 5.50 → 550 pesewas
     }
 
     private function line(string $lineId): OrderItem

@@ -101,9 +101,10 @@ class OrderTypeScreen extends Component
         $this->redirectRoute('pos.order', $order);
     }
 
-    public function resume(string $orderId): void
+    public function resume(string $orderId, OrderService $orders): void
     {
         $order = Order::query()->active()->findOrFail($orderId);
+        $orders->recall($order, auth()->user());
 
         $this->redirectRoute('pos.order', $order);
     }

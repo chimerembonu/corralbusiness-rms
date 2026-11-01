@@ -23,6 +23,8 @@ class PaymentRecorded implements ShouldRecordToOutbox
             'payment_id' => $this->payment->id,
             'order_id' => $this->payment->order_id,
             'method' => $this->payment->method->value,
+            'provider' => $this->payment->provider?->value,
+            'tip' => $this->payment->tip->amount,
             'amount' => $this->payment->amount->amount,
             'tendered' => $this->payment->tendered?->amount,
             'change_given' => $this->payment->change_given->amount,

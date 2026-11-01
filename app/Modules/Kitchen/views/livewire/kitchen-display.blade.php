@@ -39,8 +39,11 @@
                         </header>
                         <ul class="flex-1 divide-y divide-slate-800 px-3 py-1 text-lg">
                             @foreach ($ticket->items as $item)
-                                <li class="py-1.5 {{ $item->is_voided ? 'line-through opacity-40' : '' }}">
-                                    <div class="font-bold"><span class="text-emerald-300">{{ $item->quantity }}×</span> {{ $item->name }}</div>
+                                <li class="py-1.5 {{ $item->is_voided ? 'line-through opacity-40' : ($item->is_held ? 'opacity-50' : '') }}">
+                                    <div class="font-bold"><span class="text-emerald-300">{{ $item->quantity }}×</span> {{ $item->name }}
+                                        @if ($item->is_held)<span class="ml-1 rounded-full bg-amber-500/20 px-2 text-[11px] font-bold uppercase text-amber-300">{{ __('kitchen::kitchen.hold_course', ['number' => $item->course]) }}</span>
+                                        @elseif (($item->course ?? 1) > 1)<span class="ml-1 rounded-full bg-sky-500/20 px-2 text-[11px] font-bold uppercase text-sky-300">{{ __('kitchen::kitchen.course', ['number' => $item->course]) }}</span>@endif
+                                    </div>
                                     @foreach ($item->modifiers ?? [] as $modifier)
                                         <div class="pl-6 text-sm text-slate-300">+ {{ $modifier }}</div>
                                     @endforeach

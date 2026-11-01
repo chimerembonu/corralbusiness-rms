@@ -15,15 +15,19 @@ class PrintTicket
 
     public function handle(TicketChanged $event): void
     {
-        if ($event->change !== 'created') {
+        if (! in_array($event->change, ['created', 'fired'], true)) {
             return;
         }
+
+        $document = $event->change === 'fired'
+            ? TicketDocument::fireSlip($event->ticket)
+            : TicketDocument::fromTicket($event->ticket);
 
         $printers = Printer::query()->withoutGlobalScopes()->whereNull('deleted_at')
             ->where('branch_id', $event->ticket->branch_id)->where('is_active', true)->where('prints_kitchen_tickets', true)->get();
 
         foreach ($printers as $printer) {
-            $this->printing->enqueue($printer, TicketDocument::fromTicket($event->ticket), PrintJobType::KitchenTicket, $event->ticket);
+            $this->printing->enqueue($printer, $document, PrintJobType::KitchenTicket, $event->ticket);
         }
     }
 }

@@ -2,60 +2,93 @@
 
 namespace App\Modules\Payments\Services;
 
+use App\Modules\Orders\Enums\OrderStatus;
+use App\Modules\Orders\Events\OrderRefunded;
 use App\Modules\Orders\Models\Order;
 use App\Modules\Orders\Services\OrderService;
+use App\Modules\Payments\Enums\MomoProvider;
 use App\Modules\Payments\Enums\PaymentMethod;
+use App\Modules\Payments\Enums\PaymentStatus;
 use App\Modules\Payments\Events\PaymentRecorded;
+use App\Modules\Payments\Events\PaymentRefunded;
 use App\Modules\Payments\Exceptions\PaymentException;
 use App\Modules\Payments\Models\Payment;
+use App\Modules\Staff\Enums\Permission;
+use App\Modules\Staff\Exceptions\ManagerPinRequiredException;
 use App\Modules\Staff\Models\User;
 use App\Support\Money\Money;
 use Illuminate\Support\Facades\DB;
 
-/** Takes payments against an order. Cash now; MoMo/card manual recording in Phase 1.2. */
+/**
+ * Takes payments against an order: cash, Mobile Money and card (recorded by hand with a reference),
+ * several payments per order, tips, and refunds with a manager PIN.
+ */
 class PaymentService
 {
     public function __construct(private readonly OrderService $orders) {}
 
     /**
-     * Cash: the customer hands over $tendered; the order is credited with min(tendered, balance)
+     * Cash: the customer hands over $tendered; the order is credited with min(tendered − tip, balance)
      * and the rest is change.
      */
-    public function payCash(Order $order, Money $tendered, ?User $by = null): Payment
+    public function payCash(Order $order, Money $tendered, ?User $by = null, ?Money $tip = null): Payment
     {
         $this->assertPayable($order);
+        $tip ??= Money::zero();
 
-        if (! $tendered->isPositive()) {
+        if (! $tendered->isPositive() || $tendered->lessThan($tip)) {
             throw new PaymentException(__('payments::payments.errors.amount_required'));
         }
 
         $due = $order->balanceDue();
-        $applied = $tendered->greaterThan($due) ? $due : $tendered;
-        $change = $tendered->subtract($applied);
+        $available = $tendered->subtract($tip);
+        $applied = $available->greaterThan($due) ? $due : $available;
+        $change = $available->subtract($applied);
 
-        return $this->record($order, PaymentMethod::Cash, $applied, $by, tendered: $tendered, change: $change);
+        return $this->record($order, PaymentMethod::Cash, $applied, $by, tendered: $tendered, change: $change, tip: $tip);
     }
 
-    /** Generic entry point (used for MoMo/card manual recording later). */
-    public function record(Order $order, PaymentMethod $method, Money $amount, ?User $by = null, ?string $reference = null, ?Money $tendered = null, ?Money $change = null, ?string $notes = null): Payment
+    /** Mobile Money recorded by hand: network + the transaction id from the customer's phone. */
+    public function payMobileMoney(Order $order, MomoProvider $provider, Money $amount, string $reference, ?User $by = null, ?Money $tip = null): Payment
     {
-        $this->assertPayable($order);
-
-        if (! $amount->isPositive()) {
-            throw new PaymentException(__('payments::payments.errors.amount_required'));
+        if (blank($reference)) {
+            throw new PaymentException(__('payments::payments.errors.reference_required'));
         }
 
+        return $this->record($order, PaymentMethod::MobileMoney, $amount, $by, reference: trim($reference), provider: $provider, tip: $tip);
+    }
+
+    /** Card paid on a standalone terminal: optional slip / last-4 reference. */
+    public function payCard(Order $order, Money $amount, ?string $reference = null, ?User $by = null, ?Money $tip = null): Payment
+    {
+        return $this->record($order, PaymentMethod::Card, $amount, $by, reference: filled($reference) ? trim($reference) : null, tip: $tip);
+    }
+
+    /** Generic entry point. $amount is what is applied to the order; the tip is on top. */
+    public function record(Order $order, PaymentMethod $method, Money $amount, ?User $by = null, ?string $reference = null, ?Money $tendered = null, ?Money $change = null, ?string $notes = null, ?MomoProvider $provider = null, ?Money $tip = null): Payment
+    {
+        $this->assertPayable($order);
+        $tip ??= Money::zero();
+
+        if (! $amount->isPositive() && ! $tip->isPositive()) {
+            throw new PaymentException(__('payments::payments.errors.amount_required'));
+        }
         if ($amount->greaterThan($order->balanceDue())) {
             throw new PaymentException(__('payments::payments.errors.over_balance'));
         }
+        if ($method === PaymentMethod::MobileMoney && $provider === null) {
+            throw new PaymentException(__('payments::payments.errors.provider_required'));
+        }
 
-        return DB::transaction(function () use ($order, $method, $amount, $by, $reference, $tendered, $change, $notes) {
+        return DB::transaction(function () use ($order, $method, $amount, $by, $reference, $tendered, $change, $notes, $provider, $tip) {
             $payment = new Payment([
                 'order_id' => $order->id,
                 'method' => $method,
+                'provider' => $method === PaymentMethod::MobileMoney ? $provider : null,
                 'amount' => $amount,
                 'tendered' => $tendered,
                 'change_given' => $change ?? Money::zero(),
+                'tip' => $tip,
                 'reference' => $reference,
                 'received_by_id' => $by?->id,
                 'received_at' => now(),
@@ -64,15 +97,61 @@ class PaymentService
             $payment->branch_id = $order->branch_id;
             $payment->save();
 
-            $paidTotal = $order->payments()->where('status', 'completed')->get()
-                ->reduce(fn (Money $c, Payment $p) => $c->add($p->amount), Money::zero());
-
-            $this->orders->markPaid($order, $paidTotal, $by);
+            $this->syncTotals($order);
+            $this->orders->markPaid($order, $order->paid_total, $by);
 
             PaymentRecorded::dispatch($payment);
 
             return $payment;
         });
+    }
+
+    /** Refund a whole payment. $approvedBy must hold the refund permission (manager PIN). */
+    public function refund(Payment $payment, string $reason, User $approvedBy, ?User $by = null): Payment
+    {
+        if ($payment->isRefunded()) {
+            throw new PaymentException(__('payments::payments.errors.already_refunded'));
+        }
+        if (! $approvedBy->can(Permission::OrdersRefund->value)) {
+            throw new ManagerPinRequiredException(Permission::OrdersRefund->value);
+        }
+        if (blank($reason)) {
+            throw new PaymentException(__('orders::orders.errors.reason_required'));
+        }
+
+        return DB::transaction(function () use ($payment, $reason, $approvedBy) {
+            $payment->forceFill([
+                'status' => PaymentStatus::Refunded,
+                'refunded_at' => now(),
+                'refund_reason' => trim($reason),
+                'refunded_by_id' => $approvedBy->id,
+            ])->save();
+
+            $order = $payment->order()->first();
+            $this->syncTotals($order);
+            $order->refunded_total = $order->refunded_total->add($payment->amount);
+
+            if ($order->status === OrderStatus::Paid && $order->paid_total->isZero()) {
+                $order->status = OrderStatus::Refunded;
+            }
+            $order->save();
+
+            PaymentRefunded::dispatch($payment);
+            if ($order->status === OrderStatus::Refunded) {
+                OrderRefunded::dispatch($order, $approvedBy->id);
+            }
+
+            return $payment;
+        });
+    }
+
+    /** Recompute paid and tip totals from the completed payments. */
+    private function syncTotals(Order $order): void
+    {
+        $completed = $order->payments()->where('status', PaymentStatus::Completed->value)->get();
+        $order->paid_total = $completed->reduce(fn (Money $c, Payment $p) => $c->add($p->amount), Money::zero());
+        $order->tip_total = $completed->reduce(fn (Money $c, Payment $p) => $c->add($p->tip), Money::zero());
+        $order->save();
     }
 
     private function assertPayable(Order $order): void

@@ -6,6 +6,8 @@ use App\Modules\Inventory\Seeders\IngredientsDemoSeeder;
 use App\Modules\Kitchen\Seeders\StationsDemoSeeder;
 use App\Modules\Menu\Seeders\MenuDemoSeeder;
 use App\Modules\Orders\Seeders\DiningTablesDemoSeeder;
+use App\Modules\Orders\Seeders\PromoCodesDemoSeeder;
+use App\Modules\Orders\Support\TillSettings;
 use App\Modules\Pos\Seeders\TillsDemoSeeder;
 use App\Modules\Settings\Models\Branch;
 use App\Modules\Settings\Models\Tenant;
@@ -76,11 +78,16 @@ class DemoCommand extends Command
         $stations = (new StationsDemoSeeder)->run();
         $staff = (new StaffDemoSeeder)->run();
         $ingredients = (new IngredientsDemoSeeder)->run();
-        $this->components->info("Tables: {$tables} · Tills: {$tills} · Stations: {$stations} · Staff: {$staff} · Ingredients: {$ingredients}.");
+        $promos = (new PromoCodesDemoSeeder)->run();
+        $this->components->info("Tables: {$tables} · Tills: {$tills} · Stations: {$stations} · Staff: {$staff} · Ingredients: {$ingredients} · Promo codes: {$promos}.");
 
         $settings = app(SettingsService::class);
         $settings->set('receipt.header', 'Akwaaba! TIN: C0000000000 (demo)', tenantWide: true);
         $settings->set('receipt.footer', 'Thank you! Medaase! Please come again.', tenantWide: true);
+        // Demo till rules: 10 % service charge on dine-in; everything else uses the defaults (Back office → Till settings).
+        if ($settings->get(TillSettings::SERVICE_CHARGE_BP) === null) {
+            $settings->set(TillSettings::SERVICE_CHARGE_BP, 1000);
+        }
         $branch->forceFill(['address' => '12 Oxford Street, Osu, Accra', 'phone' => '+233 30 000 0000'])->save();
 
         $this->newLine();

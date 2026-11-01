@@ -27,6 +27,11 @@ class DailySummaryService
         $paid = $base()->where('status', OrderStatus::Paid->value)->get();
         $open = $base()->active()->get();
         $void = $base()->where('status', OrderStatus::Void->value)->get();
+        $refunded = $base()->where('status', OrderStatus::Refunded->value)->get();
+        $held = $open->filter(fn (Order $o) => $o->isHeld());
+
+        $refunds = Payment::query()->forBranch($branchId)->where('status', 'refunded')
+            ->whereIn('order_id', $paid->pluck('id')->merge($refunded->pluck('id')))->get();
 
         $sum = fn (Collection $orders, string $field) => $orders->reduce(fn (Money $c, Order $o) => $c->add($o->{$field}), Money::zero());
 
@@ -69,6 +74,11 @@ class DailySummaryService
             'orders_paid' => $paid->count(),
             'orders_open' => $open->count(),
             'orders_void' => $void->count(),
+            'orders_refunded' => $refunded->count(),
+            'orders_held' => $held->count(),
+            'service_charge_total' => $sum($paid, 'service_charge'),
+            'tip_total' => $sum($paid, 'tip_total'),
+            'refund_total' => $refunds->reduce(fn (Money $c, Payment $p) => $c->add($p->amount), Money::zero()),
             'gross_sales' => $sum($paid, 'total'),
             'net_sales' => $sum($paid, 'total')->subtract($sum($paid, 'tax_total')),
             'tax_total' => $sum($paid, 'tax_total'),
@@ -78,7 +88,7 @@ class DailySummaryService
             'by_payment_method' => $payments,
             'top_items' => $topItems,
             'average_order' => $paid->count() ? Money::of(intdiv($sum($paid, 'total')->amount, $paid->count())) : Money::zero(),
-            'orders' => $paid->merge($open)->merge($void)->sortByDesc('opened_at')->values(),
+            'orders' => $paid->merge($open)->merge($void)->merge($refunded)->sortByDesc('opened_at')->values(),
         ];
     }
 }

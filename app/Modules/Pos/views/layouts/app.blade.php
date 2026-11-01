@@ -52,6 +52,7 @@
                         @can(\App\Modules\Staff\Enums\Permission::KitchenView->value)
                             <a href="{{ route('kitchen.display') }}" class="flex h-11 items-center rounded-xl bg-slate-800 px-4 text-sm font-semibold hover:bg-slate-700">{{ __('kitchen::kitchen.title') }}</a>
                         @endcan
+                        <a href="{{ route('pos.orders') }}" class="flex h-11 items-center rounded-xl bg-slate-800 px-4 text-sm font-semibold hover:bg-slate-700">{{ __('pos::pos.nav.orders') }}</a>
                         @can(\App\Modules\Staff\Enums\Permission::ReportsView->value)
                             <a href="{{ route('pos.today') }}" class="flex h-11 items-center rounded-xl bg-slate-800 px-4 text-sm font-semibold hover:bg-slate-700">{{ __('pos::pos.nav.today') }}</a>
                         @endcan

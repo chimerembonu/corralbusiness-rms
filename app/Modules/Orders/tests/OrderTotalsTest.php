@@ -6,6 +6,7 @@ use App\Modules\Orders\Exceptions\InvalidModifierSelectionException;
 use App\Modules\Orders\Exceptions\ItemNotOrderableException;
 use App\Modules\Orders\Services\OrderService;
 use App\Modules\Settings\Services\TaxService;
+use App\Modules\Staff\Enums\Role;
 use App\Modules\Staff\Models\User;
 
 beforeEach(function () {
@@ -46,7 +47,7 @@ it('counts modifier quantities and leaves non-taxable items untaxed', function (
         ->and($order->total)->toBePesewas(10921 + 1500);
 });
 
-it('spreads an order discount across lines before tax (discount placeholder)', function () {
+it('spreads an order discount across lines before tax (threshold needs a manager)', function () {
     $this->orders->addItem($this->order, $this->menu['jollof'], $this->menu['regular'], 2, [$this->menu['chicken']->id => 1]); // 120.00
     $this->orders->addItem($this->order, $this->menu['water'], null, 1);                                                      // 5.00
 
@@ -58,7 +59,11 @@ it('spreads an order discount across lines before tax (discount placeholder)', f
         ->and($order->items->firstWhere('name', 'Jollof Rice')->discount_amount)->toBePesewas(1200)
         ->and($order->items->firstWhere('name', 'Bottled Water')->discount_amount)->toBePesewas(50);
 
-    $order = $this->orders->applyDiscount($order, DiscountType::Fixed, 2000, 'Voucher');
+    // 20.00 off 125.00 is 16 %, above the 10 % manager threshold → a manager approves it.
+    seedRoles();
+    $manager = User::factory()->forBranch($this->branch)->create();
+    $manager->assignRole(Role::Manager->value);
+    $order = $this->orders->applyDiscount($order, DiscountType::Fixed, 2000, 'Voucher', $this->cashier, $manager);
     // 20.00 off is split 19.20 (jollof) / 0.80 (water); tax on 100.80 = 20.16 → 120.96 + 4.20
     expect($order->discount_total)->toBePesewas(2000)
         ->and($order->total)->toBePesewas(12096 + 420);

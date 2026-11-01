@@ -4,9 +4,11 @@ namespace App\Modules\Kitchen;
 
 use App\Modules\Kitchen\Events\TicketChanged;
 use App\Modules\Kitchen\Listeners\CreateTicketWhenSent;
+use App\Modules\Kitchen\Listeners\FireHeldCourse;
 use App\Modules\Kitchen\Listeners\FollowOrderToNewTable;
 use App\Modules\Kitchen\Listeners\PrintTicket;
 use App\Modules\Kitchen\Listeners\StrikeVoidedLine;
+use App\Modules\Orders\Events\CourseFired;
 use App\Modules\Orders\Events\ItemVoided;
 use App\Modules\Orders\Events\OrderSentToKitchen;
 use App\Modules\Orders\Events\OrderTransferred;
@@ -27,6 +29,7 @@ class KitchenServiceProvider extends ServiceProvider
      */
     protected $listen = [
         OrderSentToKitchen::class => [CreateTicketWhenSent::class],
+        CourseFired::class => [FireHeldCourse::class],
         ItemVoided::class => [StrikeVoidedLine::class],
         TicketChanged::class => [PrintTicket::class],
         OrderTransferred::class => [FollowOrderToNewTable::class],

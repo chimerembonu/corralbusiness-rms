@@ -1,6 +1,10 @@
 <?php
 
 return [
+    'hold_course' => 'Hold · course :number',
+    'course' => 'Course :number',
+    'fire_title' => 'Fire #:number',
+    'fire_course' => 'FIRE COURSE :number',
     'title' => 'Kitchen',
     'live' => 'Live',
     'polling' => 'Polling',

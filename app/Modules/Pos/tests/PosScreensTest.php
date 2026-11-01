@@ -5,13 +5,17 @@ use App\Modules\Orders\Enums\OrderType;
 use App\Modules\Orders\Models\DiningTable;
 use App\Modules\Orders\Models\FloorSection;
 use App\Modules\Orders\Models\Order;
+use App\Modules\Orders\Models\PromoCode;
 use App\Modules\Orders\Services\OrderService;
+use App\Modules\Payments\Services\PaymentService;
 use App\Modules\Pos\Livewire\OrderScreen;
+use App\Modules\Pos\Livewire\OrdersList;
 use App\Modules\Pos\Livewire\OrderTypeScreen;
 use App\Modules\Pos\Livewire\PaymentScreen;
 use App\Modules\Pos\Livewire\PinLogin;
 use App\Modules\Staff\Enums\Role;
 use App\Modules\Staff\Models\User;
+use App\Support\Money\Money;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -147,8 +151,8 @@ it('takes an order with the item picker, sends it and pays cash to a receipt', f
 
     Livewire::test(PaymentScreen::class, ['order' => $order])
         ->assertSee('GH₵ 204.00')
-        ->call('setTendered', 25000)
-        ->assertSet('tendered', '250.00')
+        ->call('setAmount', 25000)
+        ->assertSet('amount', '250.00')
         ->call('complete')
         ->assertRedirect(route('pos.receipt', [$order, 'print' => 1]));
 
@@ -175,4 +179,92 @@ it('lists today\'s orders with their table names', function () {
     $this->actingAs($this->owner)->get('/pos/today')->assertOk()
         ->assertSee('#'.$dineIn->displayNumber())->assertSee('T1')
         ->assertSee('#'.$takeaway->displayNumber())->assertSee('Takeaway');
+});
+
+it('applies discounts and promo codes from the order screen, asking a manager above the threshold', function () {
+    $this->actingAs($this->waiter);
+    $this->manager = User::factory()->forBranch($this->branch)->withPin('2468')->create(['name' => 'Akosua']);
+    $this->manager->assignRole(Role::Manager->value);
+    PromoCode::create(['code' => 'WELCOME10', 'name' => 'Welcome', 'type' => 'percent', 'value' => 1000]);
+    $order = app(OrderService::class)->open(OrderType::Takeaway, $this->waiter);
+    app(OrderService::class)->addItem($order, $this->menu['coke'], quantity: 5); // 50.00 + tax 10.00
+
+    $screen = Livewire::test(OrderScreen::class, ['order' => $order])
+        ->call('openModal', 'actions')->assertSee('Promo code')->assertSee('Order note')
+        ->call('startDiscount')->assertSet('modal', 'discount')
+        ->call('setDiscountValue', '5')->call('chooseDiscountReason', 'Loyal customer')->call('applyDiscount')
+        ->assertSet('modal', null)->assertSee('− GH₵ 2.50')
+        // 25 % is above the 10 % threshold → the manager keypad opens
+        ->call('startDiscount')->call('setDiscountValue', '25')->call('chooseDiscountReason', 'Complaint')->call('applyDiscount')
+        ->assertSet('approval.permission', 'orders.discount')->assertSee('Manager approval')
+        ->call('approve', '9999')->assertSet('approval.error', 'Wrong PIN. 4 attempts left.')
+        ->call('approve', '2468')->assertSet('approval', null)->assertSee('− GH₵ 12.50');
+
+    expect($order->fresh()->discount_approved_by_id)->toBe($this->manager->id);
+
+    $screen->call('openModal', 'promo')->set('promoCode', 'nope')->call('applyPromoCode')->assertSee('Unknown promo code')
+        ->set('promoCode', 'welcome10')->call('applyPromoCode')->assertSet('modal', null)->assertSee('WELCOME10 (10%)');
+    expect($order->fresh()->promo_code)->toBe('WELCOME10');
+});
+
+it('voids a sent line with a reason and a manager PIN, and fires a held course', function () {
+    $this->actingAs($this->waiter);
+    $manager = User::factory()->forBranch($this->branch)->withPin('2468')->create();
+    $manager->assignRole(Role::Manager->value);
+    $orders = app(OrderService::class);
+    $order = $orders->open(OrderType::DineIn, $this->waiter, $this->table, 2);
+    $coke = $orders->addItem($order, $this->menu['coke']);
+    $water = $orders->addItem($order, $this->menu['water']);
+
+    Livewire::test(OrderScreen::class, ['order' => $order])
+        ->call('cycleCourse', $coke->id)->assertSee('Course 2')
+        ->call('cycleSeat', $water->id)->assertSee('Seat 1')
+        ->call('send')->assertSee('Fire course 2')
+        ->call('startVoid', $water->id)->assertSee('Void Bottled Water')
+        ->call('confirmVoid')->assertSee('Please choose a reason')
+        ->call('chooseVoidReason', 'Kitchen mistake')->call('confirmVoid')->assertSet('approval.method', 'voidApproved')
+        ->call('approve', '2468')->assertSee('Voided: Kitchen mistake')
+        ->call('fireCourse', 2)->assertSee('Course 2 sent to the kitchen')->assertDontSee('Fire course 2');
+
+    expect($water->fresh()->isVoided())->toBeTrue()->and($coke->fresh()->fired_at)->not->toBeNull();
+});
+
+it('takes Mobile Money with a reference, then the rest in cash with a tip', function () {
+    $this->actingAs($this->waiter);
+    $order = app(OrderService::class)->open(OrderType::Takeaway, $this->waiter);
+    app(OrderService::class)->addItem($order, $this->menu['coke'], quantity: 5); // 60.00
+
+    Livewire::test(PaymentScreen::class, ['order' => $order])
+        ->call('setMethod', 'momo')->assertSet('amount', '60.00')->assertSee('MTN MoMo')
+        ->set('amount', '40')->call('complete')->assertSee('Choose the Mobile Money network')
+        ->call('setProvider', 'mtn')->call('complete')->assertSee('Enter the transaction reference')
+        ->set('reference', 'MP1234')->call('complete')->assertSee('Mobile Money (MTN MoMo)')->assertSee('GH₵ 20.00')
+        ->call('setMethod', 'cash')->call('setAmount', 5000)->call('setTip', 500)->call('complete')
+        ->assertRedirect(route('pos.receipt', [$order, 'print' => 1]));
+
+    $order = $order->fresh();
+    expect($order->isPaid())->toBeTrue()->and($order->tip_total)->toBePesewas(500)->and($order->payments()->count())->toBe(2);
+    $this->get(route('pos.receipt', $order))->assertOk()->assertSee('Mobile Money (MTN MoMo)')->assertSee('MP1234')->assertSee('Tip');
+});
+
+it('finds an order, reprints its receipt and refunds a payment with a manager PIN', function () {
+    $this->actingAs($this->owner);
+    $manager = User::factory()->forBranch($this->branch)->withPin('2468')->create();
+    $manager->assignRole(Role::Manager->value);
+    $order = app(OrderService::class)->open(OrderType::Takeaway, $this->owner);
+    app(OrderService::class)->addItem($order, $this->menu['coke']);
+    app(OrderService::class)->hold($order, 'Kofi', $this->owner);
+    $this->get('/pos')->assertSee('Kofi')->assertSee('On hold');
+    $payment = app(PaymentService::class)->payCash($order, Money::fromDecimal('12'), $this->owner);
+    $this->get('/pos/orders')->assertOk()->assertSee('Kofi')->assertSee('Paid');
+
+    Livewire::test(OrdersList::class)
+        ->set('search', 'kof')->assertSee('#'.$order->displayNumber())
+        ->call('open', $order->id)->assertSee('Refund')
+        ->call('reprint', $order->id)->assertSee('No receipt printer')
+        ->call('startRefund', $payment->id)->set('refund.reason', 'Cold drink')->call('confirmRefund')
+        ->assertSet('approval.permission', 'orders.refund')
+        ->call('approve', '2468')->assertSee('Payment refunded')->assertSee('Refunded');
+
+    expect($order->fresh()->status)->toBe(OrderStatus::Refunded);
 });

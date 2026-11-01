@@ -3,23 +3,42 @@
 namespace App\Modules\Pos\Livewire;
 
 use App\Modules\Orders\Models\Order;
+use App\Modules\Orders\Support\TillSettings;
+use App\Modules\Payments\Enums\MomoProvider;
+use App\Modules\Payments\Enums\PaymentMethod;
 use App\Modules\Payments\Services\PaymentService;
 use App\Support\Money\Money;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use RuntimeException;
 
-/** Cash payment with an on-screen keypad and change calculation. */
+/**
+ * Payment: cash (keypad + change), Mobile Money (network + reference) and card (reference),
+ * several payments per order, an optional tip, and "pay in N equal shares".
+ */
 #[Layout('pos::layouts.app', ['title' => 'Payment'])]
 class PaymentScreen extends Component
 {
     #[Locked]
     public string $orderId;
 
-    /** Amount handed over, typed on the keypad, in cedis e.g. "150.00". */
-    public string $tendered = '';
+    public string $method = 'cash';
+
+    /** Amount typed on the keypad, in cedis e.g. "150.00". For cash it is what was handed over. */
+    public string $amount = '';
+
+    public string $tip = '';
+
+    public ?string $provider = null;
+
+    public string $reference = '';
+
+    /** Pay in N equal shares (from the split-bill sheet). 0 = off. */
+    #[Url]
+    public int $ways = 0;
 
     public ?string $error = null;
 
@@ -35,14 +54,35 @@ class PaymentScreen extends Component
     #[Computed]
     public function order(): Order
     {
-        return Order::query()->with(['items.modifiers', 'payments'])->findOrFail($this->orderId);
+        return Order::query()->with(['items.modifiers', 'payments', 'table'])->findOrFail($this->orderId);
     }
 
-    /** @return array<int, int> quick-pick amounts in pesewas: exact, then round notes above it */
+    #[Computed]
+    public function tipsEnabled(): bool
+    {
+        return app(TillSettings::class)->tipsEnabled($this->order->branch_id);
+    }
+
+    /** Amount suggested for this payment: one share when splitting evenly, else the whole balance. */
+    #[Computed]
+    public function suggested(): Money
+    {
+        $due = $this->order->balanceDue();
+        if ($this->ways > 1) {
+            $shares = $due->split($this->ways);
+            $paidCount = $this->order->payments->where('status', 'completed')->count();
+
+            return $shares[min($paidCount, $this->ways - 1)];
+        }
+
+        return $due;
+    }
+
+    /** @return array<int, int> quick-pick amounts in pesewas: the suggested amount, then round notes above it */
     #[Computed]
     public function quickAmounts(): array
     {
-        $due = $this->order->balanceDue()->amount;
+        $due = $this->suggested->amount;
         $amounts = [$due];
         foreach ([1000, 2000, 5000, 10000, 20000, 50000] as $note) {
             $rounded = (int) (ceil($due / $note) * $note);
@@ -54,9 +94,26 @@ class PaymentScreen extends Component
         return array_slice($amounts, 0, 5);
     }
 
-    public function setTendered(int $pesewas): void
+    public function setMethod(string $method): void
     {
-        $this->tendered = Money::of($pesewas)->toDecimal();
+        $this->method = $method;
+        $this->error = null;
+        $this->amount = $method === 'cash' ? '' : $this->suggested->toDecimal();
+    }
+
+    public function setAmount(int $pesewas): void
+    {
+        $this->amount = Money::of($pesewas)->toDecimal();
+    }
+
+    public function setProvider(string $provider): void
+    {
+        $this->provider = $provider;
+    }
+
+    public function setTip(int $pesewas): void
+    {
+        $this->tip = $pesewas > 0 ? Money::of($pesewas)->toDecimal() : '';
     }
 
     public function complete(PaymentService $payments): void
@@ -64,25 +121,41 @@ class PaymentScreen extends Component
         $this->error = null;
 
         try {
-            $tendered = Money::fromDecimal($this->tendered === '' ? '0' : $this->tendered);
-            $payments->payCash($this->order, $tendered, auth()->user());
+            $amount = Money::fromDecimal($this->amount === '' ? '0' : $this->amount);
+            $tip = $this->tipsEnabled && $this->tip !== '' ? Money::fromDecimal($this->tip) : Money::zero();
+            $by = auth()->user();
+
+            match ($this->method) {
+                'momo' => $payments->payMobileMoney($this->order, MomoProvider::from($this->provider ?? ''), $amount, $this->reference, $by, $tip),
+                'card' => $payments->payCard($this->order, $amount, $this->reference, $by, $tip),
+                default => $payments->payCash($this->order, $amount, $by, $tip),
+            };
+        } catch (\ValueError) {
+            $this->error = __('payments::payments.errors.provider_required');
+
+            return;
         } catch (RuntimeException $e) {
             $this->error = $e->getMessage();
 
             return;
         }
 
-        unset($this->order);
+        unset($this->order, $this->suggested, $this->quickAmounts);
 
         if ($this->order->isPaid()) {
             $this->redirectRoute('pos.receipt', [$this->order, 'print' => 1]);
         } else {
-            $this->tendered = '';
+            $this->amount = $this->method === 'cash' ? '' : $this->suggested->toDecimal();
+            $this->tip = '';
+            $this->reference = '';
         }
     }
 
     public function render()
     {
-        return view('pos::livewire.payment-screen');
+        return view('pos::livewire.payment-screen', [
+            'methods' => [PaymentMethod::Cash, PaymentMethod::MobileMoney, PaymentMethod::Card],
+            'providers' => MomoProvider::cases(),
+        ]);
     }
 }

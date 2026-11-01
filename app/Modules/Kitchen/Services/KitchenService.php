@@ -43,6 +43,8 @@ class KitchenService
                     'modifiers' => $line->modifiers->map->displayName()->all(),
                     'notes' => $line->notes,
                     'seat' => $line->seat,
+                    'course' => $line->course,
+                    'is_held' => ($line->course ?? 1) > 1 && $line->fired_at === null,
                     'sort_order' => $i,
                 ]);
                 $item->branch_id = $order->branch_id;
@@ -110,6 +112,25 @@ class KitchenService
     }
 
     /** @return Collection<int, Ticket> */
+    /**
+     * A held course was fired at the till: release those lines on their tickets and tell the screens.
+     *
+     * @param  array<int, string>  $orderItemIds
+     * @return Collection<int, Ticket> the tickets that changed
+     */
+    public function fireLines(array $orderItemIds): BaseCollection
+    {
+        $items = TicketItem::query()->whereIn('order_item_id', $orderItemIds)->where('is_held', true)->get();
+        TicketItem::query()->whereIn('id', $items->pluck('id'))->update(['is_held' => false]);
+
+        $tickets = Ticket::query()->whereIn('id', $items->pluck('ticket_id')->unique())->get();
+        foreach ($tickets as $ticket) {
+            TicketChanged::dispatch($ticket, 'fired');
+        }
+
+        return $tickets;
+    }
+
     public function activeTickets(?string $branchId = null): Collection
     {
         return Ticket::query()->active()->forBranch($branchId)->with('items')->orderBy('sent_at')->get();

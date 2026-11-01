@@ -20,6 +20,7 @@ class ReceiptController
             'header' => $settings->get('receipt.header'),
             'footer' => $settings->get('receipt.footer', __('pos::pos.receipt.default_footer')),
             'autoPrint' => request()->boolean('print'),
+            'reprint' => request()->boolean('reprint') || ($order->isPaid() && $order->paid_at?->lt(now()->subMinutes(2))),
         ]);
     }
 }

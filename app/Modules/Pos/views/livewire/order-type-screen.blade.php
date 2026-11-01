@@ -28,7 +28,8 @@
                     @foreach ($openOrders as $order)
                         <button type="button" wire:click="resume('{{ $order->id }}')" class="flex min-h-24 flex-col justify-between rounded-2xl bg-slate-900 p-3 text-left ring-1 ring-slate-800 hover:ring-emerald-500">
                             <span class="text-lg font-bold">#{{ $order->displayNumber() }} <span class="text-sm font-medium text-slate-400">{{ $order->table?->name ?? $order->type->label() }}</span></span>
-                            <span class="text-sm text-slate-400">{{ $order->opened_at->format('H:i') }} · {{ $order->status->label() }}</span>
+                            @if ($order->customer_name)<span class="truncate text-sm font-semibold text-amber-300">{{ $order->customer_name }}</span>@endif
+                            <span class="text-sm text-slate-400">{{ $order->opened_at->format('H:i') }} · {{ $order->isHeld() ? __('pos::pos.home.held') : $order->status->label() }}</span>
                             <span class="text-base font-semibold text-emerald-400">{{ money($order->total) }}</span>
                         </button>
                     @endforeach

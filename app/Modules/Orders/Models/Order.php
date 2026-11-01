@@ -23,11 +23,13 @@ class Order extends BusinessModel
     protected $fillable = [
         'branch_id', 'business_date', 'number', 'type', 'status', 'table_id', 'covers', 'customer_name', 'customer_phone',
         'opened_by_id', 'notes', 'discount_type', 'discount_value', 'discount_reason', 'prices_include_tax', 'opened_at',
+        'promo_code_id', 'promo_code', 'service_charge_bp', 'service_charge_waived',
     ];
 
     protected $attributes = [
         'status' => 'open', 'covers' => 1, 'subtotal' => 0, 'discount_value' => 0, 'discount_total' => 0,
-        'service_charge' => 0, 'tax_total' => 0, 'total' => 0, 'paid_total' => 0, 'prices_include_tax' => false,
+        'service_charge' => 0, 'service_charge_bp' => 0, 'service_charge_waived' => false, 'tax_total' => 0, 'total' => 0,
+        'paid_total' => 0, 'tip_total' => 0, 'refunded_total' => 0, 'prices_include_tax' => false,
     ];
 
     protected array $auditExcept = ['tax_lines'];
@@ -49,6 +51,11 @@ class Order extends BusinessModel
             'tax_lines' => 'array',
             'total' => MoneyCast::class,
             'paid_total' => MoneyCast::class,
+            'tip_total' => MoneyCast::class,
+            'refunded_total' => MoneyCast::class,
+            'service_charge_bp' => 'integer',
+            'service_charge_waived' => 'boolean',
+            'held_at' => 'datetime',
             'prices_include_tax' => 'boolean',
             'opened_at' => 'datetime',
             'sent_at' => 'datetime',
@@ -73,6 +80,22 @@ class Order extends BusinessModel
         return $this->belongsTo(User::class, 'opened_by_id');
     }
 
+    public function promoCode(): BelongsTo
+    {
+        return $this->belongsTo(PromoCode::class, 'promo_code_id');
+    }
+
+    public function discountApprovedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'discount_approved_by_id');
+    }
+
+    /** The order this one was split off from (split bill by items/seats). */
+    public function splitFrom(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'split_from_id');
+    }
+
     public function items(): HasMany
     {
         return $this->hasMany(OrderItem::class)->orderBy('sort_order')->orderBy('created_at');
@@ -87,6 +110,36 @@ class Order extends BusinessModel
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
+    }
+
+    /** Payments that still count (not refunded). */
+    public function completedPayments(): HasMany
+    {
+        return $this->payments()->where('status', 'completed');
+    }
+
+    public function isHeld(): bool
+    {
+        return $this->held_at !== null;
+    }
+
+    public function hasDiscount(): bool
+    {
+        return $this->discount_type !== null && $this->discount_value > 0;
+    }
+
+    /** Short description of the order discount for screens and receipts, e.g. "10%" or "GH₵ 5.00". */
+    public function discountLabel(): ?string
+    {
+        if (! $this->hasDiscount()) {
+            return null;
+        }
+
+        $amount = $this->discount_type === DiscountType::Percent
+            ? rtrim(rtrim(number_format($this->discount_value / 100, 2), '0'), '.').'%'
+            : money($this->discount_value);
+
+        return $this->promo_code ? $this->promo_code.' ('.$amount.')' : $amount;
     }
 
     public function scopeActive(Builder $query): Builder

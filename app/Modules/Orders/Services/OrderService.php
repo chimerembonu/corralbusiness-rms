@@ -10,23 +10,34 @@ use App\Modules\Orders\Enums\DiscountType;
 use App\Modules\Orders\Enums\OrderItemStatus;
 use App\Modules\Orders\Enums\OrderStatus;
 use App\Modules\Orders\Enums\OrderType;
+use App\Modules\Orders\Events\CourseFired;
 use App\Modules\Orders\Events\ItemAdded;
+use App\Modules\Orders\Events\ItemCourseChanged;
+use App\Modules\Orders\Events\ItemDiscountApplied;
 use App\Modules\Orders\Events\ItemQuantityChanged;
 use App\Modules\Orders\Events\ItemRemoved;
+use App\Modules\Orders\Events\ItemSeatChanged;
 use App\Modules\Orders\Events\ItemVoided;
 use App\Modules\Orders\Events\OrderCoversChanged;
 use App\Modules\Orders\Events\OrderCreated;
 use App\Modules\Orders\Events\OrderDiscountApplied;
+use App\Modules\Orders\Events\OrderHeld;
 use App\Modules\Orders\Events\OrderNotesChanged;
 use App\Modules\Orders\Events\OrderPaid;
+use App\Modules\Orders\Events\OrderRecalled;
 use App\Modules\Orders\Events\OrderSentToKitchen;
+use App\Modules\Orders\Events\OrderSplit;
 use App\Modules\Orders\Events\OrderVoided;
+use App\Modules\Orders\Events\ServiceChargeChanged;
+use App\Modules\Orders\Exceptions\DiscountException;
 use App\Modules\Orders\Exceptions\InvalidModifierSelectionException;
 use App\Modules\Orders\Exceptions\ItemNotOrderableException;
 use App\Modules\Orders\Exceptions\OrderLockedException;
 use App\Modules\Orders\Models\DiningTable;
 use App\Modules\Orders\Models\Order;
 use App\Modules\Orders\Models\OrderItem;
+use App\Modules\Orders\Models\PromoCode;
+use App\Modules\Orders\Support\TillSettings;
 use App\Modules\Settings\Services\CounterService;
 use App\Modules\Settings\Services\TaxService;
 use App\Modules\Staff\Enums\Permission;
@@ -46,6 +57,7 @@ class OrderService
         private readonly TaxService $taxes,
         private readonly CounterService $counters,
         private readonly OrderCalculator $calculator,
+        private readonly TillSettings $settings,
     ) {}
 
     public function open(OrderType $type, ?User $by = null, ?DiningTable $table = null, int $covers = 1): Order
@@ -67,6 +79,7 @@ class OrderService
                 'opened_at' => now(),
             ]);
             $order->branch_id = $table?->branch_id ?? $this->context->branchId();
+            $order->service_charge_bp = $this->serviceChargeRateFor($type, $order->branch_id);
             $order->save();
 
             OrderCreated::dispatch($order, $by?->id);
@@ -206,20 +219,255 @@ class OrderService
         return $line;
     }
 
+    // ---- Discounts, promo codes, service charge ------------------------------
+
     /**
-     * Discount placeholder (full discount rules, presets and manager PIN come in Phase 1.2).
+     * Order-level discount. Above the branch threshold (Till settings) it needs someone with the
+     * discount permission as $approvedBy (manager PIN). Replaces any promo code.
      *
      * @param  int  $value  basis points for percent (10 % = 1000) or pesewas for fixed
      */
-    public function applyDiscount(Order $order, ?DiscountType $type, int $value = 0, ?string $reason = null, ?User $by = null): Order
+    public function applyDiscount(Order $order, ?DiscountType $type, int $value = 0, ?string $reason = null, ?User $by = null, ?User $approvedBy = null): Order
     {
         $this->assertEditable($order);
 
+        if ($type === null || $value <= 0) {
+            return $this->removeDiscount($order, $by);
+        }
+        if (blank($reason)) {
+            throw new DiscountException(__('orders::orders.errors.reason_required'));
+        }
+
+        $base = $order->subtotal->subtract($this->itemDiscountTotal($order));
+        $this->assertDiscountAllowed($type, $value, $base, $order->branch_id, $approvedBy);
+
+        $this->releasePromoCode($order);
         $order->discount_type = $type;
-        $order->discount_value = $type ? max(0, $value) : 0;
-        $order->discount_reason = $type ? $reason : null;
+        $order->discount_value = $value;
+        $order->discount_reason = $reason;
+        $order->discount_approved_by_id = $approvedBy?->id;
         $this->recalculate($order);
         OrderDiscountApplied::dispatch($order, $by?->id);
+
+        return $order;
+    }
+
+    /** Discount on one line (same threshold rule as the order discount). */
+    public function applyItemDiscount(Order $order, OrderItem $line, ?DiscountType $type, int $value = 0, ?string $reason = null, ?User $by = null, ?User $approvedBy = null): OrderItem
+    {
+        $this->assertEditable($order);
+
+        if ($type !== null && $value > 0) {
+            if (blank($reason)) {
+                throw new DiscountException(__('orders::orders.errors.reason_required'));
+            }
+            $this->assertDiscountAllowed($type, $value, $line->unitTotal()->multiply($line->quantity), $order->branch_id, $approvedBy);
+        }
+
+        $line->item_discount_type = $value > 0 ? $type : null;
+        $line->item_discount_value = $value > 0 && $type ? $value : 0;
+        $line->item_discount_reason = $value > 0 && $type ? $reason : null;
+        $line->save();
+        $this->recalculate($order);
+        $line->refresh();
+        ItemDiscountApplied::dispatch($order, $line, $by?->id);
+
+        return $line;
+    }
+
+    /** Type a promo code at the till. Replaces any manual order discount. */
+    public function applyPromoCode(Order $order, string $code, ?User $by = null): Order
+    {
+        $this->assertEditable($order);
+
+        $promo = PromoCode::query()->forBranchOrTenant($order->branch_id)->where('code', strtoupper(trim($code)))->first();
+        if (! $promo) {
+            throw new DiscountException(__('orders::orders.promo.unknown'));
+        }
+
+        $base = $order->subtotal->subtract($this->itemDiscountTotal($order));
+        if ($reason = $promo->rejectionReason($base)) {
+            throw new DiscountException($reason);
+        }
+
+        $this->releasePromoCode($order);
+        $order->discount_type = $promo->type;
+        $order->discount_value = $promo->value;
+        $order->discount_reason = $promo->name;
+        $order->discount_approved_by_id = null;
+        $order->promo_code_id = $promo->id;
+        $order->promo_code = $promo->code;
+        $promo->increment('uses_count');
+        $order->setRelation('promoCode', $promo);
+        $this->recalculate($order);
+        OrderDiscountApplied::dispatch($order, $by?->id);
+
+        return $order;
+    }
+
+    public function removeDiscount(Order $order, ?User $by = null): Order
+    {
+        $this->assertEditable($order);
+
+        $this->releasePromoCode($order);
+        $order->discount_type = null;
+        $order->discount_value = 0;
+        $order->discount_reason = null;
+        $order->discount_approved_by_id = null;
+        $this->recalculate($order);
+        OrderDiscountApplied::dispatch($order, $by?->id);
+
+        return $order;
+    }
+
+    /** Waive (or restore) the service charge. Needs the discount permission (manager PIN). */
+    public function setServiceChargeWaived(Order $order, bool $waived, User $approvedBy, ?User $by = null): Order
+    {
+        $this->assertEditable($order);
+
+        if (! $approvedBy->can(Permission::OrdersDiscount->value)) {
+            throw new ManagerPinRequiredException(Permission::OrdersDiscount->value);
+        }
+
+        $order->service_charge_waived = $waived;
+        $this->recalculate($order);
+        ServiceChargeChanged::dispatch($order, $by?->id ?? $approvedBy->id);
+
+        return $order;
+    }
+
+    // ---- Courses, seats, firing ----------------------------------------------
+
+    /** Which course a line belongs to (1 = goes straight away; 2+ are held until fired). Pending lines only. */
+    public function setCourse(Order $order, OrderItem $line, ?int $course, ?User $by = null): OrderItem
+    {
+        $this->assertEditable($order);
+        $this->assertPending($line);
+
+        $line->course = $course && $course > 1 ? min(9, $course) : null;
+        $line->save();
+        ItemCourseChanged::dispatch($order, $line, $by?->id);
+
+        return $line;
+    }
+
+    public function setSeat(Order $order, OrderItem $line, ?int $seat, ?User $by = null): OrderItem
+    {
+        $this->assertEditable($order);
+
+        $line->seat = $seat && $seat > 0 ? min(99, $seat) : null;
+        $line->save();
+        ItemSeatChanged::dispatch($order, $line, $by?->id);
+
+        return $line;
+    }
+
+    /** Tell the kitchen to start a held course. Returns the lines that were fired. */
+    public function fireCourse(Order $order, int $course, ?User $by = null): Collection
+    {
+        $this->assertEditable($order);
+
+        $lines = $order->items()->where('status', OrderItemStatus::Sent->value)->where('course', $course)->whereNull('fired_at')->get();
+        if ($lines->isEmpty()) {
+            throw new OrderLockedException(__('orders::orders.errors.no_course', ['number' => $course]));
+        }
+
+        foreach ($lines as $line) {
+            $line->forceFill(['fired_at' => now()])->save();
+        }
+        $order->unsetRelation('items');
+        CourseFired::dispatch($order, $course, $lines, $by?->id);
+
+        return $lines;
+    }
+
+    // ---- Split bill, hold & recall ------------------------------------------
+
+    /**
+     * Move the chosen lines onto a new order (same table/type) so they can be paid separately.
+     * Kitchen tickets already printed stay as they are. Returns the new order.
+     *
+     * @param  array<int, string>  $lineIds
+     */
+    public function split(Order $order, array $lineIds, ?User $by = null): Order
+    {
+        $this->assertEditable($order);
+
+        $lines = $order->activeItems()->whereIn('id', $lineIds)->get();
+        if ($lines->isEmpty()) {
+            throw new OrderLockedException(__('orders::orders.errors.nothing_to_split'));
+        }
+        if ($lines->count() >= $order->activeItems()->count()) {
+            throw new OrderLockedException(__('orders::orders.errors.cannot_split_all'));
+        }
+
+        return DB::transaction(function () use ($order, $lines, $by) {
+            $seats = $lines->pluck('seat')->filter()->unique()->count();
+            $businessDate = $this->businessDate();
+
+            $new = new Order([
+                'business_date' => $businessDate,
+                'number' => $this->counters->next('orders', $businessDate),
+                'type' => $order->type,
+                'table_id' => $order->table_id,
+                'covers' => max(1, $seats),
+                'customer_name' => $order->customer_name,
+                'customer_phone' => $order->customer_phone,
+                'opened_by_id' => $by?->id ?? $order->opened_by_id,
+                'opened_at' => now(),
+                'service_charge_bp' => $order->service_charge_bp,
+                'service_charge_waived' => $order->service_charge_waived,
+            ]);
+            $new->branch_id = $order->branch_id;
+            $new->split_from_id = $order->id;
+            $new->status = $lines->contains(fn (OrderItem $l) => $l->isSent()) ? OrderStatus::Sent : OrderStatus::Open;
+            $new->sent_at = $new->status === OrderStatus::Sent ? ($order->sent_at ?? now()) : null;
+            $new->save();
+
+            OrderItem::query()->whereIn('id', $lines->pluck('id'))->update(['order_id' => $new->id]);
+
+            $order->covers = max(1, $order->covers - $seats);
+            $this->recalculate($order);
+            $this->recalculate($new);
+
+            OrderSplit::dispatch($new, $order->id, $by?->id);
+
+            return $new->fresh(['items']);
+        });
+    }
+
+    /** @param  array<int, int>  $seats */
+    public function splitBySeats(Order $order, array $seats, ?User $by = null): Order
+    {
+        $ids = $order->activeItems()->whereIn('seat', $seats)->pluck('id')->all();
+
+        return $this->split($order, $ids, $by);
+    }
+
+    /** Park the order (e.g. a takeaway customer who will come back); optionally tag it with a name. */
+    public function hold(Order $order, ?string $customerName = null, ?User $by = null): Order
+    {
+        $this->assertEditable($order);
+
+        $order->held_at = now();
+        if (filled($customerName)) {
+            $order->customer_name = trim($customerName);
+        }
+        $order->save();
+        OrderHeld::dispatch($order, $by?->id);
+
+        return $order;
+    }
+
+    public function recall(Order $order, ?User $by = null): Order
+    {
+        if ($order->held_at === null) {
+            return $order;
+        }
+
+        $order->held_at = null;
+        $order->save();
+        OrderRecalled::dispatch($order, $by?->id);
 
         return $order;
     }
@@ -307,6 +555,9 @@ class OrderService
 
     public function recalculate(Order $order): Order
     {
+        if ($order->promo_code_id && ! $order->relationLoaded('promoCode')) {
+            $order->load('promoCode');
+        }
         $items = $order->activeItems()->get();
         $profile = $this->taxes->profileFor($order->branch_id);
 
@@ -361,6 +612,57 @@ class OrderService
         }
 
         return $chosen;
+    }
+
+    /** The service charge rate for new orders of this type at the branch (Till settings). */
+    public function serviceChargeRateFor(OrderType $type, ?string $branchId = null): int
+    {
+        return in_array($type->value, $this->settings->serviceChargeOrderTypes($branchId), true)
+            ? $this->settings->serviceChargeBp($branchId)
+            : 0;
+    }
+
+    /** Does a discount of this size need a manager? Threshold is a % of the base amount (Till settings). */
+    public function discountNeedsManager(DiscountType $type, int $value, Money $base, ?string $branchId = null): bool
+    {
+        $threshold = $this->settings->discountThresholdBp($branchId);
+        if ($type === DiscountType::Percent) {
+            return $value > $threshold;
+        }
+        if ($base->isZero()) {
+            return true;
+        }
+
+        return Money::of($value)->greaterThan($base->basisPoints($threshold));
+    }
+
+    private function assertDiscountAllowed(DiscountType $type, int $value, Money $base, ?string $branchId, ?User $approvedBy): void
+    {
+        if ($type === DiscountType::Fixed && Money::of($value)->greaterThan($base)) {
+            throw new DiscountException(__('orders::orders.errors.discount_too_big'));
+        }
+        if ($type === DiscountType::Percent && $value > 10000) {
+            throw new DiscountException(__('orders::orders.errors.discount_too_big'));
+        }
+        if ($this->discountNeedsManager($type, $value, $base, $branchId) && ! $approvedBy?->can(Permission::OrdersDiscount->value)) {
+            throw new ManagerPinRequiredException(Permission::OrdersDiscount->value);
+        }
+    }
+
+    private function itemDiscountTotal(Order $order): Money
+    {
+        return $order->activeItems()->get()->reduce(fn (Money $c, OrderItem $l) => $c->add($l->itemDiscount()), Money::zero());
+    }
+
+    /** Give a promo code its use back when it is removed or replaced. */
+    private function releasePromoCode(Order $order): void
+    {
+        if ($order->promo_code_id) {
+            PromoCode::query()->whereKey($order->promo_code_id)->where('uses_count', '>', 0)->decrement('uses_count');
+            $order->promo_code_id = null;
+            $order->promo_code = null;
+            $order->unsetRelation('promoCode');
+        }
     }
 
     private function assertEditable(Order $order): void

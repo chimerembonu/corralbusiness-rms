@@ -3,6 +3,7 @@
 use App\Modules\Pos\Http\EnsurePosUser;
 use App\Modules\Pos\Http\ReceiptController;
 use App\Modules\Pos\Livewire\OrderScreen;
+use App\Modules\Pos\Livewire\OrdersList;
 use App\Modules\Pos\Livewire\OrderTypeScreen;
 use App\Modules\Pos\Livewire\PaymentScreen;
 use App\Modules\Pos\Livewire\PinLogin;
@@ -26,6 +27,7 @@ Route::prefix('pos')->name('pos.')->group(function () {
         Route::get('orders/{order}/pay', PaymentScreen::class)->name('pay');
         Route::get('orders/{order}/receipt', ReceiptController::class)->name('receipt');
         Route::get('today', TodaySales::class)->name('today');
+        Route::get('orders', OrdersList::class)->name('orders');
 
         Route::post('logout', function (Request $request) {
             Auth::logout();
