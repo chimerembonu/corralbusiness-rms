@@ -6,6 +6,7 @@ use App\Modules\Payments\Services\PaymentService;
 use App\Modules\Printing\Contracts\PrinterDriver;
 use App\Modules\Printing\Documents\PrintDocument;
 use App\Modules\Printing\Documents\ReceiptDocument;
+use App\Modules\Printing\Documents\ReceiptSettings;
 use App\Modules\Printing\Drivers\NetworkEscPos;
 use App\Modules\Printing\Enums\PrinterDriverType;
 use App\Modules\Printing\Enums\PrintJobStatus;
@@ -73,7 +74,7 @@ it('builds a receipt document from a paid order with tax lines and change', func
     $orders->addItem($order, $menu['jollof'], $menu['regular'], 1, [$menu['chicken']->id => 1], 'no pepper');
     app(PaymentService::class)->payCash($order, Money::fromDecimal('100'), $cashier);
 
-    $doc = ReceiptDocument::fromOrder($order->fresh(), 'TIN 123', 'Thanks!');
+    $doc = ReceiptDocument::fromOrder($order->fresh(), new ReceiptSettings(header: 'TIN 123', footer: 'Thanks!'));
     $text = collect($doc->lines())->map(fn ($l) => ($l['text'] ?? '').($l['left'] ?? '').' '.($l['right'] ?? ''))->implode("\n");
 
     expect($text)->toContain('Test Chop Bar', 'TIN 123', '1 x Jollof Rice (Regular) 60.00', '+ Chicken (15.00)', '* no pepper',

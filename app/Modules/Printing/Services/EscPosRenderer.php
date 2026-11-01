@@ -3,6 +3,7 @@
 namespace App\Modules\Printing\Services;
 
 use App\Modules\Printing\Documents\PrintDocument;
+use Mike42\Escpos\EscposImage;
 use Mike42\Escpos\PrintConnectors\DummyPrintConnector;
 use Mike42\Escpos\Printer;
 
@@ -32,6 +33,7 @@ class EscPosRenderer
                     'feed' => $printer->feed((int) ($line['lines'] ?? 1)),
                     'cut' => $printer->cut(),
                     'drawer' => $printer->pulse(),
+                    'image' => $this->image($printer, (string) $line['path'], $columns),
                     default => null,
                 };
             }
@@ -70,6 +72,40 @@ class EscPosRenderer
         $pad = max(1, $width - mb_strlen($last) - mb_strlen($right));
         $printer->text($last.str_repeat(' ', $pad).$right."\n");
         $this->reset($printer);
+    }
+
+    /** Prints a logo centred, scaled to roughly two thirds of the paper width. Missing files are skipped. */
+    private function image(Printer $printer, string $path, int $columns): void
+    {
+        if (! is_file($path) || ! function_exists('imagecreatefromstring')) {
+            return;
+        }
+
+        try {
+            $maxWidth = $columns >= 48 ? 384 : 256;   // dots: 80 mm ≈ 576, 58 mm ≈ 384
+            $img = EscposImage::load($path, false);
+            $printer->setJustification(Printer::JUSTIFY_CENTER);
+            $printer->bitImage($img->getWidth() > $maxWidth ? self::scaled($path, $maxWidth) : $img);
+            $printer->feed();
+            $printer->setJustification(Printer::JUSTIFY_LEFT);
+        } catch (\Throwable) {
+            // A bad image must never stop a receipt.
+        }
+    }
+
+    private static function scaled(string $path, int $maxWidth): EscposImage
+    {
+        $src = imagecreatefromstring((string) file_get_contents($path));
+        $ratio = $maxWidth / imagesx($src);
+        $dst = imagescale($src, $maxWidth, (int) round(imagesy($src) * $ratio));
+        $tmp = tempnam(sys_get_temp_dir(), 'rms-logo-').'.png';
+        imagepng($dst, $tmp);
+
+        try {
+            return EscposImage::load($tmp, false);
+        } finally {
+            @unlink($tmp);
+        }
     }
 
     private function rule(Printer $printer, string $char, int $columns): void

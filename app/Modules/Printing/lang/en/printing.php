@@ -7,14 +7,14 @@ return [
     'print_job' => 'Print job',
     'print_jobs' => 'Print jobs',
     'print' => 'Print',
-    'driver' => ['network' => 'Network (LAN) thermal printer', 'usb' => 'USB thermal printer (Phase 1.5)', 'browser' => 'Browser print (any printer installed on the till)'],
+    'driver' => ['network' => 'Network (LAN) thermal printer', 'usb' => 'USB thermal printer (plugged into the store computer)', 'browser' => 'Browser print (any printer installed on the till)'],
     'job_type' => ['receipt' => 'Receipt', 'kitchen_ticket' => 'Kitchen ticket', 'test' => 'Test page', 'drawer' => 'Open drawer'],
     'status' => ['queued' => 'Queued', 'printing' => 'Printing', 'printed' => 'Printed', 'failed' => 'Failed', 'waiting_browser' => 'Waiting for till'],
     'fields' => [
         'name' => 'Name',
         'driver' => 'Connection',
         'address' => 'Address',
-        'address_hint' => 'Network: the printer\'s IP address, e.g. 192.168.8.50 (port 9100 is assumed; add :9100 to change). Browser: leave empty.',
+        'address_hint' => 'Network: the printer\'s IP address, e.g. 192.168.8.50 (port 9100 is assumed; add :9100 to change). USB: the print queue name from `php artisan rms:printers:queues`, e.g. RECEIPT. Browser: leave empty.',
         'paper_width' => 'Paper width',
         'prints_receipts' => 'Prints customer receipts',
         'stations' => 'Kitchen stations', 'stations_hint' => 'Leave empty to print every station’s tickets here.',
@@ -49,6 +49,7 @@ return [
     'errors' => [
         'unreachable' => 'Cannot reach printer at :address (:error). Check it is on, connected to the network and the address is right.',
         'write_failed' => 'Printer at :address stopped accepting data.',
-        'usb_later' => 'USB printing arrives in Phase 1.5. Use Browser print for now.',
+        'bad_queue' => 'The USB printer needs a print queue name as its address (run: php artisan rms:printers:queues). Got ":queue".',
+        'spool_failed' => 'Could not send to print queue ":queue": :error',
     ],
 ];

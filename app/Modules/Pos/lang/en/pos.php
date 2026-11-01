@@ -10,6 +10,15 @@ return [
         'enter' => 'Sign in',
         'no_store' => 'This till is not linked to a restaurant yet. Ask the owner to run the demo or set RMS_STORE_TENANT.',
         'no_access' => 'Your account is not allowed to use the till. Ask a manager.',
+        'choose_till' => 'Which till is this device?',
+        'this_till' => 'This device is :till.',
+        'change_till' => 'Change',
+    ],
+    'drawer' => [
+        'open' => 'Open drawer',
+        'hint' => 'Open the cash drawer without a sale (written to the audit log)',
+        'opened' => 'Drawer opening…',
+        'no_printer' => 'No receipt printer with a cash drawer is set up for this till (Back office → Printers).',
     ],
     'home' => [
         'dine_in' => 'Dine-in',
@@ -113,6 +122,8 @@ return [
             'merge' => 'Join another table',
             'merge_hint' => 'Tap the table that is joining this one',
             'guests' => 'Guests',
+            'tax_number' => 'TIN',
+            'preview_note' => 'Sample receipt — the lines below are made up.',
             'moved' => 'Order moved to table :table.',
             'merged' => 'Table :table joined. Lines are now on this order.',
             'joined_tables' => 'Joined: :tables',
@@ -205,6 +216,8 @@ return [
         'tip' => 'Tip',
         'refund' => 'Refund',
         'guests' => 'Guests',
+        'tax_number' => 'TIN',
+        'preview_note' => 'Sample receipt — the lines below are made up.',
     ],
     'orders' => [
         'title' => 'Orders',

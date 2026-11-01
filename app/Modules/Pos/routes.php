@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Pos\Http\DrawerController;
 use App\Modules\Pos\Http\EnsurePosUser;
 use App\Modules\Pos\Http\ReceiptController;
 use App\Modules\Pos\Livewire\DeliveriesBoard;
@@ -32,6 +33,7 @@ Route::prefix('pos')->name('pos.')->group(function () {
         Route::get('orders', OrdersList::class)->name('orders');
         Route::get('deliveries', DeliveriesBoard::class)->name('deliveries');
         Route::get('rider', RiderScreen::class)->name('rider');
+        Route::post('drawer', DrawerController::class)->name('drawer');
 
         Route::post('logout', function (Request $request) {
             Auth::logout();

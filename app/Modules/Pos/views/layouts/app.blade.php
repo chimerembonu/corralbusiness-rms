@@ -48,7 +48,12 @@
                 </div>
                 <div class="flex items-center gap-2">
                     @auth
-                        <span class="hidden rounded-xl bg-slate-800 px-3 py-2 text-sm text-slate-300 md:inline">{{ auth()->user()->name }}</span>
+                        <span class="hidden rounded-xl bg-slate-800 px-3 py-2 text-sm text-slate-300 md:inline">{{ auth()->user()->name }}@if ($till = app(\App\Modules\Pos\Services\CurrentTill::class)->get()) · {{ $till->name }}@endif</span>
+                        @can(\App\Modules\Staff\Enums\Permission::CashDrawer->value)
+                            <form method="post" action="{{ route('pos.drawer') }}">@csrf
+                                <button type="submit" class="flex h-11 items-center rounded-xl bg-slate-800 px-4 text-sm font-semibold hover:bg-slate-700" title="{{ __('pos::pos.drawer.hint') }}">{{ __('pos::pos.drawer.open') }}</button>
+                            </form>
+                        @endcan
                         @can(\App\Modules\Staff\Enums\Permission::KitchenView->value)
                             <a href="{{ route('kitchen.display') }}" class="flex h-11 items-center rounded-xl bg-slate-800 px-4 text-sm font-semibold hover:bg-slate-700">{{ __('kitchen::kitchen.title') }}</a>
                         @endcan
@@ -74,6 +79,8 @@
                 <livewire:printing.printer-problems />
             @endif
         @endauth
+        @if (session('status'))<p class="bg-emerald-600 px-4 py-2 text-sm font-semibold text-white" role="status">{{ session('status') }}</p>@endif
+        @if (session('error'))<p class="bg-rose-600 px-4 py-2 text-sm font-semibold text-white" role="alert">{{ session('error') }}</p>@endif
         <main class="min-h-0 flex-1">
             {{ $slot }}
         </main>

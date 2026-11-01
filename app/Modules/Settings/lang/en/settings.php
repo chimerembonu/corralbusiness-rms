@@ -2,6 +2,24 @@
 
 return [
     'navigation_group' => 'Settings',
+    'receipt' => [
+        'title' => 'Receipt design',
+        'subheading' => 'What customers see on paper and on screen at :branch.',
+        'top' => 'Top of the receipt',
+        'bottom' => 'Bottom of the receipt',
+        'logo' => 'Logo',
+        'logo_help' => 'PNG or JPG, black on white prints best. It is scaled to fit the paper.',
+        'tax_number' => 'TIN / VAT number',
+        'tax_number_help' => 'Printed under the restaurant name (your accountant will want this on every receipt).',
+        'show_server' => 'Show who served the customer',
+        'header' => 'Header lines',
+        'header_help' => 'One line each, e.g. a welcome message or opening hours.',
+        'footer' => 'Footer',
+        'footer_help' => 'e.g. Thank you! Medaase! Please come again.',
+        'preview' => 'Preview sample receipt',
+        'save' => 'Save design',
+        'saved' => 'Receipt design saved.',
+    ],
     'till' => [
         'title' => 'Till settings',
         'subheading' => 'Rules every till follows at :branch.',

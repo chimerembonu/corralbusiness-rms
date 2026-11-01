@@ -6,6 +6,17 @@
             <p class="text-sm text-slate-400">{{ __('pos::pos.login.subtitle') }}</p>
         </div>
 
+        @if ($tills->isNotEmpty() && ! $till)
+            <p class="mb-2 text-center text-sm font-semibold text-slate-300">{{ __('pos::pos.login.choose_till') }}</p>
+            <div class="mb-4 grid grid-cols-2 gap-2">
+                @foreach ($tills as $t)
+                    <button type="button" wire:click="chooseTill('{{ $t->id }}')" class="h-14 rounded-2xl bg-slate-800 px-3 text-sm font-bold hover:bg-slate-700">{{ $t->name }}</button>
+                @endforeach
+            </div>
+        @elseif ($till)
+            <p class="mb-3 text-center text-sm text-slate-400">{{ __('pos::pos.login.this_till', ['till' => $till->name]) }} <button type="button" wire:click="changeTill" class="font-semibold text-emerald-400 underline">{{ __('pos::pos.login.change_till') }}</button></p>
+        @endif
+
         <div class="mb-4 flex h-14 items-center justify-center gap-3 rounded-2xl bg-slate-800 text-3xl tracking-[0.5em]" aria-live="polite">
             <template x-for="i in 6"><span class="inline-block h-4 w-4 rounded-full" :class="pin.length >= i ? 'bg-emerald-400' : 'bg-slate-600'"></span></template>
         </div>

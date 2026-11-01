@@ -23,22 +23,25 @@
         .toolbar a, .toolbar button { min-height: 48px; padding: 0 20px; border: 0; border-radius: 12px; font: 600 16px system-ui, sans-serif; display: inline-flex; align-items: center; cursor: pointer; text-decoration: none; }
         .print { background: #10b981; color: #022c22; }
         .next { background: #1e293b; color: #f1f5f9; }
-        body.has-toolbar .receipt { margin-top: 84px; }
+        body.has-toolbar .receipt { margin-top: 84px; } body.has-toolbar .muted + .receipt { margin-top: 8px; }
         @media print { body { background: #fff; } .receipt { margin: 0; width: 80mm; } .toolbar { display: none; } }
     </style>
 </head>
 <body class="has-toolbar">
     <div class="toolbar">
         <button type="button" class="print" onclick="window.print()">🖨 {{ __('pos::pos.receipt.print') }}</button>
-        @auth<a class="next" href="{{ route('pos.home') }}">{{ __('pos::pos.receipt.new_order') }}</a>@endauth
+        @auth @unless ($preview ?? false)<a class="next" href="{{ route('pos.home') }}">{{ __('pos::pos.receipt.new_order') }}</a>@endunless @endauth
     </div>
 
+    @if ($preview ?? false)<div class="center muted" style="margin-top:84px">{{ __('pos::pos.receipt.preview_note') }}</div>@endif
     <div class="receipt">
+        @if ($settings->logoUrl())<div class="center"><img src="{{ $settings->logoUrl() }}" alt="" style="max-width:60%;max-height:30mm"></div>@endif
         <div class="center bold big">{{ $tenant->name }}</div>
         <div class="center">{{ $branch->name }}</div>
         @if ($branch->address)<div class="center muted">{{ $branch->address }}</div>@endif
         @if ($branch->phone)<div class="center muted">{{ $branch->phone }}</div>@endif
-        @if ($header)<div class="center muted">{{ $header }}</div>@endif
+        @if ($settings->taxNumber)<div class="center muted">{{ __('pos::pos.receipt.tax_number') }}: {{ $settings->taxNumber }}</div>@endif
+        @foreach ($settings->headerLines() as $line)<div class="center muted">{{ $line }}</div>@endforeach
         <hr>
         @if ($order->status === \App\Modules\Orders\Enums\OrderStatus::Void)<div class="void">{{ __('pos::pos.receipt.void') }}</div>@endif
         @if ($order->status === \App\Modules\Orders\Enums\OrderStatus::Refunded)<div class="void">{{ __('pos::pos.receipt.refunded') }}</div>@endif
@@ -46,7 +49,7 @@
         <div class="row"><span>{{ __('pos::pos.receipt.order_no') }}</span><span class="bold">#{{ $order->displayNumber() }}</span></div>
         <div class="row"><span>{{ __('pos::pos.receipt.date') }}</span><span>{{ ($order->paid_at ?? $order->opened_at)->format('d/m/Y H:i') }}</span></div>
         <div class="row"><span>{{ __('pos::pos.receipt.type') }}</span><span>{{ $order->type->label() }}@if ($order->table) · {{ __('pos::pos.receipt.table') }} {{ $order->table->name }}@endif</span></div>
-        @if ($order->openedBy)<div class="row"><span>{{ __('pos::pos.receipt.served_by') }}</span><span>{{ $order->openedBy->name }}</span></div>@endif
+        @if ($order->openedBy && $settings->showServer)<div class="row"><span>{{ __('pos::pos.receipt.served_by') }}</span><span>{{ $order->openedBy->name }}</span></div>@endif
         @if ($order->table)<div class="row"><span>{{ __('pos::pos.receipt.guests') }}</span><span>{{ $order->covers }}</span></div>@endif
         @if ($order->customer_name)<div class="row"><span>{{ __('pos::pos.orders.who') }}</span><span>{{ $order->customer_name }}</span></div>@endif
         @if ($order->isDelivery())

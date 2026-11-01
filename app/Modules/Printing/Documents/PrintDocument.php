@@ -118,6 +118,14 @@ final class PrintDocument
     }
 
     /** Open the cash drawer connected to the printer. */
+    /** A logo or picture file (PNG/JPG) printed centred; ignored by printers that cannot draw it. */
+    public function image(string $path): self
+    {
+        $this->lines[] = ['type' => 'image', 'path' => $path];
+
+        return $this;
+    }
+
     public function drawer(): self
     {
         $this->lines[] = ['type' => 'drawer'];
