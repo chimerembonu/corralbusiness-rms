@@ -73,6 +73,9 @@
                         @canany([\App\Modules\Staff\Enums\Permission::PaymentsTake->value, \App\Modules\Staff\Enums\Permission::CashDrawer->value, \App\Modules\Staff\Enums\Permission::DayClose->value])
                             <a href="{{ route('pos.cash') }}" class="flex h-11 items-center rounded-xl bg-slate-800 px-4 text-sm font-semibold hover:bg-slate-700">{{ __('pos::pos.nav.cash') }}</a>
                         @endcanany
+                        @canany([\App\Modules\Staff\Enums\Permission::InventoryCount->value, \App\Modules\Staff\Enums\Permission::InventoryManage->value])
+                            <a href="{{ route('pos.stock-take') }}" class="flex h-11 items-center rounded-xl bg-slate-800 px-4 text-sm font-semibold hover:bg-slate-700">{{ __('inventory::inventory.stock_take.phone.nav') }}</a>
+                        @endcanany
                         @can(\App\Modules\Staff\Enums\Permission::ReportsView->value)
                             <a href="{{ route('pos.today') }}" class="flex h-11 items-center rounded-xl bg-slate-800 px-4 text-sm font-semibold hover:bg-slate-700">{{ __('pos::pos.nav.today') }}</a>
                         @endcan

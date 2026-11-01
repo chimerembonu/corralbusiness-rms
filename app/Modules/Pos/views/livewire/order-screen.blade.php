@@ -131,7 +131,8 @@
                         <span class="line-clamp-2 text-base font-semibold leading-tight">{{ $item->name }}</span>
                         <span class="mt-2 flex items-center justify-between">
                             <span class="text-emerald-400">{{ $item->variants->isNotEmpty() ? __('pos::pos.order.size').'…' : money($item->price) }}</span>
-                            @if ($item->tags)<span class="text-[10px] uppercase text-slate-500">{{ implode(' · ', $item->tags) }}</span>@endif
+                            @if ($item->track_stock)<span class="rounded-full px-2 py-0.5 text-[10px] font-bold {{ $item->isStockLow() ? 'bg-rose-500/20 text-rose-300' : 'bg-slate-800 text-slate-400' }}">{{ __('inventory::inventory.item_stock.badge', ['qty' => \App\Modules\Inventory\Services\StockService::qty((float) $item->stock_qty)]) }}</span>
+                            @elseif ($item->tags)<span class="text-[10px] uppercase text-slate-500">{{ implode(' · ', $item->tags) }}</span>@endif
                         </span>
                     </button>
                 @endforeach

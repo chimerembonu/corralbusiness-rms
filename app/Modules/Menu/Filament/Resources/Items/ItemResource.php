@@ -101,8 +101,10 @@ class ItemResource extends Resource
                     ->options(fn () => TaxComponent::query()->active()->pluck('name', 'code'))
                     ->visible(fn (Get $get) => (bool) $get('taxable'))->columnSpan(2),
                 Toggle::make('is_sold_out')->label(__('menu::menu.fields.is_sold_out'))->inline(false),
-                Toggle::make('track_stock')->label(__('menu::menu.fields.track_stock'))->inline(false),
+                Toggle::make('track_stock')->label(__('menu::menu.fields.track_stock'))->inline(false)->live()->helperText(__('inventory::inventory.item_stock.help')),
                 Toggle::make('is_active')->label(__('menu::menu.fields.is_active'))->default(true)->inline(false),
+                TextInput::make('stock_qty')->label(__('inventory::inventory.item_stock.stock_qty'))->numeric()->default(0)->step('1')->visible(fn (Get $get) => (bool) $get('track_stock')),
+                TextInput::make('stock_reorder_level')->label(__('inventory::inventory.item_stock.stock_reorder_level'))->numeric()->default(0)->step('1')->visible(fn (Get $get) => (bool) $get('track_stock')),
             ]),
             AvailabilityFields::make()->columnSpanFull(),
         ]);

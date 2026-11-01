@@ -27,7 +27,7 @@ class Item extends BusinessModel
     protected $fillable = [
         'branch_id', 'category_id', 'type', 'name', 'code', 'description', 'price', 'image_path',
         'taxable', 'tax_exempt_codes', 'allergens', 'tags', 'availability',
-        'is_sold_out', 'sold_out_at', 'track_stock', 'sort_order', 'is_active',
+        'is_sold_out', 'sold_out_at', 'track_stock', 'stock_qty', 'stock_reorder_level', 'sort_order', 'is_active',
     ];
 
     /** Defaults so a freshly created model behaves like one loaded from the database. */
@@ -48,6 +48,8 @@ class Item extends BusinessModel
             'is_sold_out' => 'boolean',
             'sold_out_at' => 'datetime',
             'track_stock' => 'boolean',
+            'stock_qty' => 'decimal:3',
+            'stock_reorder_level' => 'decimal:3',
             'sort_order' => 'integer',
             'is_active' => 'boolean',
         ];
@@ -91,6 +93,12 @@ class Item extends BusinessModel
     public function scopeSellable(Builder $query): Builder
     {
         return $query->active()->where('is_sold_out', false);
+    }
+
+    /** Counted stock is low (only for items with "count stock" ticked). */
+    public function isStockLow(): bool
+    {
+        return $this->track_stock && (float) $this->stock_reorder_level > 0 && (float) $this->stock_qty <= (float) $this->stock_reorder_level;
     }
 
     public function isCombo(): bool

@@ -2,6 +2,11 @@
 
 namespace App\Modules\Inventory;
 
+use App\Modules\Inventory\Listeners\DeductStockWhenSent;
+use App\Modules\Inventory\Listeners\RestockWhenVoided;
+use App\Modules\Orders\Events\ItemVoided;
+use App\Modules\Orders\Events\OrderSentToKitchen;
+use App\Modules\Orders\Events\OrderVoided;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 
 /**
@@ -17,7 +22,9 @@ class InventoryServiceProvider extends ServiceProvider
      * @var array<class-string, array<int, class-string>>
      */
     protected $listen = [
-        //
+        OrderSentToKitchen::class => [DeductStockWhenSent::class],
+        ItemVoided::class => [RestockWhenVoided::class],
+        OrderVoided::class => [RestockWhenVoided::class],
     ];
 
     public function register(): void

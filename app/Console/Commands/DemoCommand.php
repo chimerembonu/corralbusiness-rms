@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Modules\Inventory\Seeders\IngredientsDemoSeeder;
+use App\Modules\Inventory\Seeders\SuppliersDemoSeeder;
 use App\Modules\Kitchen\Seeders\StationsDemoSeeder;
 use App\Modules\Menu\Seeders\MenuDemoSeeder;
 use App\Modules\Orders\Seeders\DiningTablesDemoSeeder;
@@ -81,7 +82,8 @@ class DemoCommand extends Command
         $ingredients = (new IngredientsDemoSeeder)->run();
         $promos = (new PromoCodesDemoSeeder)->run();
         $roster = (new RosterDemoSeeder)->run();
-        $this->components->info("Tables: {$tables} · Tills: {$tills} · Stations: {$stations} · Staff: {$staff} · Ingredients: {$ingredients} · Promo codes: {$promos} · Roster shifts: {$roster['shifts']} · Clock-ins: {$roster['entries']}.");
+        $inventory = (new SuppliersDemoSeeder)->run();
+        $this->components->info("Tables: {$tables} · Tills: {$tills} · Stations: {$stations} · Staff: {$staff} · Ingredients: {$ingredients} · Promo codes: {$promos} · Roster shifts: {$roster['shifts']} · Clock-ins: {$roster['entries']} · Suppliers: {$inventory['suppliers']} · Counted drinks: {$inventory['tracked_items']}.");
 
         $settings = app(SettingsService::class);
         $settings->set('receipt.header', 'Akwaaba! TIN: C0000000000 (demo)', tenantWide: true);
