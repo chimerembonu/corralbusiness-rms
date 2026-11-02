@@ -36,7 +36,7 @@ class StaffSalesService
 
         return $this->roster->staff($branchId)->map(function (User $user) use ($orders, $payments, $sum) {
             $own = $orders->get($user->id, collect());
-            $paid = $own->where('status', OrderStatus::Paid);
+            $paid = $own->filter(fn (Order $o) => $o->countsAsSale()); // a refund on a later day belongs to that day (security review L3)
             $taken = $payments->get($user->id, collect());
 
             return [

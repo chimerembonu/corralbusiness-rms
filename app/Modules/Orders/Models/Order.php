@@ -57,6 +57,7 @@ class Order extends BusinessModel
             'paid_total' => MoneyCast::class,
             'tip_total' => MoneyCast::class,
             'refunded_total' => MoneyCast::class,
+            'refund_business_date' => 'date',
             'service_charge_bp' => 'integer',
             'service_charge_waived' => 'boolean',
             'held_at' => 'datetime',
@@ -178,6 +179,21 @@ class Order extends BusinessModel
     }
 
     /** Real trade only: training orders are left out of reports and cash. */
+    /**
+     * Is this order a sale on its business day? A fully refunded order drops out only when the refund was
+     * posted on that same day; a refund on a later day belongs to that later day (security review L3).
+     */
+    public function countsAsSale(): bool
+    {
+        if ($this->status === OrderStatus::Paid) {
+            return true;
+        }
+
+        return $this->status === OrderStatus::Refunded
+            && $this->refund_business_date !== null
+            && ! $this->refund_business_date->isSameDay($this->business_date);
+    }
+
     public function scopeReal(Builder $query): Builder
     {
         return $query->where($this->qualifyColumn('is_training'), false);

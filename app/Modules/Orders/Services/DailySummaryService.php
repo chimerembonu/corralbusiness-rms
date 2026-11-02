@@ -24,14 +24,15 @@ class DailySummaryService
         // Eager-load the table so the order list can show "Table 4" without lazy loading (strict mode forbids it).
         $base = fn () => Order::query()->with('table')->real()->forBranch($branchId)->forBusinessDate($date);
 
-        $paid = $base()->where('status', OrderStatus::Paid->value)->get();
+        // Sales belong to the day they were paid; refunds to the day they were given (security review L3).
+        // An order fully refunded on its own day drops out of that day's sales; one refunded later stays.
+        $paid = $base()->whereIn('status', [OrderStatus::Paid->value, OrderStatus::Refunded->value])->get()->filter(fn (Order $o) => $o->countsAsSale())->values();
         $open = $base()->active()->get();
         $void = $base()->where('status', OrderStatus::Void->value)->get();
-        $refunded = $base()->where('status', OrderStatus::Refunded->value)->get();
+        $refunded = Order::query()->with('table')->real()->forBranch($branchId)->where('status', OrderStatus::Refunded->value)->whereDate('refund_business_date', $date)->get();
         $held = $open->filter(fn (Order $o) => $o->isHeld());
 
-        $refunds = Payment::query()->real()->forBranch($branchId)->where('status', 'refunded')
-            ->whereIn('order_id', $paid->pluck('id')->merge($refunded->pluck('id')))->get();
+        $refunds = Payment::query()->real()->forBranch($branchId)->where('status', 'refunded')->whereDate('refund_business_date', $date)->get();
 
         $sum = fn (Collection $orders, string $field) => $orders->reduce(fn (Money $c, Order $o) => $c->add($o->{$field}), Money::zero());
 
@@ -47,10 +48,12 @@ class DailySummaryService
             'type' => $type, 'count' => $orders->count(), 'total' => $sum($orders, 'total'),
         ])->values()->all();
 
+        // Money taken on the day, including payments refunded on a later day (that refund shows on its own day).
         $payments = Payment::query()->real()->forBranch($branchId)
             ->whereIn('order_id', $paid->pluck('id'))
-            ->where('status', 'completed')
+            ->whereIn('status', ['completed', 'refunded'])
             ->get()
+            ->filter(fn (Payment $p) => $p->status->value === 'completed' || ($p->refund_business_date !== null && $p->refund_business_date->toDateString() !== $date))
             ->groupBy(fn (Payment $p) => $p->method->value)
             ->map(fn (Collection $payments, string $method) => [
                 'method' => $method, 'count' => $payments->count(),
@@ -89,7 +92,7 @@ class DailySummaryService
             'by_payment_method' => $payments,
             'top_items' => $topItems,
             'average_order' => $paid->count() ? Money::of(intdiv($sum($paid, 'total')->amount, $paid->count())) : Money::zero(),
-            'orders' => $paid->merge($open)->merge($void)->merge($refunded)->sortByDesc('opened_at')->values(),
+            'orders' => $paid->merge($open)->merge($void)->merge($refunded)->unique('id')->sortByDesc('opened_at')->values(),
         ];
     }
 }

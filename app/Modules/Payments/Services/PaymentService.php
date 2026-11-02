@@ -140,12 +140,17 @@ class PaymentService
             throw new PaymentException(__('orders::orders.errors.reason_required'));
         }
 
+        // The refund is posted to today's business day, which must still be open: a closed day's Z report
+        // never changes afterwards (security review L3).
+        $businessDate = $this->orders->businessDate();
+        $this->days->assertOpen($businessDate, $payment->branch_id);
         $session = $this->cash->current($by ?? $approvedBy, $payment->branch_id);
 
-        return DB::transaction(function () use ($payment, $reason, $approvedBy, $session) {
+        return DB::transaction(function () use ($payment, $reason, $approvedBy, $session, $businessDate) {
             $payment->forceFill([
                 'status' => PaymentStatus::Refunded,
                 'refunded_at' => now(),
+                'refund_business_date' => $businessDate,
                 'refund_reason' => trim($reason),
                 'refunded_by_id' => $approvedBy->id,
                 'refund_session_id' => $session?->id,
@@ -160,6 +165,7 @@ class PaymentService
 
             if ($order->status === OrderStatus::Paid && $order->paid_total->isZero()) {
                 $order->status = OrderStatus::Refunded;
+                $order->refund_business_date = $businessDate;
             }
             $order->save();
 

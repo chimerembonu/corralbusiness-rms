@@ -34,17 +34,24 @@ class ReportService
             ->with('table')->get();
     }
 
+    /** Sales of the range: paid orders, plus fully refunded ones whose refund was posted on a later day (security review L3). */
+    public function salesOrders(string $from, string $to, ?string $branchId = null): Collection
+    {
+        return $this->paidOrders($from, $to, $branchId)->filter(fn (Order $o) => $o->countsAsSale())->values();
+    }
+
     /** @return array<string, mixed> */
     public function summary(string $from, string $to, ?string $branchId = null): array
     {
         $branchId ??= $this->context->branchId();
-        $orders = $this->paidOrders($from, $to, $branchId);
-        $paid = $orders->where('status', OrderStatus::Paid);
+        $paid = $this->salesOrders($from, $to, $branchId);
+        $refundedOrders = Order::query()->real()->where('branch_id', $branchId)->where('status', OrderStatus::Refunded->value)
+            ->whereDate('refund_business_date', '>=', $from)->whereDate('refund_business_date', '<=', $to)->count();
         $sum = fn (BaseCollection $rows, string $field) => (int) $rows->sum(fn (Order $o) => $o->{$field}->amount);
 
         $voids = Order::query()->real()->where('branch_id', $branchId)->whereDate('business_date', '>=', $from)->whereDate('business_date', '<=', $to)->where('status', OrderStatus::Void->value)->get();
         $refunds = Payment::query()->real()->where('branch_id', $branchId)->where('status', PaymentStatus::Refunded->value)
-            ->whereBetween('refunded_at', [$from.' 00:00:00', $to.' 23:59:59'])->get();
+            ->whereDate('refund_business_date', '>=', $from)->whereDate('refund_business_date', '<=', $to)->get();
         $days = max(1, (int) CarbonImmutable::parse($from)->diffInDays(CarbonImmutable::parse($to)) + 1);
 
         return [
@@ -53,7 +60,7 @@ class ReportService
             'days' => $days,
             'orders' => $paid->count(),
             'orders_void' => $voids->count(),
-            'orders_refunded' => $orders->where('status', OrderStatus::Refunded)->count(),
+            'orders_refunded' => $refundedOrders,
             'covers' => (int) $paid->sum('covers'),
             'gross_sales' => $sum($paid, 'total'),
             'net_sales' => $sum($paid, 'total') - $sum($paid, 'tax_total'),
@@ -73,7 +80,7 @@ class ReportService
     /** @return array<int, array{date: string, orders: int, gross: int, net: int, tax: int, discounts: int}> */
     public function byDay(string $from, string $to, ?string $branchId = null): array
     {
-        $orders = $this->paidOrders($from, $to, $branchId)->where('status', OrderStatus::Paid)->groupBy(fn (Order $o) => $o->business_date->toDateString());
+        $orders = $this->salesOrders($from, $to, $branchId)->groupBy(fn (Order $o) => $o->business_date->toDateString());
         $rows = [];
         for ($day = CarbonImmutable::parse($from); $day->lessThanOrEqualTo(CarbonImmutable::parse($to)); $day = $day->addDay()) {
             $own = $orders->get($day->toDateString(), collect());
@@ -93,7 +100,7 @@ class ReportService
     /** @return array<int, array{hour: int, label: string, orders: int, gross: int}> every hour that had a sale */
     public function byHour(string $from, string $to, ?string $branchId = null): array
     {
-        $orders = $this->paidOrders($from, $to, $branchId)->where('status', OrderStatus::Paid)->groupBy(fn (Order $o) => (int) ($o->paid_at ?? $o->opened_at)->format('G'));
+        $orders = $this->salesOrders($from, $to, $branchId)->groupBy(fn (Order $o) => (int) ($o->paid_at ?? $o->opened_at)->format('G'));
         $rows = [];
         for ($h = 0; $h < 24; $h++) {
             $own = $orders->get($h, collect());
@@ -109,7 +116,7 @@ class ReportService
     /** @return Collection<int, OrderItem> sold lines (not voided) of paid orders */
     private function soldLines(string $from, string $to, ?string $branchId = null): Collection
     {
-        $orderIds = $this->paidOrders($from, $to, $branchId)->where('status', OrderStatus::Paid)->pluck('id');
+        $orderIds = $this->salesOrders($from, $to, $branchId)->pluck('id');
 
         return OrderItem::query()->withoutGlobalScopes()->whereIn('order_id', $orderIds)->where('status', '!=', OrderItemStatus::Voided->value)->get();
     }
@@ -149,7 +156,7 @@ class ReportService
     /** @return array<int, array{type: string, label: string, orders: int, gross: int, average: int}> */
     public function byType(string $from, string $to, ?string $branchId = null): array
     {
-        return $this->paidOrders($from, $to, $branchId)->where('status', OrderStatus::Paid)->groupBy(fn (Order $o) => $o->type->value)->map(fn (BaseCollection $own, string $type) => [
+        return $this->salesOrders($from, $to, $branchId)->groupBy(fn (Order $o) => $o->type->value)->map(fn (BaseCollection $own, string $type) => [
             'type' => $type,
             'label' => OrderType::from($type)->label(),
             'orders' => $own->count(),
@@ -245,7 +252,7 @@ class ReportService
             }
         }
 
-        $orders = $this->paidOrders($from, $to, $branchId)->where('status', OrderStatus::Paid);
+        $orders = $this->salesOrders($from, $to, $branchId);
 
         return [
             'components' => array_values($components),

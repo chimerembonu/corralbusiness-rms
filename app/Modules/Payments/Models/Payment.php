@@ -32,6 +32,7 @@ class Payment extends BusinessModel
             'tip' => MoneyCast::class,
             'provider' => MomoProvider::class,
             'refunded_at' => 'datetime',
+            'refund_business_date' => 'date',
             'status' => PaymentStatus::class,
             'is_training' => 'boolean',
             'received_at' => 'datetime',
