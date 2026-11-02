@@ -66,3 +66,13 @@ One Claude Code session: N1, N2, N5 (all small). N3, N4, N6 and N7 can go into t
 ## Confirmed solid (unchanged from first review)
 
 Authentication on every screen; hashed, tenant-scoped, rate-limited PINs; no SQL, shell or template injection; money in integer pesewas with server-side recomputation; tax maths verified; secrets absent from repo and image; Docker exposes port 80 only; audit trail on orders, payments, sessions, movements, day closes, time entries — and now also on removed/reduced lines after bill print.
+
+## Addendum — fixes verified at `1ac48e0` (2 Nov 2026, 22:45)
+
+- **N1 fixed.** Pay-out threshold now sums every session on the same till (or cashier) for the business day (`CashService::payOutNeedsManager`).
+- **N2 fixed.** `/pos/orders` requires an order-taking or cashier permission; Rider and Kitchen get 403 (`OrdersList::mount`).
+- **N5 fixed.** Refund locks the payment row and re-checks "already refunded" inside the transaction (`PaymentService::refund`).
+- N3, N4, N6, N7 and D1–D3 are listed in PLAN.md under post-go-live week 1.
+- Full suite: **319 tests pass (2,732 checks).**
+
+**Scorecard now: 0 Critical, 0 High, 0 Medium, 4 Low (scheduled). Rating: fit for pilot.**
