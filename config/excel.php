@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use Maatwebsite\Excel\DefaultValueBinder;
+use App\Support\Excel\SafeValueBinder;
 use Maatwebsite\Excel\Excel;
 use PhpOffice\PhpSpreadsheet\Reader\Csv;
 
@@ -239,7 +239,8 @@ return [
     |
     */
     'value_binder' => [
-        'default' => DefaultValueBinder::class,
+        // Stores formula-looking text (=, +, -, @ …) as plain text (security review L1).
+        'default' => SafeValueBinder::class,
     ],
 
     'cache' => [
