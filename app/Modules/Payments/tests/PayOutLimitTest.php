@@ -83,3 +83,25 @@ it('counts every pay-out of the session towards the limit, so it cannot be split
     $this->cash->payOut($this->session->fresh(), Money::fromDecimal('150'), 'Petty cash', $this->cashier, null, $this->manager);
     expect($this->session->fresh()->pay_outs)->toBePesewas(30000);
 });
+
+it('counts pay-outs across every session of the till on the same day, so cashing up and reopening does not reset the limit', function () {
+    $this->cash->payOut($this->session, Money::fromDecimal('200'), 'Petty cash', $this->cashier);
+    $this->cash->close($this->session->fresh(), Money::fromDecimal('800'), $this->cashier); // perfect count: no variance, no PIN
+    $again = $this->cash->open($this->till, $this->cashier, Money::fromDecimal('800'), now()->toDateString());
+
+    expect(fn () => $this->cash->payOut($again, Money::fromDecimal('1'), 'Petty cash', $this->cashier))
+        ->toThrow(ManagerPinRequiredException::class);
+    expect(CashMovement::query()->count())->toBe(1);
+
+    $this->cash->payOut($again->fresh(), Money::fromDecimal('100'), 'Petty cash', $this->cashier, null, $this->manager);
+    expect(CashMovement::query()->count())->toBe(2);
+
+    // A device without a till: that cashier's own sessions add up the same way.
+    $other = User::factory()->forBranch($this->branch)->withPin('2222')->create(['name' => 'Ama']);
+    $other->assignRole(Role::Cashier->value);
+    $loose = $this->cash->open(null, $other, Money::fromDecimal('500'), now()->toDateString());
+    $this->cash->payOut($loose, Money::fromDecimal('200'), 'Petty cash', $other);
+    $this->cash->close($loose->fresh(), Money::fromDecimal('300'), $other);
+    $loose2 = $this->cash->open(null, $other, Money::fromDecimal('300'), now()->toDateString());
+    expect(fn () => $this->cash->payOut($loose2, Money::fromDecimal('1'), 'Petty cash', $other))->toThrow(ManagerPinRequiredException::class);
+});

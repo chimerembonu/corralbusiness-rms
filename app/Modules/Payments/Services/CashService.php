@@ -137,10 +137,19 @@ class CashService
         return $this->move($session, CashMovementType::PayOut, $amount, $reason, $by, $reference, $approvedBy);
     }
 
-    /** The limit applies to everything paid out of the session so far plus this one, so it cannot be split into small pieces. */
+    /**
+     * The limit applies to everything paid out on this business day from this till (or by this cashier on a
+     * device without a till), across every session, plus this one: it cannot be split into small pieces or
+     * reset by cashing up and opening the till again (re-review N1).
+     */
     public function payOutNeedsManager(Money $amount, ?string $branchId = null, ?CashierSession $session = null): bool
     {
-        $soFar = $session?->pay_outs ?? Money::zero();
+        $soFar = Money::zero();
+        if ($session) {
+            $soFar = CashierSession::query()->where('branch_id', $session->branch_id)->whereDate('business_date', $session->business_date)
+                ->when($session->till_id, fn ($q) => $q->where('till_id', $session->till_id), fn ($q) => $q->where('user_id', $session->user_id))
+                ->get()->reduce(fn (Money $c, CashierSession $s) => $c->add($s->pay_outs), Money::zero());
+        }
 
         return $soFar->add($amount)->greaterThan(Money::of($this->settings->payOutLimit($branchId)));
     }
