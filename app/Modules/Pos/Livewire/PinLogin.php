@@ -12,6 +12,7 @@ use App\Support\Tenancy\StoreTenantResolver;
 use App\Support\Tenancy\Tenancy;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 #[Layout('pos::layouts.app', ['title' => 'Sign in', 'chrome' => false])]
@@ -21,7 +22,8 @@ class PinLogin extends Component
 
     public int $lockedFor = 0;
 
-    /** The till this device is; null = not chosen yet. */
+    /** The till this device is; null = not chosen yet. Locked: the browser must not be able to change it (it keys the PIN lockout). */
+    #[Locked]
     public ?string $tillId = null;
 
     public function mount(CurrentTill $current, StoreTenantResolver $store): void
@@ -97,7 +99,11 @@ class PinLogin extends Component
         $this->redirect(session()->pull('url.intended', $home));
     }
 
-    /** Lockouts count per till (not per network address, which every till behind one router shares). */
+    /**
+     * Lockouts count per till (not per network address, which every till behind one router shares).
+     * $tillId is #[Locked] and the till cookie is encrypted, so neither can be rotated by the browser
+     * to dodge the lockout.
+     */
     private function throttleKey(): string
     {
         return 'till:'.($this->tillId ?? app(CurrentTill::class)->id() ?? request()->ip());
