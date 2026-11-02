@@ -62,6 +62,8 @@ return [
         'reason_required' => 'Please choose a reason.',
         'nothing_to_split' => 'Choose at least one line to move to the new bill.',
         'cannot_split_all' => 'You cannot move every line; pay the whole bill instead.',
+        'has_payments' => 'This order already has a payment on it. Refund the payment first.',
+        'training_mismatch' => 'A practice order cannot be joined with a real one.',
         'no_course' => 'Nothing is waiting for course :number.',
         'not_paid' => 'Only paid orders can be refunded.',
         'not_delivery' => 'This is not a delivery order.',

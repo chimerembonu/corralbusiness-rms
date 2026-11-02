@@ -443,6 +443,9 @@ class OrderService
         if ($lines->count() >= $order->activeItems()->count()) {
             throw new OrderLockedException(__('orders::orders.errors.cannot_split_all'));
         }
+        if ($order->paid_total->isPositive()) { // a payment belongs to the whole bill; splitting would orphan it
+            throw new OrderLockedException(__('orders::orders.errors.has_payments'));
+        }
 
         return DB::transaction(function () use ($order, $lines, $by) {
             $seats = $lines->pluck('seat')->filter()->unique()->count();
@@ -464,6 +467,7 @@ class OrderService
             $new->branch_id = $order->branch_id;
             $new->split_from_id = $order->id;
             $new->is_training = (bool) $order->is_training; // a practice bill stays practice when split (security review M5)
+            $new->bill_printed_at = $order->bill_printed_at; // the customer has seen these lines on a bill already (H5)
             $new->status = $lines->contains(fn (OrderItem $l) => $l->isSent()) ? OrderStatus::Sent : OrderStatus::Open;
             $new->sent_at = $new->status === OrderStatus::Sent ? ($order->sent_at ?? now()) : null;
             $new->save();
@@ -593,6 +597,9 @@ class OrderService
         $needsManager = $order->status === OrderStatus::Sent || $order->bill_printed_at !== null;
         if ($needsManager && ! $by->can(Permission::OrdersVoid->value)) {
             throw new ManagerPinRequiredException(Permission::OrdersVoid->value);
+        }
+        if ($order->paid_total->isPositive()) { // money was taken: it must be refunded (manager, logged), not cancelled away
+            throw new OrderLockedException(__('orders::orders.errors.has_payments'));
         }
 
         $order->forceFill([

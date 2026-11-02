@@ -128,6 +128,14 @@ class TableService
         if (! $fromOrder && ! $intoOrder) {
             throw new TableUnavailableException(__('orders::orders.errors.nothing_to_merge'));
         }
+        if ($fromOrder && $intoOrder) {
+            if ($fromOrder->paid_total->isPositive() || $intoOrder->paid_total->isPositive()) { // a payment belongs to one bill
+                throw new OrderLockedException(__('orders::orders.errors.has_payments'));
+            }
+            if ((bool) $fromOrder->is_training !== (bool) $intoOrder->is_training) {
+                throw new OrderLockedException(__('orders::orders.errors.training_mismatch'));
+            }
+        }
 
         return DB::transaction(function () use ($from, $into, $fromOrder, $intoOrder, $by) {
             $sourceOrderId = null;
@@ -137,6 +145,7 @@ class TableService
                 $fromOrder->items()->update(['order_id' => $intoOrder->id]);
                 $fromOrder->forceFill(['status' => OrderStatus::Merged, 'merged_into_id' => $intoOrder->id])->save();
                 $intoOrder->covers += $fromOrder->covers;
+                $intoOrder->bill_printed_at ??= $fromOrder->bill_printed_at; // a bill seen on either table counts for the joined one (H5)
                 $intoOrder->save();
                 $sourceOrderId = $fromOrder->id;
                 $this->orders->recalculate($fromOrder);
