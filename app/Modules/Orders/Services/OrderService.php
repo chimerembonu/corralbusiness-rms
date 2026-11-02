@@ -443,6 +443,7 @@ class OrderService
             ]);
             $new->branch_id = $order->branch_id;
             $new->split_from_id = $order->id;
+            $new->is_training = (bool) $order->is_training; // a practice bill stays practice when split (security review M5)
             $new->status = $lines->contains(fn (OrderItem $l) => $l->isSent()) ? OrderStatus::Sent : OrderStatus::Open;
             $new->sent_at = $new->status === OrderStatus::Sent ? ($order->sent_at ?? now()) : null;
             $new->save();
