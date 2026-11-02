@@ -116,7 +116,7 @@ class DeliveryService
         return Order::query()->forBranch($branchId ?? $this->context->branchId())->deliveries()
             ->whereIn('status', [OrderStatus::Open->value, OrderStatus::Sent->value, OrderStatus::Paid->value])
             ->where(fn ($q) => $q->whereNull('delivery_status')->orWhere('delivery_status', '!=', DeliveryStatus::Delivered->value)->orWhereDate('business_date', now()->toDateString()))
-            ->with(['rider', 'items', 'payments'])
+            ->with(['rider', 'customer', 'items', 'payments'])
             ->orderByRaw("case delivery_status when 'out' then 0 when 'assigned' then 1 when 'pending' then 2 when 'failed' then 3 else 4 end")
             ->orderBy('opened_at')
             ->get();

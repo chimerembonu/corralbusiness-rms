@@ -1,0 +1,23 @@
+# Keep the store-server image small and free of local secrets (docker/Dockerfile copies the project with `COPY . .`).
+.git
+.github
+.claude
+node_modules
+vendor
+.env
+.env.*
+!.env.example
+!.env.docker.example
+public/hot
+public/build
+storage/logs/*
+storage/backups/*
+storage/framework/cache/data/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/app/private/*
+storage/app/public/*
+tests
+docs
+*.md
+!README.md

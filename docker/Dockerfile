@@ -12,7 +12,7 @@ COPY public ./public
 COPY lang ./lang
 RUN npm run build
 
-FROM php:8.3-fpm-bookworm AS app
+FROM php:8.4-fpm-bookworm AS app
 ARG DEBIAN_FRONTEND=noninteractive
 
 # System packages: image support (GD, for receipt logos), intl, zip, MySQL, CUPS client (USB printers), netcat (startup checks).

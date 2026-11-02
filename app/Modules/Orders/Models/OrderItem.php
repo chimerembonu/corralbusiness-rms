@@ -7,6 +7,7 @@ use App\Modules\Menu\Models\ItemVariant;
 use App\Modules\Orders\Enums\DiscountType;
 use App\Modules\Orders\Enums\OrderItemStatus;
 use App\Modules\Staff\Models\User;
+use App\Support\Audit\Auditable;
 use App\Support\Models\BusinessModel;
 use App\Support\Money\Money;
 use App\Support\Money\MoneyCast;
@@ -15,6 +16,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class OrderItem extends BusinessModel
 {
+    use Auditable;
+
     protected $fillable = [
         'branch_id', 'order_id', 'item_id', 'variant_id', 'name', 'variant_name', 'quantity', 'unit_price', 'modifiers_total',
         'taxable', 'tax_exempt_codes', 'status', 'seat', 'course', 'notes', 'sort_order',

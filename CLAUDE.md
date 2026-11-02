@@ -26,7 +26,7 @@ It is a **product**, not a one-off: multi-restaurant (tenant), multi-branch from
 
 | Layer | Choice |
 |---|---|
-| Language / framework | PHP 8.3+, Laravel 12 |
+| Language / framework | PHP 8.4+, Laravel 12 |
 | Back-office admin | Filament v4 (panels: `/admin` for store managers, `/hq` for the tenant owner across branches) |
 | POS, Kitchen Display, Clock-in screens | Livewire 3 + Alpine.js + Tailwind (full-screen, touch-first, big targets ≥ 48px) |
 | Realtime (KDS, order status) | Laravel Reverb (WebSockets) with automatic polling fallback if the socket drops |
