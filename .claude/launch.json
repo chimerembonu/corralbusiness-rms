@@ -3,9 +3,7 @@
   "configurations": [
     {
       "name": "rms-dev",
-      "runtimeExecutable": "php",
-      "runtimeArgs": ["artisan", "serve", "--host=127.0.0.1", "--port=8000"],
-      "port": 8000
+      "url": "http://corralbusiness-rms.test"
     }
   ]
 }
