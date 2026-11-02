@@ -10,6 +10,7 @@ use App\Modules\Printing\Filament\Resources\Printers\Pages\ListPrinters;
 use App\Modules\Printing\Models\Printer;
 use App\Modules\Printing\Services\PrintService;
 use App\Modules\Settings\Models\Branch;
+use App\Modules\Staff\Enums\Permission;
 use App\Support\Tenancy\Tenancy;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -39,6 +40,12 @@ class PrinterResource extends Resource
     protected static ?int $navigationSort = 50;
 
     protected static ?string $recordTitleAttribute = 'name';
+
+    /** Who may open this in the back office (security review M6): checked for the menu entry and every page of it. */
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->can(Permission::SettingsManage->value) ?? false;
+    }
 
     public static function getNavigationGroup(): ?string
     {

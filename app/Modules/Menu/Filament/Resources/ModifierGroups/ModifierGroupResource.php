@@ -6,6 +6,7 @@ use App\Modules\Menu\Filament\Resources\ModifierGroups\Pages\CreateModifierGroup
 use App\Modules\Menu\Filament\Resources\ModifierGroups\Pages\EditModifierGroup;
 use App\Modules\Menu\Filament\Resources\ModifierGroups\Pages\ListModifierGroups;
 use App\Modules\Menu\Models\ModifierGroup;
+use App\Modules\Staff\Enums\Permission;
 use App\Support\Filament\MoneyInput;
 use BackedEnum;
 use Filament\Actions\BulkActionGroup;
@@ -32,6 +33,12 @@ class ModifierGroupResource extends Resource
     protected static ?int $navigationSort = 30;
 
     protected static ?string $recordTitleAttribute = 'name';
+
+    /** Who may open this in the back office (security review M6): checked for the menu entry and every page of it. */
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->can(Permission::MenuManage->value) ?? false;
+    }
 
     public static function getNavigationGroup(): ?string
     {

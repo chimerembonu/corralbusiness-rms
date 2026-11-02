@@ -5,6 +5,7 @@ namespace App\Modules\Settings\Filament\Pages;
 use App\Modules\Orders\Enums\OrderType;
 use App\Modules\Orders\Support\TillSettings;
 use App\Modules\Settings\Services\SettingsService;
+use App\Modules\Staff\Enums\Permission;
 use App\Support\Filament\MoneyInput;
 use App\Support\Tenancy\Tenancy;
 use BackedEnum;
@@ -30,6 +31,12 @@ class TillSettingsPage extends Page
 
     /** @var array<string, mixed> */
     public ?array $data = [];
+
+    /** Who may open this in the back office (security review M6): checked for the menu entry and every page of it. */
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->can(Permission::SettingsManage->value) ?? false;
+    }
 
     public static function getNavigationGroup(): ?string
     {

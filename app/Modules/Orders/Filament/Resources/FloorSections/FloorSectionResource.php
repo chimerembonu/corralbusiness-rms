@@ -6,6 +6,7 @@ use App\Modules\Orders\Filament\Resources\FloorSections\Pages\CreateFloorSection
 use App\Modules\Orders\Filament\Resources\FloorSections\Pages\EditFloorSection;
 use App\Modules\Orders\Filament\Resources\FloorSections\Pages\ListFloorSections;
 use App\Modules\Orders\Models\FloorSection;
+use App\Modules\Staff\Enums\Permission;
 use BackedEnum;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
@@ -32,6 +33,12 @@ class FloorSectionResource extends Resource
     protected static ?int $navigationSort = 32;
 
     protected static ?string $recordTitleAttribute = 'name';
+
+    /** Who may open this in the back office (security review M6): checked for the menu entry and every page of it. */
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->can(Permission::SettingsManage->value) ?? false;
+    }
 
     public static function getNavigationGroup(): ?string
     {

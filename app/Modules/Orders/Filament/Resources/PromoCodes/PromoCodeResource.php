@@ -7,6 +7,7 @@ use App\Modules\Orders\Filament\Resources\PromoCodes\Pages\CreatePromoCode;
 use App\Modules\Orders\Filament\Resources\PromoCodes\Pages\EditPromoCode;
 use App\Modules\Orders\Filament\Resources\PromoCodes\Pages\ListPromoCodes;
 use App\Modules\Orders\Models\PromoCode;
+use App\Modules\Staff\Enums\Permission;
 use App\Support\Filament\MoneyInput;
 use BackedEnum;
 use Filament\Actions\BulkActionGroup;
@@ -35,6 +36,12 @@ class PromoCodeResource extends Resource
     protected static ?int $navigationSort = 40;
 
     protected static ?string $recordTitleAttribute = 'code';
+
+    /** Who may open this in the back office (security review M6): checked for the menu entry and every page of it. */
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->can(Permission::OrdersDiscount->value) ?? false;
+    }
 
     public static function getNavigationGroup(): ?string
     {

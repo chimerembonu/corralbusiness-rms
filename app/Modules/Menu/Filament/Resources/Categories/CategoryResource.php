@@ -6,6 +6,7 @@ use App\Modules\Menu\Filament\Resources\Categories\Pages\CreateCategory;
 use App\Modules\Menu\Filament\Resources\Categories\Pages\EditCategory;
 use App\Modules\Menu\Filament\Resources\Categories\Pages\ListCategories;
 use App\Modules\Menu\Models\Category;
+use App\Modules\Staff\Enums\Permission;
 use App\Support\Filament\AvailabilityFields;
 use BackedEnum;
 use Filament\Actions\BulkActionGroup;
@@ -34,6 +35,12 @@ class CategoryResource extends Resource
     protected static ?int $navigationSort = 10;
 
     protected static ?string $recordTitleAttribute = 'name';
+
+    /** Who may open this in the back office (security review M6): checked for the menu entry and every page of it. */
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->can(Permission::MenuManage->value) ?? false;
+    }
 
     public static function getNavigationGroup(): ?string
     {

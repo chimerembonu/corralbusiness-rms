@@ -7,6 +7,7 @@ use App\Modules\Pos\Filament\Resources\Tills\Pages\EditTill;
 use App\Modules\Pos\Filament\Resources\Tills\Pages\ListTills;
 use App\Modules\Pos\Models\Till;
 use App\Modules\Printing\Models\Printer;
+use App\Modules\Staff\Enums\Permission;
 use BackedEnum;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
@@ -31,6 +32,12 @@ class TillResource extends Resource
     protected static ?int $navigationSort = 85;
 
     protected static ?string $recordTitleAttribute = 'name';
+
+    /** Who may open this in the back office (security review M6): checked for the menu entry and every page of it. */
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->can(Permission::SettingsManage->value) ?? false;
+    }
 
     public static function getNavigationGroup(): ?string
     {

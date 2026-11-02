@@ -5,6 +5,7 @@ namespace App\Modules\Orders\Filament\Pages;
 use App\Modules\Orders\Filament\Resources\DiningTables\DiningTableResource;
 use App\Modules\Orders\Models\DiningTable;
 use App\Modules\Orders\Services\TableService;
+use App\Modules\Staff\Enums\Permission;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -22,6 +23,12 @@ class FloorPlan extends Page
     protected string $view = 'orders::filament.floor-plan';
 
     public ?string $sectionId = null;
+
+    /** Who may open this in the back office (security review M6): checked for the menu entry and every page of it. */
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->can(Permission::SettingsManage->value) ?? false;
+    }
 
     public static function getNavigationGroup(): ?string
     {

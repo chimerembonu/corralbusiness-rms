@@ -7,6 +7,7 @@ use App\Modules\Payments\Filament\Resources\CashierSessions\Pages\ListCashierSes
 use App\Modules\Payments\Filament\Resources\CashierSessions\Pages\ViewCashierSession;
 use App\Modules\Payments\Models\CashierSession;
 use App\Modules\Printing\Documents\CashReportDocument;
+use App\Modules\Staff\Enums\Permission;
 use BackedEnum;
 use Filament\Actions\ViewAction;
 use Filament\Resources\Resource;
@@ -24,6 +25,12 @@ class CashierSessionResource extends Resource
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBanknotes;
 
     protected static ?int $navigationSort = 50;
+
+    /** Who may open this in the back office (security review M6): checked for the menu entry and every page of it. */
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->canAny([Permission::ReportsView->value, Permission::DayClose->value]) ?? false;
+    }
 
     public static function getNavigationGroup(): ?string
     {

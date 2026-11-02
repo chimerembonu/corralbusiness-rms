@@ -7,6 +7,7 @@ use App\Modules\Printing\Enums\PrintJobType;
 use App\Modules\Printing\Filament\Resources\PrintJobs\Pages\ListPrintJobs;
 use App\Modules\Printing\Models\PrintJob;
 use App\Modules\Printing\Services\PrintService;
+use App\Modules\Staff\Enums\Permission;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -23,6 +24,12 @@ class PrintJobResource extends Resource
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedQueueList;
 
     protected static ?int $navigationSort = 51;
+
+    /** Who may open this in the back office (security review M6): checked for the menu entry and every page of it. */
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->can(Permission::SettingsManage->value) ?? false;
+    }
 
     public static function getNavigationGroup(): ?string
     {

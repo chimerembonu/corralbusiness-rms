@@ -14,6 +14,7 @@ use App\Modules\Menu\Models\Category;
 use App\Modules\Menu\Models\Item;
 use App\Modules\Menu\Services\MenuService;
 use App\Modules\Settings\Models\TaxComponent;
+use App\Modules\Staff\Enums\Permission;
 use App\Support\Filament\AvailabilityFields;
 use App\Support\Filament\MoneyInput;
 use BackedEnum;
@@ -53,6 +54,12 @@ class ItemResource extends Resource
     protected static ?int $navigationSort = 20;
 
     protected static ?string $recordTitleAttribute = 'name';
+
+    /** Who may open this in the back office (security review M6): checked for the menu entry and every page of it. */
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->can(Permission::MenuManage->value) ?? false;
+    }
 
     public static function getNavigationGroup(): ?string
     {
