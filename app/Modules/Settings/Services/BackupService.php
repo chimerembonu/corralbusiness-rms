@@ -92,11 +92,13 @@ class BackupService
             throw new RuntimeException("This backup was made on {$manifest['driver']}; this server uses {$driver}.");
         }
 
+        $entries = $this->safeEntries($zip);
+
         $safety = $this->create('before restore of '.basename($zipPath));
 
         $tmp = $this->directory().'/.restore-'.now()->format('His');
         File::ensureDirectoryExists($tmp);
-        $zip->extractTo($tmp);
+        $zip->extractTo($tmp, $entries);
         $zip->close();
 
         $this->dumper()->restore("{$tmp}/database.sql");
@@ -181,6 +183,53 @@ class BackupService
         }
 
         return $path;
+    }
+
+    /** Files a backup may contain under uploads/ (logos, item images). */
+    public const UPLOAD_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp'];
+
+    /**
+     * Every name inside the zip is checked before anything is extracted (security review H3, "zip-slip"):
+     * no "..", no absolute paths, no backslashes, and only database.sql, manifest.json and image files
+     * under uploads/. A backup that carries anything else is refused as a whole.
+     *
+     * @return array<int, string>
+     */
+    private function safeEntries(ZipArchive $zip): array
+    {
+        $names = [];
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $name = (string) $zip->getNameIndex($i);
+            if (! $this->isSafeEntry($name)) {
+                throw new RuntimeException("This backup contains a file that does not belong in a backup ({$name}); it was not restored.");
+            }
+            $names[] = $name;
+        }
+
+        return $names;
+    }
+
+    public function isSafeEntry(string $name): bool
+    {
+        if ($name === '' || str_contains($name, "\0") || str_contains($name, '\\') || str_starts_with($name, '/') || preg_match('/^[A-Za-z]:/', $name)) {
+            return false;
+        }
+        foreach (explode('/', $name) as $part) {
+            if ($part === '..') {
+                return false;
+            }
+        }
+        if (in_array($name, ['database.sql', 'manifest.json'], true)) {
+            return true;
+        }
+        if (! str_starts_with($name, 'uploads/')) {
+            return false;
+        }
+        if (str_ends_with($name, '/')) {
+            return true; // a folder entry
+        }
+
+        return in_array(strtolower(pathinfo($name, PATHINFO_EXTENSION)), self::UPLOAD_EXTENSIONS, true);
     }
 
     private function dumper(): DatabaseDumper
