@@ -17,6 +17,7 @@ return [
         'type' => ['charge' => 'Charged', 'payment' => 'Payment', 'adjustment' => 'Adjustment'],
         'charge_note' => 'On account: :name',
         'order_note' => 'Order #:number',
+        'refund_note' => 'Refund of order #:number: :reason',
         'payment_note' => 'Account payment: :name',
         'columns' => ['when' => 'When', 'type' => 'Type', 'detail' => 'Detail', 'amount' => 'Amount', 'balance' => 'Balance', 'by' => 'By'],
         'receive' => 'Receive payment',
@@ -45,6 +46,7 @@ return [
         'account_not_allowed' => ':name is not allowed to buy on account.',
         'over_limit' => ':name can only put :available more on account (limit :limit).',
         'bad_method' => 'Choose cash, Mobile Money or card.',
+        'training' => 'A practice order cannot go on a customer’s account.',
     ],
     'pos' => [
         'title' => 'Customers',

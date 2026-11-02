@@ -16,6 +16,7 @@ use App\Support\Money\Money;
 use App\Support\Tenancy\TenantContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection as BaseCollection;
 
 /**
@@ -170,16 +171,28 @@ class ReportService
     public function byPaymentMethod(string $from, string $to, ?string $branchId = null): array
     {
         $branchId ??= $this->context->branchId();
-        $payments = Payment::query()->real()->where('branch_id', $branchId)->whereBetween('received_at', [$from.' 00:00:00', $to.' 23:59:59'])->get();
+        // Money taken in the range counts here unless it was refunded inside the same range; refunds count on
+        // the day they were given (refund_business_date), so a closed day's figures never move (security review L3).
+        $inRange = fn (?Carbon $d) => $d !== null && $d->toDateString() >= $from && $d->toDateString() <= $to;
+        $received = Payment::query()->real()->where('branch_id', $branchId)->whereBetween('received_at', [$from.' 00:00:00', $to.' 23:59:59'])->get();
+        $refunds = Payment::query()->real()->where('branch_id', $branchId)->where('status', PaymentStatus::Refunded->value)
+            ->whereDate('refund_business_date', '>=', $from)->whereDate('refund_business_date', '<=', $to)->get();
+        $key = fn (Payment $p) => $p->method->value.($p->provider ? ':'.$p->provider->value : '');
+        $taken = $received->filter(fn (Payment $p) => $p->status === PaymentStatus::Completed || ! $inRange($p->refund_business_date));
 
-        return $payments->groupBy(fn (Payment $p) => $p->method->value.($p->provider ? ':'.$p->provider->value : ''))->map(fn (BaseCollection $own, string $key) => [
-            'method' => $key,
-            'label' => $own->first()->methodLabel(),
-            'count' => $own->where('status', PaymentStatus::Completed)->count(),
-            'total' => (int) $own->where('status', PaymentStatus::Completed)->sum(fn (Payment $p) => $p->amount->amount),
-            'tips' => (int) $own->where('status', PaymentStatus::Completed)->sum(fn (Payment $p) => $p->tip->amount),
-            'refunded' => (int) $own->where('status', PaymentStatus::Refunded)->sum(fn (Payment $p) => $p->amount->amount),
-        ])->sortByDesc('total')->values()->all();
+        return $received->merge($refunds)->unique('id')->groupBy($key)->map(function (BaseCollection $all, string $method) use ($taken, $refunds, $key) {
+            $own = $taken->filter(fn (Payment $p) => $key($p) === $method);
+            $back = $refunds->filter(fn (Payment $p) => $key($p) === $method);
+
+            return [
+                'method' => $method,
+                'label' => $all->first()->methodLabel(),
+                'count' => $own->count(),
+                'total' => (int) $own->sum(fn (Payment $p) => $p->amount->amount),
+                'tips' => (int) $own->sum(fn (Payment $p) => $p->tip->amount),
+                'refunded' => (int) $back->sum(fn (Payment $p) => $p->amount->amount),
+            ];
+        })->sortByDesc('total')->values()->all();
     }
 
     /** @return array<int, array{name: string, role: string, orders: int, sales: int, average: int, voids: int, payments: int, taken: int, tips: int}> */

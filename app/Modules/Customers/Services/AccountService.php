@@ -43,6 +43,9 @@ class AccountService
         if (! $customer->allow_account || ! $customer->is_active) {
             throw new CustomerException(__('customers::customers.errors.account_not_allowed', ['name' => $customer->name]));
         }
+        if ($order->is_training) { // a practice order must not change what a real customer owes
+            throw new CustomerException(__('customers::customers.errors.training'));
+        }
         $amount ??= $order->balanceDue();
         if (! $amount->isPositive()) {
             throw new PaymentException(__('payments::payments.errors.amount_required'));
@@ -107,6 +110,16 @@ class AccountService
 
             return $payment;
         });
+    }
+
+    /** An on-account payment was refunded: the charge comes off the customer's account again. */
+    public function reverseCharge(Payment $payment, ?User $by = null, ?string $reason = null): AccountTransaction
+    {
+        $customer = Customer::query()->withoutGlobalScopes()->findOrFail($payment->customer_id);
+        $order = $payment->order()->withoutGlobalScopes()->first();
+
+        return $this->post($customer, AccountTransactionType::Adjustment, -$payment->amount->amount, $by, order: $order, payment: $payment,
+            notes: __('customers::customers.account.refund_note', ['number' => $order?->displayNumber() ?? '', 'reason' => $reason ?? '']));
     }
 
     /** Manager correction / write-off: positive raises what they owe, negative lowers it. */

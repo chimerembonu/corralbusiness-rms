@@ -2,6 +2,7 @@
 
 namespace App\Modules\Payments\Services;
 
+use App\Modules\Customers\Services\AccountService;
 use App\Modules\Orders\Enums\OrderStatus;
 use App\Modules\Orders\Events\OrderRefunded;
 use App\Modules\Orders\Models\Order;
@@ -40,7 +41,7 @@ class PaymentService
         $this->assertPayable($order);
         $tip ??= Money::zero();
 
-        if (! $tendered->isPositive() || $tendered->lessThan($tip)) {
+        if ($tip->isNegative() || ! $tendered->isPositive() || $tendered->lessThan($tip)) {
             throw new PaymentException(__('payments::payments.errors.amount_required'));
         }
 
@@ -74,7 +75,7 @@ class PaymentService
         $this->assertPayable($order);
         $tip ??= Money::zero();
 
-        if (! $amount->isPositive() && ! $tip->isPositive()) {
+        if ($amount->isNegative() || $tip->isNegative() || (! $amount->isPositive() && ! $tip->isPositive())) {
             throw new PaymentException(__('payments::payments.errors.amount_required'));
         }
         if ($amount->greaterThan($order->balanceDue())) {
@@ -168,6 +169,10 @@ class PaymentService
                 $order->refund_business_date = $businessDate;
             }
             $order->save();
+
+            if ($payment->method === PaymentMethod::Account && $payment->customer_id) {
+                app(AccountService::class)->reverseCharge($payment, $approvedBy, $reason); // the customer no longer owes it
+            }
 
             PaymentRefunded::dispatch($payment);
             if ($order->status === OrderStatus::Refunded) {

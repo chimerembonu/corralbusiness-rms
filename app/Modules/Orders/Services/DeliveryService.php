@@ -8,6 +8,7 @@ use App\Modules\Orders\Events\DeliveryDetailsChanged;
 use App\Modules\Orders\Events\DeliveryStatusChanged;
 use App\Modules\Orders\Events\RiderAssigned;
 use App\Modules\Orders\Exceptions\DeliveryException;
+use App\Modules\Orders\Exceptions\OrderLockedException;
 use App\Modules\Orders\Models\Order;
 use App\Modules\Staff\Enums\Permission;
 use App\Modules\Staff\Exceptions\ManagerPinRequiredException;
@@ -29,6 +30,9 @@ class DeliveryService
     public function setDetails(Order $order, string $customerName, string $phone, string $address, ?string $notes = null, ?Money $fee = null, ?User $by = null, ?User $approvedBy = null): Order
     {
         $this->assertDelivery($order);
+        if (! $order->isActive()) { // paid or closed: the total must not move any more
+            throw new OrderLockedException(__('orders::orders.errors.order_closed', ['status' => $order->status->label()]));
+        }
         $this->validateDetails($phone, $address);
         if ($fee !== null && $this->feeNeedsManager($order, $fee, $approvedBy ?? $by)) {
             throw new ManagerPinRequiredException(Permission::OrdersPriceEdit->value);
