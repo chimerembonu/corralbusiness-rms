@@ -90,9 +90,10 @@ class PinLogin extends Component
         $this->redirect(session()->pull('url.intended', $home));
     }
 
+    /** Lockouts count per till (not per network address, which every till behind one router shares). */
     private function throttleKey(): string
     {
-        return 'till:'.request()->ip();
+        return 'till:'.($this->tillId ?? app(CurrentTill::class)->id() ?? request()->ip());
     }
 
     public function render(StoreTenantResolver $store)

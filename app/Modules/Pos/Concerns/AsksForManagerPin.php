@@ -2,12 +2,14 @@
 
 namespace App\Modules\Pos\Concerns;
 
+use App\Modules\Pos\Services\CurrentTill;
 use App\Modules\Staff\Enums\Permission;
 use App\Modules\Staff\Exceptions\InvalidPinException;
 use App\Modules\Staff\Exceptions\ManagerPinRequiredException;
 use App\Modules\Staff\Exceptions\PinLockedException;
 use App\Modules\Staff\Models\User;
 use App\Modules\Staff\Services\PinAuthenticator;
+use App\Support\Tenancy\Tenancy;
 use Livewire\Attributes\Locked;
 
 /**
@@ -41,7 +43,7 @@ trait AsksForManagerPin
         }
 
         try {
-            $manager = $auth->authorize($pin, $this->approval['permission'], 'till:'.request()->ip());
+            $manager = $auth->authorize($pin, $this->approval['permission'], app(CurrentTill::class)->throttleKey(), null, Tenancy::branchId());
         } catch (PinLockedException|InvalidPinException|ManagerPinRequiredException $e) {
             $this->approval['error'] = $e->getMessage();
 

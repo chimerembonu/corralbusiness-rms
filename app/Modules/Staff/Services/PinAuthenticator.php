@@ -57,17 +57,22 @@ class PinAuthenticator
 
     /**
      * Manager override: the PIN must belong to someone who holds the given permission
-     * (e.g. Permission::OrdersVoid). Returns the approving user for the audit trail.
+     * (e.g. Permission::OrdersVoid) and, when a branch is given, who works at that branch or is
+     * branch-less (the owner). Returns the approving user for the audit trail.
      *
      * @throws PinLockedException|InvalidPinException|ManagerPinRequiredException
      */
-    public function authorize(string $pin, Permission|string $permission, string $throttleKey, Tenant|string|null $tenant = null): User
+    public function authorize(string $pin, Permission|string $permission, string $throttleKey, Tenant|string|null $tenant = null, ?string $branchId = null): User
     {
         $permission = $permission instanceof Permission ? $permission->value : $permission;
         $user = $this->attempt($pin, $throttleKey, $tenant);
 
         if (! $user->can($permission)) {
             throw new ManagerPinRequiredException($permission);
+        }
+
+        if ($branchId !== null && $user->branch_id !== null && $user->branch_id !== $branchId) {
+            throw new ManagerPinRequiredException($permission, __('rms.pin.other_branch')); // security review L4
         }
 
         return $user;

@@ -47,6 +47,7 @@ return [
         'invalid' => 'Wrong PIN. :left attempts left.',
         'locked' => 'Too many wrong PINs. Try again in :seconds seconds.',
         'manager_required' => 'A manager PIN is required for this action.',
+        'other_branch' => 'That manager works at another branch and cannot approve this here.',
         'invalid_format' => 'PIN must be :min to :max digits.',
     ],
     'tax' => [

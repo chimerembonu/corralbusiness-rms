@@ -39,6 +39,16 @@ class CurrentTill
         $this->resolved = true;
     }
 
+    /**
+     * What a PIN lockout is counted against: this till when the device has chosen one, else the
+     * network address. Tills behind one router share an address, so one bad actor must not lock them all
+     * (security review L4).
+     */
+    public function throttleKey(): string
+    {
+        return 'till:'.($this->get()?->id ?? $this->id() ?? request()?->ip() ?? 'unknown');
+    }
+
     public function forget(): void
     {
         Cookie::queue(Cookie::forget(self::COOKIE));

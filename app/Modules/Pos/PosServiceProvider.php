@@ -2,6 +2,7 @@
 
 namespace App\Modules\Pos;
 
+use App\Modules\Pos\Services\CurrentTill;
 use App\Modules\Pos\Services\TrainingMode;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 
@@ -27,6 +28,7 @@ class PosServiceProvider extends ServiceProvider
 
         // One answer per request: the till that opens an order and the service that marks it must agree.
         $this->app->singleton(TrainingMode::class);
+        $this->app->singleton(CurrentTill::class);
     }
 
     public function boot(): void
