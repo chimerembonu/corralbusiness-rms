@@ -32,6 +32,7 @@ class CashReportController
 
     public function session(Request $request, CashierSession $session, CashService $cash): View
     {
+        Tenancy::assertOwns($session);
         abort_unless($session->user_id === $request->user()->id || $request->user()->can(Permission::ReportsView->value), 403);
 
         $session->load(['till', 'user', 'closedBy', 'approvedBy', 'movements.user', 'branch.tenant']);

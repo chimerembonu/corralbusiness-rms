@@ -23,6 +23,7 @@ use App\Modules\Staff\Enums\Permission;
 use App\Modules\Staff\Exceptions\ManagerPinRequiredException;
 use App\Modules\Staff\Models\User;
 use App\Support\Money\Money;
+use App\Support\Tenancy\Tenancy;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -90,6 +91,7 @@ class OrderScreen extends Component
 
     public function mount(Order $order): void
     {
+        Tenancy::assertOwns($order);
         $this->orderId = $order->id;
 
         if (! $order->isActive()) {

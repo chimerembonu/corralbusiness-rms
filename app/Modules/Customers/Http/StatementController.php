@@ -15,6 +15,7 @@ class StatementController
     public function __invoke(Request $request, Customer $customer, AccountService $accounts): View
     {
         abort_unless($request->user()->can(Permission::CustomersManage->value), 403);
+        Tenancy::assertOwns($customer);
 
         return view('customers::statement', [
             'customer' => $customer,

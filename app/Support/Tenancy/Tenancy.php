@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Facade;
  * @method static ?string tenantId()
  * @method static ?string branchId()
  * @method static bool hasTenant()
+ * @method static void assertOwns(\Illuminate\Database\Eloquent\Model $record)
  * @method static mixed runAs(?\App\Modules\Settings\Models\Tenant $tenant, ?\App\Modules\Settings\Models\Branch $branch, callable $callback)
  *
  * @see TenantContext

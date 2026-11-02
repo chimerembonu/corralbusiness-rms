@@ -11,6 +11,7 @@ use App\Modules\Payments\Services\CashService;
 use App\Modules\Payments\Services\PaymentService;
 use App\Modules\Staff\Enums\Permission;
 use App\Support\Money\Money;
+use App\Support\Tenancy\Tenancy;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -48,6 +49,7 @@ class PaymentScreen extends Component
     public function mount(Order $order, CashService $cash, TillSettings $settings): void
     {
         abort_unless(auth()->user()->can(Permission::PaymentsTake->value), 403);
+        Tenancy::assertOwns($order);
         $this->orderId = $order->id;
 
         if (! $order->isActive()) {

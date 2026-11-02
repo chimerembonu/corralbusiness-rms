@@ -4,6 +4,7 @@ namespace App\Support\Tenancy;
 
 use App\Modules\Settings\Models\Branch;
 use App\Modules\Settings\Models\Tenant;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Holds "which restaurant (tenant) and which branch is this request working for".
@@ -61,6 +62,20 @@ class TenantContext
     public function hasTenant(): bool
     {
         return $this->tenant !== null;
+    }
+
+    /**
+     * A record reached by its ID in a URL must belong to the restaurant and branch this request works
+     * in; anything else is reported as "not found" (security review H4). Tenant-wide records (no
+     * branch column, e.g. customers) only need the restaurant to match.
+     */
+    public function assertOwns(Model $record): void
+    {
+        $tenantOk = $this->tenantId() !== null && $record->getAttribute('tenant_id') === $this->tenantId();
+        $hasBranch = array_key_exists('branch_id', $record->getAttributes());
+        $branchOk = ! $hasBranch || $record->getAttribute('branch_id') === null || $record->getAttribute('branch_id') === $this->branchId();
+
+        abort_unless($tenantOk && $branchOk, 404);
     }
 
     /** Run a callback as a given tenant/branch, then restore the previous context. */

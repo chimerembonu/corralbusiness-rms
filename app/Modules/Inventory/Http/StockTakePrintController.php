@@ -14,6 +14,7 @@ class StockTakePrintController
     public function __invoke(Request $request, StockTake $stockTake): View
     {
         abort_unless($request->user()->canAny([Permission::InventoryManage->value, Permission::InventoryCount->value]), 403);
+        Tenancy::assertOwns($stockTake);
 
         return view('inventory::stock-take-print', ['take' => $stockTake->load('lines'), 'branch' => Tenancy::branch()]);
     }

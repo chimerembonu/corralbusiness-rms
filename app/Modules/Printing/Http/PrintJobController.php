@@ -14,6 +14,8 @@ class PrintJobController
 {
     public function show(PrintJob $job, HtmlRenderer $renderer): Response
     {
+        Tenancy::assertOwns($job);
+
         return response($renderer->render($job->documentObject(), $job->printer->paper_width, autoPrint: request()->boolean('print')));
     }
 
@@ -27,6 +29,7 @@ class PrintJobController
 
     public function printed(PrintJob $job, PrintService $printing): JsonResponse
     {
+        Tenancy::assertOwns($job);
         $printing->markPrintedByBrowser($job);
 
         return response()->json(['ok' => true]);
