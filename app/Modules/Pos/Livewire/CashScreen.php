@@ -237,7 +237,8 @@ class CashScreen extends Component
         );
     }
 
-    public function cashUpApproved(User $manager, int $counted, array $breakdown, string $notes): void
+    /** Only reachable through approve() with a manager PIN (protected: never callable from the browser). */
+    protected function cashUpApproved(User $manager, int $counted, array $breakdown, string $notes): void
     {
         $this->finishCashUp($counted, $breakdown, $notes, $manager);
     }
@@ -287,7 +288,8 @@ class CashScreen extends Component
         $this->askManager(Permission::DayClose, 'closeDayApproved', [$notes], __('pos::pos.approval.close_day', ['date' => Carbon::parse($this->date)->format('d/m/Y')]));
     }
 
-    public function closeDayApproved(User $manager, string $notes): void
+    /** Only reachable through approve() with a manager PIN (protected: never callable from the browser). */
+    protected function closeDayApproved(User $manager, string $notes): void
     {
         try {
             $close = app(DayCloseService::class)->close($this->date, auth()->user(), $manager, $notes);
@@ -314,7 +316,8 @@ class CashScreen extends Component
         $this->askManager(Permission::DayReopen, 'reopenApproved', [$reason], __('pos::pos.approval.reopen_day'));
     }
 
-    public function reopenApproved(User $manager, string $reason): void
+    /** Only reachable through approve() with a manager PIN (protected: never callable from the browser). */
+    protected function reopenApproved(User $manager, string $reason): void
     {
         if (! $this->dayClose) {
             return;

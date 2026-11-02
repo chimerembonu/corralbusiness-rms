@@ -126,7 +126,8 @@ class OrderTypeScreen extends Component
         $this->askManager(Permission::TrainingMode, 'trainingApproved', [$on], $on ? __('pos::pos.training.turn_on') : __('pos::pos.training.turn_off'));
     }
 
-    public function trainingApproved(User $manager, bool $on): void
+    /** Only reachable through approve() with a manager PIN (protected: never callable from the browser). */
+    protected function trainingApproved(User $manager, bool $on): void
     {
         app(TrainingMode::class)->set($on);
         activity('training_mode')->causedBy(auth()->user())->withProperties(['on' => $on, 'approved_by' => $manager->id])->log($on ? 'training_on' : 'training_off');

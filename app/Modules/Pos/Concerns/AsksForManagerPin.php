@@ -8,14 +8,19 @@ use App\Modules\Staff\Exceptions\ManagerPinRequiredException;
 use App\Modules\Staff\Exceptions\PinLockedException;
 use App\Modules\Staff\Models\User;
 use App\Modules\Staff\Services\PinAuthenticator;
+use Livewire\Attributes\Locked;
 
 /**
  * Manager override on a till screen (CLAUDE.md §3.10). A component calls askManager() with the
  * method to run once a manager has typed a PIN; the PIN keypad is rendered by pos::partials.manager-pin.
+ *
+ * Security: the "…Approved" methods must be protected (never callable from the browser) and
+ * $approval is locked, so the only way to reach them is approve() with a valid manager PIN.
  */
 trait AsksForManagerPin
 {
     /** null when closed, else ['permission', 'method', 'args', 'title', 'error'] */
+    #[Locked]
     public ?array $approval = null;
 
     protected function askManager(Permission $permission, string $method, array $args, string $title): void
@@ -45,6 +50,11 @@ trait AsksForManagerPin
 
         $approval = $this->approval;
         $this->approval = null;
+
+        if (! str_ends_with($approval['method'], 'Approved') || ! method_exists($this, $approval['method'])) {
+            abort(400);
+        }
+
         $this->{$approval['method']}($manager, ...$approval['args']);
     }
 

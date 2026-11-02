@@ -76,7 +76,8 @@ class OrdersList extends Component
             __('pos::pos.approval.refund', ['amount' => money($payment->amount), 'method' => $payment->methodLabel()]));
     }
 
-    public function refundApproved(User $manager, string $paymentId, string $reason): void
+    /** Only reachable through approve() with a manager PIN (protected: never callable from the browser). */
+    protected function refundApproved(User $manager, string $paymentId, string $reason): void
     {
         try {
             app(PaymentService::class)->refund(Payment::query()->findOrFail($paymentId), $reason, $manager, auth()->user());

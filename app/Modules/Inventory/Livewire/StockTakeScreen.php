@@ -137,7 +137,8 @@ class StockTakeScreen extends Component
         $this->askManager(Permission::InventoryManage, 'finishApproved', [$this->take->id], __('inventory::inventory.stock_take.actions.complete').' '.$this->take->displayNumber());
     }
 
-    public function finishApproved(User $manager, string $takeId): void
+    /** Only reachable through approve() with a manager PIN (protected: never callable from the browser). */
+    protected function finishApproved(User $manager, string $takeId): void
     {
         $take = StockTake::query()->findOrFail($takeId);
         try {

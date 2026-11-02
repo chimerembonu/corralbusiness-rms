@@ -526,7 +526,8 @@ class OrderScreen extends Component
         $this->askManager(Permission::OrdersVoid, 'voidApproved', [$this->void['line_id'], $this->void['reason']], $title);
     }
 
-    public function voidApproved(User $manager, ?string $lineId, string $reason): void
+    /** Only reachable through approve() with a manager PIN (protected: never callable from the browser). */
+    protected function voidApproved(User $manager, ?string $lineId, string $reason): void
     {
         if ($lineId) {
             $this->run(fn (OrderService $orders) => $orders->voidItem($this->order, $this->line($lineId), $reason, $manager, auth()->user()));
@@ -588,7 +589,8 @@ class OrderScreen extends Component
         );
     }
 
-    public function discountApproved(?User $manager, ?string $lineId, string $type, int $value, string $reason): void
+    /** Only reachable through approve() with a manager PIN (protected: never callable from the browser). */
+    protected function discountApproved(?User $manager, ?string $lineId, string $type, int $value, string $reason): void
     {
         $this->error = null;
         $kind = $value > 0 ? DiscountType::from($type) : null;
@@ -654,7 +656,8 @@ class OrderScreen extends Component
         $this->askManager(Permission::OrdersDiscount, 'serviceChargeApproved', [$waive], $waive ? __('pos::pos.approval.waive_service') : __('pos::pos.approval.restore_service'));
     }
 
-    public function serviceChargeApproved(User $manager, bool $waive): void
+    /** Only reachable through approve() with a manager PIN (protected: never callable from the browser). */
+    protected function serviceChargeApproved(User $manager, bool $waive): void
     {
         $this->run(fn (OrderService $orders) => $orders->setServiceChargeWaived($this->order, $waive, $manager, auth()->user()));
     }
