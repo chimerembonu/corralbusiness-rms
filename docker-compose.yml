@@ -1,5 +1,6 @@
 # CorralBusiness – RMS store server. Start with:  docker compose up -d
-# Everything listens only on the restaurant network: set RMS_BIND_IP in .env to the server's LAN address.
+# Everything listens only on the restaurant network: RMS_BIND_IP in .env (the server's LAN address) is required;
+# a hand-made .env without it refuses to start instead of listening on every network.
 name: corralbusiness-rms
 
 # The workers start only after "app" is healthy: it owns the shared storage volume's first fill
@@ -46,7 +47,7 @@ services:
       target: web
     restart: unless-stopped
     ports:
-      - "${RMS_BIND_IP:-127.0.0.1}:${RMS_HTTP_PORT:-80}:80"
+      - "${RMS_BIND_IP:?Set RMS_BIND_IP in .env to the server's LAN address (install.sh does this)}:${RMS_HTTP_PORT:-80}:80"
     volumes:
       - storage:/var/www/html/storage:ro
     depends_on:
