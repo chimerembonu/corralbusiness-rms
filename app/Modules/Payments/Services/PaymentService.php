@@ -88,6 +88,15 @@ class PaymentService
         $session = $this->cash->current($by, $order->branch_id);
 
         return DB::transaction(function () use ($order, $method, $amount, $by, $reference, $tendered, $change, $notes, $provider, $tip, $session) {
+            // Lock the order row and read it again, so a double tap on Pay (or a second till on the same
+            // order) sees the first payment and is refused instead of paying twice (security review M2).
+            Order::query()->whereKey($order->id)->lockForUpdate()->first();
+            $order->refresh();
+            $this->assertPayable($order);
+            if ($amount->greaterThan($order->balanceDue())) {
+                throw new PaymentException(__('payments::payments.errors.over_balance'));
+            }
+
             $payment = new Payment([
                 'order_id' => $order->id,
                 'cashier_session_id' => $session?->id,

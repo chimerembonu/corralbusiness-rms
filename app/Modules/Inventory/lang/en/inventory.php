@@ -63,6 +63,7 @@ return [
     ],
     'errors' => [
         'quantity_required' => 'Enter a quantity greater than zero.',
+        'already_moved' => 'This order line has already been counted.',
         'not_enough' => 'Not enough :name in stock (only :on_hand).',
         'lines_required' => 'Add at least one ingredient to the purchase.',
         'purchase_closed' => 'This purchase is already :status.',

@@ -31,14 +31,17 @@ class StockService
      * Record a movement. $quantity is signed: + into stock, − out of stock.
      * Ingredients may go negative only for sales (the kitchen already used it); nothing else may.
      */
-    public function move(Ingredient|Item $subject, StockMovementType $type, float $quantity, ?User $by = null, ?string $reason = null, ?Model $reference = null, ?Money $unitCost = null): StockMovement
+    public function move(Ingredient|Item $subject, StockMovementType $type, float $quantity, ?User $by = null, ?string $reason = null, ?Model $reference = null, ?Money $unitCost = null, ?OrderItem $line = null): StockMovement
     {
         if ($quantity == 0.0) {
             throw new InventoryException(__('inventory::inventory.errors.quantity_required'));
         }
 
-        return DB::transaction(function () use ($subject, $type, $quantity, $by, $reason, $reference, $unitCost) {
+        return DB::transaction(function () use ($subject, $type, $quantity, $by, $reason, $reference, $unitCost, $line) {
             $subject = $subject->newQuery()->lockForUpdate()->findOrFail($subject->getKey());
+            if ($line && $this->alreadyMoved($line, $type)) {
+                throw new InventoryException(__('inventory::inventory.errors.already_moved'));
+            }
             $column = $subject instanceof Ingredient ? 'on_hand' : 'stock_qty';
             $after = round((float) $subject->{$column} + $quantity, 3);
 
@@ -66,6 +69,7 @@ class StockService
                 'reason' => filled($reason) ? trim($reason) : null,
                 'reference_type' => $reference?->getTable(),
                 'reference_id' => $reference?->getKey(),
+                'order_item_id' => $line?->id,
                 'user_id' => $by?->id,
                 'happened_at' => now(),
             ]);
@@ -146,14 +150,20 @@ class StockService
         $count = 0;
         foreach ($lines as $line) {
             $item = $line->item_id ? Item::query()->find($line->item_id) : null;
-            if (! $item || ! $item->track_stock) {
-                continue;
+            if (! $item || ! $item->track_stock || $this->alreadyMoved($line, StockMovementType::Sale)) {
+                continue; // not counted, or this line was already deducted (security review M2)
             }
-            $this->move($item, StockMovementType::Sale, -$line->quantity, $by, __('inventory::inventory.reasons.sale', ['number' => $order->displayNumber()]), $order);
+            $this->move($item, StockMovementType::Sale, -$line->quantity, $by, __('inventory::inventory.reasons.sale', ['number' => $order->displayNumber()]), $order, line: $line);
             $count++;
         }
 
         return $count;
+    }
+
+    /** Has this order line already produced a movement of this kind? (Sale on send, Void on restock.) */
+    private function alreadyMoved(OrderItem $line, StockMovementType $type): bool
+    {
+        return StockMovement::query()->where('order_item_id', $line->id)->where('type', $type->value)->exists();
     }
 
     /** A sent line was voided (or its order cancelled): the stock comes back. */
@@ -166,11 +176,11 @@ class StockService
         if (! $item || ! $item->track_stock) {
             return null;
         }
-        if (StockMovement::query()->where('reference_type', 'orders')->where('reference_id', $order->id)->where('item_id', $item->id)->where('type', StockMovementType::Void->value)->where('reason', 'like', '%#'.$line->id.'%')->exists()) {
+        if ($this->alreadyMoved($line, StockMovementType::Void)) {
             return null; // already put back
         }
 
-        return $this->move($item, StockMovementType::Void, $line->quantity, $by, __('inventory::inventory.reasons.void', ['number' => $order->displayNumber(), 'line' => $line->id]), $order);
+        return $this->move($item, StockMovementType::Void, $line->quantity, $by, __('inventory::inventory.reasons.void', ['number' => $order->displayNumber(), 'line' => $line->id]), $order, line: $line);
     }
 
     /** @return BaseCollection<int, Ingredient|Item> everything at or below its re-order level */

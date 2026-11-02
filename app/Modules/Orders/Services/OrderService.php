@@ -500,13 +500,15 @@ class OrderService
     {
         $this->assertEditable($order);
 
-        $pending = $order->items()->where('status', OrderItemStatus::Pending->value)->get();
+        // Lock the order and pick the pending lines inside the transaction, so two tills sending at
+        // once cannot both send (and deduct stock for) the same lines (security review M2).
+        $pending = DB::transaction(function () use ($order) {
+            $this->assertEditable(Order::query()->whereKey($order->id)->lockForUpdate()->firstOrFail());
 
-        if ($pending->isEmpty()) {
-            return $order;
-        }
-
-        DB::transaction(function () use ($order, $pending) {
+            $pending = $order->items()->where('status', OrderItemStatus::Pending->value)->lockForUpdate()->get();
+            if ($pending->isEmpty()) {
+                return $pending;
+            }
             foreach ($pending as $line) {
                 $line->forceFill(['status' => OrderItemStatus::Sent, 'sent_at' => now()])->save();
             }
@@ -514,7 +516,13 @@ class OrderService
             $order->status = OrderStatus::Sent;
             $order->sent_at ??= now();
             $order->save();
+
+            return $pending;
         });
+
+        if ($pending->isEmpty()) {
+            return $order;
+        }
 
         OrderSentToKitchen::dispatch($order, $pending, $by?->id);
 

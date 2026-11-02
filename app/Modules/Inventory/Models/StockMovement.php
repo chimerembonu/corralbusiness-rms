@@ -15,7 +15,7 @@ class StockMovement extends BusinessModel
 {
     use Auditable;
 
-    protected $fillable = ['branch_id', 'ingredient_id', 'item_id', 'type', 'quantity', 'on_hand_after', 'unit_cost', 'reason', 'reference_type', 'reference_id', 'user_id', 'happened_at'];
+    protected $fillable = ['branch_id', 'ingredient_id', 'item_id', 'type', 'quantity', 'on_hand_after', 'unit_cost', 'reason', 'reference_type', 'reference_id', 'order_item_id', 'user_id', 'happened_at'];
 
     protected function casts(): array
     {
