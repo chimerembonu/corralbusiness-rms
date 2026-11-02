@@ -10,6 +10,7 @@ use App\Modules\Orders\Events\RiderAssigned;
 use App\Modules\Orders\Exceptions\DeliveryException;
 use App\Modules\Orders\Models\Order;
 use App\Modules\Staff\Enums\Permission;
+use App\Modules\Staff\Exceptions\ManagerPinRequiredException;
 use App\Modules\Staff\Models\User;
 use App\Support\Money\Money;
 use App\Support\Tenancy\TenantContext;
@@ -20,16 +21,17 @@ class DeliveryService
 {
     public function __construct(private readonly TenantContext $context, private readonly OrderService $orders) {}
 
-    /** Set (or change) who the order goes to and what the delivery costs. */
-    public function setDetails(Order $order, string $customerName, string $phone, string $address, ?string $notes = null, ?Money $fee = null, ?User $by = null): Order
+    /**
+     * Set (or change) who the order goes to and what the delivery costs. The fee starts as the branch
+     * default (Till settings); any other figure is a price edit and needs someone with that permission
+     * as $by or $approvedBy (manager PIN) — security review M4.
+     */
+    public function setDetails(Order $order, string $customerName, string $phone, string $address, ?string $notes = null, ?Money $fee = null, ?User $by = null, ?User $approvedBy = null): Order
     {
         $this->assertDelivery($order);
-
-        if (blank($phone)) {
-            throw new DeliveryException(__('orders::orders.errors.phone_required'));
-        }
-        if (blank($address)) {
-            throw new DeliveryException(__('orders::orders.errors.address_required'));
+        $this->validateDetails($phone, $address);
+        if ($fee !== null && $this->feeNeedsManager($order, $fee, $approvedBy ?? $by)) {
+            throw new ManagerPinRequiredException(Permission::OrdersPriceEdit->value);
         }
 
         $order->customer_name = trim($customerName) ?: null;
@@ -37,13 +39,34 @@ class DeliveryService
         $order->delivery_address = trim($address);
         $order->delivery_notes = filled($notes) ? trim($notes) : null;
         $order->delivery_status ??= DeliveryStatus::Pending;
+        $feeChanged = $fee !== null && ! $fee->equals($order->delivery_fee);
         if ($fee !== null) {
             $order->delivery_fee = $fee->isNegative() ? Money::zero() : $fee;
         }
         $this->orders->recalculate($order);
+        if ($feeChanged) {
+            activity('order')->performedOn($order)->causedBy($by)->withProperties(['fee' => $order->delivery_fee->amount, 'approved_by' => ($approvedBy ?? $by)?->id])->log('delivery_fee_changed');
+        }
         DeliveryDetailsChanged::dispatch($order, $by?->id);
 
         return $order;
+    }
+
+    /** A delivery needs at least a phone number and an address. */
+    public function validateDetails(string $phone, string $address): void
+    {
+        if (blank($phone)) {
+            throw new DeliveryException(__('orders::orders.errors.phone_required'));
+        }
+        if (blank($address)) {
+            throw new DeliveryException(__('orders::orders.errors.address_required'));
+        }
+    }
+
+    /** Would setting this fee need a manager? Only a fee other than the one on the order, from someone without the price-edit permission. */
+    public function feeNeedsManager(Order $order, Money $fee, ?User $by): bool
+    {
+        return ! $fee->equals($order->delivery_fee) && ! $by?->can(Permission::OrdersPriceEdit->value);
     }
 
     public function assignRider(Order $order, User $rider, ?User $by = null): Order

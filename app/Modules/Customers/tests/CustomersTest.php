@@ -7,6 +7,7 @@ use App\Modules\Customers\Services\SimplePointsProvider;
 use App\Modules\Orders\Enums\OrderType;
 use App\Modules\Orders\Services\DeliveryService;
 use App\Modules\Orders\Services\OrderService;
+use App\Modules\Orders\Support\TillSettings;
 use App\Modules\Payments\Services\PaymentService;
 use App\Modules\Settings\Services\SettingsService;
 use App\Modules\Staff\Enums\Role;
@@ -60,6 +61,7 @@ it('attaches a customer to an order, keeps their history and stats, and awards p
 });
 
 it('remembers delivery customers and their addresses from the phone number', function () {
+    app(SettingsService::class)->set(TillSettings::DELIVERY_FEE, 1000); // the fee below is the default, so no manager is needed
     $order = $this->orders->open(OrderType::Delivery, $this->cashier);
     app(DeliveryService::class)->setDetails($order, 'Kwabena', '020 765 4321', 'Labone, near the church', 'Blue gate', Money::fromDecimal('10'), $this->cashier);
 

@@ -38,7 +38,7 @@ return [
         'courses' => 'Course names',
         'courses_help' => 'First course goes to the kitchen straight away; later courses wait until the waiter taps “Fire”.',
         'delivery_fee' => 'Default delivery fee',
-        'delivery_fee_help' => 'Suggested on every new delivery order; the cashier can change it per order. Added after tax.',
+        'delivery_fee_help' => 'Charged on every delivery order. Changing it on an order needs the price-edit permission (manager PIN). Added after tax.',
         'cash' => 'Cash management',
         'default_float' => 'Usual opening float',
         'default_float_help' => 'Suggested when a cashier opens a till. They confirm or type what is really in the drawer.',

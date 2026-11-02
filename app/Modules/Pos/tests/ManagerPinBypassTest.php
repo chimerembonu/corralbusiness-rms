@@ -53,6 +53,8 @@ it('rejects every Approved action called directly with a manager id instead of a
         [CashScreen::class, [], 'closeDayApproved', [$this->manager->id, '']],
         [CashScreen::class, [], 'reopenApproved', [$this->manager->id, 'oops']],
         [OrderTypeScreen::class, [], 'trainingApproved', [$this->manager->id, true]],
+        [OrderTypeScreen::class, [], 'deliveryApproved', [$this->manager->id, ['name' => 'X', 'phone' => '1', 'address' => 'Y', 'notes' => '', 'fee' => '0']]],
+        [OrderScreen::class, ['order' => $this->order], 'deliveryApproved', [$this->manager->id, ['name' => 'X', 'phone' => '1', 'address' => 'Y', 'notes' => '', 'fee' => '0']]],
         [StockTakeScreen::class, [], 'finishApproved', [$this->manager->id, 'any-take']],
     ];
 

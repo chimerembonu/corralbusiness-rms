@@ -292,7 +292,8 @@ it('starts a delivery order from the home screen and edits its details on the or
         ->set('delivery.name', 'Ama')->set('delivery.phone', '')->set('delivery.address', 'Osu')
         ->call('openDelivery')->assertSee('phone number')
         ->set('delivery.phone', '0241234567')->set('delivery.fee', '12')
-        ->call('openDelivery')->assertRedirect();
+        ->call('openDelivery')->assertSet('approval.permission', 'orders.price_edit') // a changed fee is a price edit
+        ->call('approve', '1234')->assertRedirect();
 
     $order = Order::withoutGlobalScopes()->where('type', 'delivery')->whereNull('voided_at')->latest('opened_at')->first();
     expect($order->customer_name)->toBe('Ama')->and($order->delivery_fee)->toBePesewas(1200)->and($order->delivery_status->value)->toBe('pending');

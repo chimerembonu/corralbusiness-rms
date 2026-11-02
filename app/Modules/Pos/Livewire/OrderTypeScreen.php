@@ -99,14 +99,38 @@ class OrderTypeScreen extends Component
         }
     }
 
-    public function openDelivery(OrderService $orders, DeliveryService $delivery): void
+    public function openDelivery(TillSettings $settings, DeliveryService $delivery): void
     {
         $this->error = null;
+        $fee = $this->deliveryFeeMoney();
 
         try {
-            $fee = Money::fromDecimal($this->delivery['fee'] === '' ? '0' : $this->delivery['fee']);
+            $delivery->validateDetails($this->delivery['phone'] ?? '', $this->delivery['address'] ?? '');
+        } catch (RuntimeException $e) {
+            $this->error = $e->getMessage();
+
+            return;
+        }
+
+        // A fee other than the branch default is a price edit: manager PIN unless this user may edit prices (security review M4).
+        if (! $fee->equals(Money::of($settings->deliveryFee())) && ! auth()->user()->can(Permission::OrdersPriceEdit->value)) {
+            $this->askManager(Permission::OrdersPriceEdit, 'deliveryApproved', [$this->delivery], __('pos::pos.approval.delivery_fee', ['amount' => money($fee)]));
+
+            return;
+        }
+
+        $this->deliveryApproved(null, $this->delivery);
+    }
+
+    /** Only reachable through approve() with a manager PIN, or from openDelivery() when no PIN is needed (protected). */
+    protected function deliveryApproved(?User $manager, array $delivery): void
+    {
+        $this->delivery = $delivery;
+        $orders = app(OrderService::class);
+
+        try {
             $order = $orders->open(OrderType::Delivery, auth()->user());
-            $delivery->setDetails($order, $this->delivery['name'], $this->delivery['phone'], $this->delivery['address'], $this->delivery['notes'], $fee, auth()->user());
+            app(DeliveryService::class)->setDetails($order, $delivery['name'], $delivery['phone'], $delivery['address'], $delivery['notes'], $this->deliveryFeeMoney(), auth()->user(), $manager);
         } catch (RuntimeException $e) {
             if (isset($order)) {
                 $orders->void($order, 'Delivery details missing', auth()->user());
@@ -117,6 +141,13 @@ class OrderTypeScreen extends Component
         }
 
         $this->redirectRoute('pos.order', $order);
+    }
+
+    private function deliveryFeeMoney(): Money
+    {
+        $raw = trim((string) ($this->delivery['fee'] ?? ''));
+
+        return Money::fromDecimal($raw === '' ? '0' : $raw);
     }
 
     /** Switch this device in or out of training mode (manager PIN). */

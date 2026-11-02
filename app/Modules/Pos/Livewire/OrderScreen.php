@@ -455,15 +455,35 @@ class OrderScreen extends Component
         $this->openModal('delivery');
     }
 
+    /** Save; a changed fee is a price edit, so the manager keypad opens unless this user may edit prices (security review M4). */
     public function saveDelivery(): void
     {
-        $this->run(function (DeliveryService $delivery) {
-            $fee = Money::fromDecimal($this->delivery['fee'] === '' ? '0' : $this->delivery['fee']);
-            $delivery->setDetails($this->order, $this->delivery['name'], $this->delivery['phone'], $this->delivery['address'], $this->delivery['notes'], $fee, auth()->user());
+        $raw = trim((string) ($this->delivery['fee'] ?? ''));
+        $fee = Money::fromDecimal($raw === '' ? '0' : $raw);
+
+        $this->withManagerFallback(
+            fn () => $this->deliveryApproved(null, $this->delivery),
+            Permission::OrdersPriceEdit, 'deliveryApproved', [$this->delivery],
+            __('pos::pos.approval.delivery_fee', ['amount' => money($fee)]),
+        );
+    }
+
+    /** Only reachable through approve() with a manager PIN, or from saveDelivery() (protected: never callable from the browser). */
+    protected function deliveryApproved(?User $manager, array $delivery): void
+    {
+        $this->delivery = $delivery;
+        $this->error = null;
+        $raw = trim((string) ($delivery['fee'] ?? ''));
+
+        try {
+            app(DeliveryService::class)->setDetails($this->order, $delivery['name'], $delivery['phone'], $delivery['address'], $delivery['notes'], Money::fromDecimal($raw === '' ? '0' : $raw), auth()->user(), $manager);
             $this->modal = null;
             $this->delivery = null;
-        });
-        if ($this->error) {
+            unset($this->order);
+        } catch (ManagerPinRequiredException $e) {
+            throw $e;
+        } catch (RuntimeException $e) {
+            $this->error = $e->getMessage();
             $this->modal = 'delivery';
         }
     }

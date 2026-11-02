@@ -12,6 +12,7 @@ use App\Modules\Orders\Support\TillSettings;
 use App\Modules\Payments\Services\PaymentService;
 use App\Modules\Settings\Services\SettingsService;
 use App\Modules\Staff\Enums\Role;
+use App\Modules\Staff\Exceptions\ManagerPinRequiredException;
 use App\Modules\Staff\Models\User;
 use App\Support\Money\Money;
 use App\Support\Outbox\OutboxEvent;
@@ -23,6 +24,8 @@ beforeEach(function () {
     $this->menu = demoMenu();
     $this->cashier = User::factory()->forBranch($this->branch)->create();
     $this->cashier->assignRole(Role::Cashier->value);
+    $this->manager = User::factory()->forBranch($this->branch)->create(['name' => 'Abena']);
+    $this->manager->assignRole(Role::Manager->value);
     $this->rider = User::factory()->forBranch($this->branch)->create(['name' => 'Kwesi']);
     $this->rider->assignRole(Role::Rider->value);
     app(SettingsService::class)->set(TillSettings::DELIVERY_FEE, 1000);
@@ -43,7 +46,9 @@ it('opens a delivery order with the default fee and adds it after tax', function
         ->and($order->total)->toBePesewas(3400)
         ->and($order->tax_total)->toBePesewas(400);                      // fee is not taxed
 
-    $this->delivery->setDetails($order, 'Ama', '024 123 4567', 'House 12', null, Money::fromDecimal('15'), $this->cashier);
+    expect(fn () => $this->delivery->setDetails($order, 'Ama', '024 123 4567', 'House 12', null, Money::fromDecimal('15'), $this->cashier))
+        ->toThrow(ManagerPinRequiredException::class); // a changed fee is a price edit (security review M4)
+    $this->delivery->setDetails($order, 'Ama', '024 123 4567', 'House 12', null, Money::fromDecimal('15'), $this->cashier, $this->manager);
     expect($order->fresh()->total)->toBePesewas(3900)
         ->and(OutboxEvent::query()->where('event_type', 'orders.delivery_details_changed')->count())->toBe(2);
 
