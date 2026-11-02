@@ -44,6 +44,8 @@ return [
         'default_float_help' => 'Suggested when a cashier opens a till. They confirm or type what is really in the drawer.',
         'variance_tolerance' => 'Cash-up tolerance',
         'variance_tolerance_help' => 'A cash-up short or over by more than this needs a manager PIN.',
+        'pay_out_limit' => 'Pay-out limit',
+        'pay_out_limit_help' => 'A pay-out above this needs a manager PIN. Set 0 to need one for every pay-out.',
         'pay_in_reasons' => 'Pay-in reasons',
         'pay_out_reasons' => 'Pay-out reasons',
         'require_session' => 'A till must be opened (float counted) before payments can be taken',

@@ -19,6 +19,7 @@ enum Permission: string
     case PaymentsTake = 'payments.take';
     case CashDrawer = 'payments.cash_drawer';   // pay-in / pay-out / open drawer
     case CashVariance = 'payments.cash_variance'; // manager PIN: accept a cash-up that is short/over beyond the tolerance
+    case CashPayOutLarge = 'payments.cash_pay_out_large'; // manager PIN: a pay-out above the Till-settings limit
     case KitchenView = 'kitchen.view';
     case KitchenBump = 'kitchen.bump';
     case DeliveryRide = 'delivery.ride';

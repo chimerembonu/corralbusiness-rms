@@ -13,7 +13,7 @@ class CashMovement extends BusinessModel
 {
     use Auditable;
 
-    protected $fillable = ['branch_id', 'cashier_session_id', 'type', 'amount', 'reason', 'reference', 'user_id', 'happened_at'];
+    protected $fillable = ['branch_id', 'cashier_session_id', 'type', 'amount', 'reason', 'reference', 'user_id', 'approved_by_id', 'happened_at'];
 
     protected function casts(): array
     {
@@ -23,6 +23,12 @@ class CashMovement extends BusinessModel
     public function session(): BelongsTo
     {
         return $this->belongsTo(CashierSession::class, 'cashier_session_id');
+    }
+
+    /** The manager who approved a pay-out above the limit (null when none was needed). */
+    public function approvedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by_id');
     }
 
     public function user(): BelongsTo

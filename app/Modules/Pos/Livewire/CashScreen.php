@@ -193,13 +193,39 @@ class CashScreen extends Component
             return;
         }
 
+        $amount = Money::fromDecimal($this->amount === '' ? '0' : $this->amount);
+        if ($this->modal !== 'pay_out') {
+            $this->saveMovement(fn () => $cash->payIn($this->session, $amount, $this->reason, auth()->user(), $this->reference));
+
+            return;
+        }
+
+        // A pay-out above the limit opens the manager keypad and is retried with their approval (security review M3).
+        $args = [$amount->amount, $this->reason, $this->reference];
+        $this->withManagerFallback(
+            fn () => $this->payOutApproved(null, ...$args),
+            Permission::CashPayOutLarge, 'payOutApproved', $args,
+            __('pos::pos.approval.pay_out', ['amount' => money($amount)]),
+        );
+    }
+
+    /** Only reachable through approve() with a manager PIN (protected: never callable from the browser). */
+    protected function payOutApproved(?User $manager, int $amount, string $reason, string $reference): void
+    {
+        $this->saveMovement(fn () => app(CashService::class)->payOut($this->session, Money::of($amount), $reason, auth()->user(), $reference, $manager), $manager !== null);
+    }
+
+    private function saveMovement(callable $record, bool $reopenOnError = false): void
+    {
         try {
-            $amount = Money::fromDecimal($this->amount === '' ? '0' : $this->amount);
-            $movement = $this->modal === 'pay_out'
-                ? $cash->payOut($this->session, $amount, $this->reason, auth()->user(), $this->reference)
-                : $cash->payIn($this->session, $amount, $this->reason, auth()->user(), $this->reference);
+            $movement = $record();
+        } catch (ManagerPinRequiredException $e) {
+            throw $e;
         } catch (RuntimeException $e) {
             $this->error = $e->getMessage();
+            if ($reopenOnError) {
+                $this->modal = 'pay_out';
+            }
 
             return;
         }

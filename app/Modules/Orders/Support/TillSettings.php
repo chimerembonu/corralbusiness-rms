@@ -30,6 +30,8 @@ final class TillSettings
 
     public const CASH_VARIANCE_TOLERANCE = 'cash.variance_tolerance';    // pesewas; a cash-up short/over by more needs a manager PIN
 
+    public const CASH_PAY_OUT_LIMIT = 'cash.pay_out_limit';              // pesewas; a pay-out above this needs a manager PIN (0 = every pay-out does)
+
     public const CASH_PAY_IN_REASONS = 'cash.pay_in_reasons';
 
     public const CASH_PAY_OUT_REASONS = 'cash.pay_out_reasons';
@@ -54,6 +56,7 @@ final class TillSettings
             self::DELIVERY_FEE => 0,
             self::CASH_DEFAULT_FLOAT => 50000,
             self::CASH_VARIANCE_TOLERANCE => 500,
+            self::CASH_PAY_OUT_LIMIT => 20000,
             self::CASH_PAY_IN_REASONS => ['Change from the bank', 'Float top-up', 'Owner / manager'],
             self::CASH_PAY_OUT_REASONS => ['Supplier paid in cash', 'Bank deposit', 'Staff advance', 'Petty cash', 'Tips paid to staff'],
             self::CASH_REQUIRE_SESSION => true,
@@ -112,6 +115,12 @@ final class TillSettings
     public function varianceTolerance(?string $branchId = null): int
     {
         return (int) $this->get(self::CASH_VARIANCE_TOLERANCE, $branchId);
+    }
+
+    /** Pay-outs above this (pesewas) need a manager PIN; 0 means every pay-out does. */
+    public function payOutLimit(?string $branchId = null): int
+    {
+        return max(0, (int) $this->get(self::CASH_PAY_OUT_LIMIT, $branchId));
     }
 
     /** @return array<int, string> */

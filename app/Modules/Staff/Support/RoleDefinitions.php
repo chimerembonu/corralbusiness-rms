@@ -14,7 +14,7 @@ final class RoleDefinitions
         $floor = [P::PosAccess, P::OrdersCreate, P::StaffClock, P::KitchenView];
         $manager = array_merge($floor, [
             P::AdminAccess, P::OrdersVoid, P::OrdersDiscount, P::OrdersRefund, P::OrdersPriceEdit,
-            P::DayReopen, P::DayClose, P::TrainingMode, P::PaymentsTake, P::CashDrawer, P::CashVariance, P::KitchenBump,
+            P::DayReopen, P::DayClose, P::TrainingMode, P::PaymentsTake, P::CashDrawer, P::CashVariance, P::CashPayOutLarge, P::KitchenBump,
             P::MenuManage, P::Menu86, P::InventoryManage, P::InventoryCount, P::CustomersManage,
             P::StaffManage, P::ReportsView, P::ReportsExport, P::SettingsManage,
         ]);

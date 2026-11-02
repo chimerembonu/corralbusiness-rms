@@ -228,6 +228,7 @@ return [
         'restore_service' => 'Restore the service charge',
         'refund' => 'Refund :amount (:method)',
         'cash_variance' => 'Accept a cash count of :amount that is short or over',
+        'pay_out' => 'Pay out :amount from the drawer',
         'close_day' => 'Close the day :date',
         'reopen_day' => 'Reopen a closed day',
     ],

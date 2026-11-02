@@ -121,16 +121,28 @@ class CashService
         return $this->move($session, CashMovementType::PayIn, $amount, $reason, $by, $reference);
     }
 
-    public function payOut(CashierSession $session, Money $amount, string $reason, User $by, ?string $reference = null): CashMovement
+    /**
+     * Money leaves the drawer. Above the pay-out limit (Till settings) it needs a manager as $approvedBy
+     * (security review M3): a cashier cannot empty the drawer with a typed reason.
+     */
+    public function payOut(CashierSession $session, Money $amount, string $reason, User $by, ?string $reference = null, ?User $approvedBy = null): CashMovement
     {
         if ($amount->greaterThan($this->expected($session))) {
             throw new CashException(__('payments::payments.cash.errors.not_enough_cash', ['cash' => money($this->expected($session))]));
         }
+        if ($this->payOutNeedsManager($amount, $session->branch_id) && ! $approvedBy?->can(Permission::CashPayOutLarge->value)) {
+            throw new ManagerPinRequiredException(Permission::CashPayOutLarge->value);
+        }
 
-        return $this->move($session, CashMovementType::PayOut, $amount, $reason, $by, $reference);
+        return $this->move($session, CashMovementType::PayOut, $amount, $reason, $by, $reference, $approvedBy);
     }
 
-    private function move(CashierSession $session, CashMovementType $type, Money $amount, string $reason, User $by, ?string $reference): CashMovement
+    public function payOutNeedsManager(Money $amount, ?string $branchId = null): bool
+    {
+        return $amount->greaterThan(Money::of($this->settings->payOutLimit($branchId)));
+    }
+
+    private function move(CashierSession $session, CashMovementType $type, Money $amount, string $reason, User $by, ?string $reference, ?User $approvedBy = null): CashMovement
     {
         $this->assertOpen($session);
         if (! $by->can(Permission::CashDrawer->value)) {
@@ -143,7 +155,7 @@ class CashService
             throw new CashException(__('orders::orders.errors.reason_required'));
         }
 
-        return DB::transaction(function () use ($session, $type, $amount, $reason, $by, $reference) {
+        return DB::transaction(function () use ($session, $type, $amount, $reason, $by, $reference, $approvedBy) {
             $movement = new CashMovement([
                 'cashier_session_id' => $session->id,
                 'type' => $type,
@@ -151,6 +163,7 @@ class CashService
                 'reason' => trim($reason),
                 'reference' => filled($reference) ? trim($reference) : null,
                 'user_id' => $by->id,
+                'approved_by_id' => $approvedBy?->id,
                 'happened_at' => now(),
             ]);
             $movement->branch_id = $session->branch_id;
