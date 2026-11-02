@@ -71,6 +71,14 @@ it('sends a rider to the rider screen and keeps them off the order screens', fun
     Livewire::test(OrderTypeScreen::class)->assertRedirect(route('pos.rider'));
     $order = $this->orders->open(OrderType::Takeaway, $this->cashier);
     Livewire::test(OrderScreen::class, ['order' => $order])->assertForbidden();
+    $this->get('/pos/orders')->assertForbidden(); // the order list shows every customer's name, phone and address (re-review N2)
+});
+
+it('keeps kitchen staff off the order list but lets cashiers and waiters in', function () {
+    $this->actingAs($this->cook);
+    $this->get('/pos/orders')->assertForbidden();
+    $this->actingAs($this->cashier);
+    $this->get('/pos/orders')->assertOk();
 });
 
 it('sends kitchen staff to the kitchen display, at sign-in and from the till home screen', function () {

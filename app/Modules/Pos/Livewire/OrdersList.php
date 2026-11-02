@@ -37,6 +37,12 @@ class OrdersList extends Component
     /** Refund modal: ['payment_id' => …, 'reason' => …] */
     public ?array $refund = null;
 
+    /** Every order of the branch with customer details: for order-takers and cashiers, not riders or kitchen staff (re-review N2). */
+    public function mount(): void
+    {
+        abort_unless(auth()->user()->canAny([Permission::OrdersCreate->value, Permission::PaymentsTake->value]), 403);
+    }
+
     public function open(?string $orderId): void
     {
         $this->openId = $orderId;
