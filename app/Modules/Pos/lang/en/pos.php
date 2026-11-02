@@ -222,6 +222,7 @@ return [
         'title' => 'Manager approval',
         'approve' => 'Approve',
         'void_line' => 'Void :item',
+        'reduce_quantity' => 'Reduce :item to :quantity after the bill was printed',
         'void_order' => 'Cancel order #:number',
         'discount' => 'Discount of :amount',
         'waive_service' => 'Waive the service charge',

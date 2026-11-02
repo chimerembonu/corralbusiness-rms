@@ -38,6 +38,8 @@ return [
         'voided_orders' => 'Cancelled orders',
         'voided_lines' => 'Voided lines',
         'removed_lines' => 'Lines removed before sending',
+        'reduced_lines' => 'Quantities reduced after the bill',
+        'approved_by' => 'approved by :name',
         'discounts' => 'Discounts',
         'refunds' => 'Refunds',
         'columns' => ['when' => 'When', 'order' => 'Order', 'detail' => 'Detail', 'value' => 'Value', 'by' => 'By', 'opened_by' => 'Opened by'],

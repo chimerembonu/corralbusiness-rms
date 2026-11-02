@@ -4,11 +4,11 @@
 <x-filament-panels::page>
     @include('reports::filament.partials.filters')
     <div class="rp-kpis">
-        @foreach (['voided_orders', 'voided_lines', 'removed_lines', 'discounts', 'refunds'] as $key)
+        @foreach (['voided_orders', 'voided_lines', 'removed_lines', 'reduced_lines', 'discounts', 'refunds'] as $key)
             <div class="rp-kpi"><span>{{ __('reports::reports.voids.'.$key) }}</span><strong>{{ $m($d['totals'][$key]) }}</strong> <small style="opacity:.6">· {{ count($d[$key]) }}</small></div>
         @endforeach
     </div>
-    @foreach (['voided_orders', 'voided_lines', 'removed_lines', 'discounts', 'refunds'] as $key)
+    @foreach (['voided_orders', 'voided_lines', 'removed_lines', 'reduced_lines', 'discounts', 'refunds'] as $key)
         <x-filament::section :heading="__('reports::reports.voids.'.$key)">
             @if (empty($d[$key]))
                 <p class="text-sm text-gray-500">—</p>

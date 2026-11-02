@@ -47,6 +47,7 @@ it('rejects every Approved action called directly with a manager id instead of a
         [OrderScreen::class, ['order' => $this->order], 'voidApproved', [$this->manager->id, $this->line->id, 'Pocketed the cash']],
         [OrderScreen::class, ['order' => $this->order], 'discountApproved', [$this->manager->id, null, 'percent', 100, 'Friend']],
         [OrderScreen::class, ['order' => $this->order], 'serviceChargeApproved', [$this->manager->id, true]],
+        [OrderScreen::class, ['order' => $this->order], 'quantityApproved', [$this->manager->id, $this->line->id, 1]],
         [OrdersList::class, [], 'refundApproved', [$this->manager->id, 'any-payment', 'Changed mind']],
         [CashScreen::class, [], 'cashUpApproved', [$this->manager->id, 0, [], 'short']],
         [CashScreen::class, [], 'payOutApproved', [$this->manager->id, 50000, 'Bank deposit', '']],

@@ -11,6 +11,7 @@ use App\Modules\Orders\Models\OrderItem;
 use App\Modules\Payments\Enums\PaymentStatus;
 use App\Modules\Payments\Models\Payment;
 use App\Modules\Staff\Services\StaffSalesService;
+use App\Support\Audit\Activity;
 use App\Support\Money\Money;
 use App\Support\Tenancy\TenantContext;
 use Carbon\CarbonImmutable;
@@ -208,10 +209,14 @@ class ReportService
         $discounted = Order::query()->tap($inRange)->whereIn('status', [OrderStatus::Paid->value, OrderStatus::Refunded->value])->where('discount_total', '>', 0)->with(['discountApprovedBy', 'openedBy', 'items' => fn ($q) => $q->whereNotNull('item_discount_approved_by_id')->with('itemDiscountApprovedBy')])->orderBy('paid_at')->get();
         $refunds = Payment::query()->real()->where('branch_id', $branchId)->where('status', PaymentStatus::Refunded->value)
             ->whereBetween('refunded_at', [$from.' 00:00:00', $to.' 23:59:59'])->with(['order', 'refundedBy'])->orderBy('refunded_at')->get();
+        // Lines made smaller after the bill was printed (manager-approved), from the activity log.
+        $reduced = Activity::query()->where('branch_id', $branchId)->where('description', 'quantity_reduced_after_bill')
+            ->whereBetween('created_at', [$from.' 00:00:00', $to.' 23:59:59'])->with('causer')->orderBy('created_at')->get();
 
         return [
             'voided_orders' => $voidedOrders->map(fn (Order $o) => ['when' => $o->voided_at?->format('d/m H:i') ?? '', 'order' => '#'.$o->displayNumber(), 'detail' => $o->void_reason ?? '', 'value' => $o->total->amount, 'by' => $o->voidedBy?->name ?? '', 'opened_by' => $o->openedBy?->name ?? ''])->all(),
             'removed_lines' => $removedLines->map(fn (OrderItem $l) => ['when' => $l->deleted_at?->format('d/m H:i') ?? '', 'order' => '#'.$l->order->displayNumber(), 'detail' => $l->quantity.' × '.$l->displayName(), 'value' => $l->line_total->amount, 'by' => $l->removedBy?->name ?? ''])->all(),
+            'reduced_lines' => $reduced->map(fn (Activity $a) => ['when' => $a->created_at->format('d/m H:i'), 'order' => '#'.($a->properties['number'] ?? ''), 'detail' => ($a->properties['line'] ?? '').' '.($a->properties['from'] ?? '').' → '.($a->properties['to'] ?? ''), 'value' => (int) ($a->properties['value'] ?? 0), 'by' => ($a->causer?->name ?? '').(($a->properties['approved_by_name'] ?? null) && $a->properties['approved_by_name'] !== $a->causer?->name ? ' · '.__('reports::reports.voids.approved_by', ['name' => $a->properties['approved_by_name']]) : '')])->all(),
             'voided_lines' => $voidedLines->map(fn (OrderItem $l) => ['when' => $l->voided_at?->format('d/m H:i') ?? '', 'order' => '#'.$l->order->displayNumber(), 'detail' => $l->quantity.' × '.$l->displayName().($l->void_reason ? ' · '.$l->void_reason : ''), 'value' => $l->line_total->amount, 'by' => $l->voidedBy?->name ?? ''])->all(),
             'discounts' => $discounted->map(fn (Order $o) => ['when' => $o->paid_at?->format('d/m H:i') ?? '', 'order' => '#'.$o->displayNumber(), 'detail' => trim(($o->discountLabel() ?? '').' '.($o->discount_reason ?? '').($o->promo_code ? ' · '.$o->promo_code : '')), 'value' => $o->discount_total->amount, 'by' => $o->discountApprovedBy?->name ?? $o->items->first()?->itemDiscountApprovedBy?->name ?? $o->openedBy?->name ?? ''])->all(),
             'refunds' => $refunds->map(fn (Payment $p) => ['when' => $p->refunded_at?->format('d/m H:i') ?? '', 'order' => $p->order ? '#'.$p->order->displayNumber() : '', 'detail' => $p->methodLabel().($p->refund_reason ? ' · '.$p->refund_reason : ''), 'value' => $p->amount->amount, 'by' => $p->refundedBy?->name ?? ''])->all(),
@@ -219,6 +224,7 @@ class ReportService
                 'voided_orders' => (int) $voidedOrders->sum(fn (Order $o) => $o->total->amount),
                 'voided_lines' => (int) $voidedLines->sum(fn (OrderItem $l) => $l->line_total->amount),
                 'removed_lines' => (int) $removedLines->sum(fn (OrderItem $l) => $l->line_total->amount),
+                'reduced_lines' => (int) $reduced->sum(fn (Activity $a) => (int) ($a->properties['value'] ?? 0)),
                 'discounts' => (int) $discounted->sum(fn (Order $o) => $o->discount_total->amount),
                 'refunds' => (int) $refunds->sum(fn (Payment $p) => $p->amount->amount),
             ],

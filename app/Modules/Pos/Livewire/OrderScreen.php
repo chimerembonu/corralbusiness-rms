@@ -251,10 +251,39 @@ class OrderScreen extends Component
 
     public function changeLineQuantity(string $lineId, int $delta): void
     {
-        $this->run(function (OrderService $orders) use ($lineId, $delta) {
-            $line = $this->line($lineId);
-            $orders->changeQuantity($this->order, $line, $line->quantity + $delta, auth()->user());
-        });
+        $line = $this->line($lineId);
+        $quantity = $line->quantity + $delta;
+
+        if ($this->order->bill_printed_at !== null && $delta < 0) { // the customer has seen the bill: a manager must agree
+            if ($quantity < 1) {
+                $this->removeLine($lineId);
+
+                return;
+            }
+            $this->withManagerFallback(
+                fn () => $this->quantityApproved(null, $lineId, $quantity),
+                Permission::OrdersVoid, 'quantityApproved', [$lineId, $quantity],
+                __('pos::pos.approval.reduce_quantity', ['item' => $line->displayName(), 'quantity' => $quantity]),
+            );
+
+            return;
+        }
+
+        $this->run(fn (OrderService $orders) => $orders->changeQuantity($this->order, $line, $quantity, auth()->user()));
+    }
+
+    /** Only reachable through approve() with a manager PIN, or from changeLineQuantity() (protected: never callable from the browser). */
+    protected function quantityApproved(?User $manager, string $lineId, int $quantity): void
+    {
+        $this->error = null;
+        try {
+            app(OrderService::class)->changeQuantity($this->order, $this->line($lineId), $quantity, auth()->user(), $manager);
+            unset($this->order);
+        } catch (ManagerPinRequiredException $e) {
+            throw $e;
+        } catch (RuntimeException $e) {
+            $this->error = $e->getMessage();
+        }
     }
 
     public function removeLine(string $lineId): void

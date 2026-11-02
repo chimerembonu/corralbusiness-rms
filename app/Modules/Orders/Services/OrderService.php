@@ -157,7 +157,12 @@ class OrderService
         });
     }
 
-    public function changeQuantity(Order $order, OrderItem $line, int $quantity, ?User $by = null): OrderItem
+    /**
+     * Change how many of a line. Once the bill has been printed, making a line smaller is a void in
+     * disguise: it needs someone with the void permission as $by or $approvedBy (manager PIN) and is
+     * logged for the voids report (re-review of security review H5).
+     */
+    public function changeQuantity(Order $order, OrderItem $line, int $quantity, ?User $by = null, ?User $approvedBy = null): OrderItem
     {
         $this->assertEditable($order);
         $this->assertPending($line);
@@ -166,10 +171,25 @@ class OrderService
             return $this->removeItem($order, $line, $by);
         }
 
+        $from = $line->quantity;
+        $before = $line->line_total;
+        $reducedAfterBill = $order->bill_printed_at !== null && $quantity < $from;
+        if ($reducedAfterBill && ! ($approvedBy ?? $by)?->can(Permission::OrdersVoid->value)) {
+            throw new ManagerPinRequiredException(Permission::OrdersVoid->value);
+        }
+
         $line->quantity = $quantity;
         $line->save();
         $this->recalculate($order);
         $line->refresh();
+
+        if ($reducedAfterBill && ! $order->is_training) {
+            $approver = $approvedBy ?? $by;
+            activity('order')->performedOn($order)->causedBy($by)->withProperties([
+                'number' => $order->displayNumber(), 'line' => $line->displayName(), 'from' => $from, 'to' => $quantity,
+                'value' => $before->subtract($line->line_total)->amount, 'approved_by' => $approver?->id, 'approved_by_name' => $approver?->name,
+            ])->log('quantity_reduced_after_bill');
+        }
         ItemQuantityChanged::dispatch($order, $line, $by?->id);
 
         return $line;
