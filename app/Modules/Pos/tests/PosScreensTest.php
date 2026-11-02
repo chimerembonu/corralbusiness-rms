@@ -83,17 +83,17 @@ it('shows the floor plan with sections and colours tables by status', function (
     $terrace = FloorSection::create(['name' => 'Terrace', 'sort_order' => 2]);
     $indoor = FloorSection::create(['name' => 'Indoor', 'sort_order' => 1]);
     $this->table->update(['section_id' => $indoor->id, 'pos_x' => 2, 'pos_y' => 1]);
-    $p1 = DiningTable::create(['name' => 'P1', 'seats' => 6, 'section_id' => $terrace->id]);
+    $p1 = DiningTable::create(['name' => 'Patio 9', 'seats' => 6, 'section_id' => $terrace->id]); // a name no random Livewire id can contain
     $order = app(OrderService::class)->open(OrderType::DineIn, $this->waiter, $this->table, 3);
     app(OrderService::class)->addItem($order, $this->menu['coke']);
     app(OrderService::class)->sendToKitchen($order, $this->waiter);
 
     Livewire::test(OrderTypeScreen::class)->call('showTables')
         ->assertSeeInOrder(['Indoor', 'Terrace'])
-        ->assertSee('T1')->assertSee('data-status="ordered"', false)->assertSee('3 guests')->assertDontSee('P1')
+        ->assertSee('T1')->assertSee('data-status="ordered"', false)->assertSee('3 guests')->assertDontSee('Patio 9')
         ->assertSee('left: 10%', false)                      // pos_x 2 of 20 columns
         ->call('selectSection', $terrace->id)
-        ->assertSee('P1')->assertSee('data-status="free"', false)->assertSee('6 seats')->assertDontSee('T1');
+        ->assertSee('Patio 9')->assertSee('data-status="free"', false)->assertSee('6 seats')->assertDontSee('T1');
 });
 
 it('moves, joins and changes guests from the order screen table sheet', function () {
@@ -271,6 +271,7 @@ it('finds an order, reprints its receipt and refunds a payment with a manager PI
     $this->get('/pos')->assertSee('Kofi')->assertSee('On hold');
     $payment = app(PaymentService::class)->payCash($order, Money::fromDecimal('12'), $this->owner);
     $this->get('/pos/orders')->assertOk()->assertSee('Kofi')->assertSee('Paid');
+    app(CashService::class)->open(null, $this->owner, Money::fromDecimal('100'), now()->toDateString()); // a refund must leave a drawer
 
     Livewire::test(OrdersList::class)
         ->set('search', 'kof')->assertSee('#'.$order->displayNumber())

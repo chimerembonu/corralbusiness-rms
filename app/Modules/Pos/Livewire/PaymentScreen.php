@@ -130,9 +130,17 @@ class PaymentScreen extends Component
         $this->tip = $pesewas > 0 ? Money::of($pesewas)->toDecimal() : '';
     }
 
-    public function complete(PaymentService $payments): void
+    public function complete(PaymentService $payments, CashService $cash, TillSettings $settings): void
     {
         $this->error = null;
+
+        // The till may have been cashed up since this screen was opened: check again now, not only in mount().
+        if ($settings->requireSession($this->order->branch_id) && ! $cash->current(auth()->user(), $this->order->branch_id)) {
+            session()->flash('error', __('payments::payments.cash.errors.no_session'));
+            $this->redirectRoute('pos.cash', ['then' => $this->order->id]);
+
+            return;
+        }
 
         try {
             $amount = Money::fromDecimal($this->amount === '' ? '0' : $this->amount);

@@ -73,3 +73,13 @@ it('opens the manager keypad on the cash screen for a large pay-out and records 
         ->and($movement->approved_by_id)->toBe($this->manager->id)
         ->and($movement->reference)->toBe('SLIP 9');
 });
+
+it('counts every pay-out of the session towards the limit, so it cannot be split into small ones', function () {
+    $this->cash->payOut($this->session, Money::fromDecimal('150'), 'Petty cash', $this->cashier);
+    expect(fn () => $this->cash->payOut($this->session->fresh(), Money::fromDecimal('150'), 'Petty cash', $this->cashier))
+        ->toThrow(ManagerPinRequiredException::class); // 150 + 150 = 300 > 200
+    expect(CashMovement::query()->count())->toBe(1);
+
+    $this->cash->payOut($this->session->fresh(), Money::fromDecimal('150'), 'Petty cash', $this->cashier, null, $this->manager);
+    expect($this->session->fresh()->pay_outs)->toBePesewas(30000);
+});

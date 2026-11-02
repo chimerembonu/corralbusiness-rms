@@ -3,7 +3,9 @@
 namespace App\Modules\Pos\Livewire;
 
 use App\Modules\Orders\Models\Order;
+use App\Modules\Orders\Support\TillSettings;
 use App\Modules\Payments\Models\Payment;
+use App\Modules\Payments\Services\CashService;
 use App\Modules\Payments\Services\PaymentService;
 use App\Modules\Pos\Concerns\AsksForManagerPin;
 use App\Modules\Printing\Services\PrintService;
@@ -79,6 +81,14 @@ class OrdersList extends Component
     /** Only reachable through approve() with a manager PIN (protected: never callable from the browser). */
     protected function refundApproved(User $manager, string $paymentId, string $reason): void
     {
+        // A cash refund must leave a drawer: the till has to be open (same rule as taking a payment).
+        $payment = Payment::query()->findOrFail($paymentId);
+        if (app(TillSettings::class)->requireSession($payment->branch_id) && ! app(CashService::class)->current(auth()->user(), $payment->branch_id)) {
+            $this->error = __('payments::payments.cash.errors.no_session');
+
+            return;
+        }
+
         try {
             app(PaymentService::class)->refund(Payment::query()->findOrFail($paymentId), $reason, $manager, auth()->user());
             $this->notice = __('pos::pos.orders.refunded');

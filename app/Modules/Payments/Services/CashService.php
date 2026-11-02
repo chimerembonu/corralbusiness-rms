@@ -130,16 +130,19 @@ class CashService
         if ($amount->greaterThan($this->expected($session))) {
             throw new CashException(__('payments::payments.cash.errors.not_enough_cash', ['cash' => money($this->expected($session))]));
         }
-        if ($this->payOutNeedsManager($amount, $session->branch_id) && ! $approvedBy?->can(Permission::CashPayOutLarge->value)) {
+        if ($this->payOutNeedsManager($amount, $session->branch_id, $session) && ! $approvedBy?->can(Permission::CashPayOutLarge->value)) {
             throw new ManagerPinRequiredException(Permission::CashPayOutLarge->value);
         }
 
         return $this->move($session, CashMovementType::PayOut, $amount, $reason, $by, $reference, $approvedBy);
     }
 
-    public function payOutNeedsManager(Money $amount, ?string $branchId = null): bool
+    /** The limit applies to everything paid out of the session so far plus this one, so it cannot be split into small pieces. */
+    public function payOutNeedsManager(Money $amount, ?string $branchId = null, ?CashierSession $session = null): bool
     {
-        return $amount->greaterThan(Money::of($this->settings->payOutLimit($branchId)));
+        $soFar = $session?->pay_outs ?? Money::zero();
+
+        return $soFar->add($amount)->greaterThan(Money::of($this->settings->payOutLimit($branchId)));
     }
 
     private function move(CashierSession $session, CashMovementType $type, Money $amount, string $reason, User $by, ?string $reference, ?User $approvedBy = null): CashMovement
