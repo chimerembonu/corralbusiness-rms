@@ -257,8 +257,9 @@ class OrderService
             throw new DiscountException(__('orders::orders.errors.reason_required'));
         }
 
-        $base = $order->subtotal->subtract($this->itemDiscountTotal($order));
-        $this->assertDiscountAllowed($type, $value, $base, $order->branch_id, $approvedBy);
+        $lineDiscounts = $this->itemDiscountTotal($order);
+        $base = $order->subtotal->subtract($lineDiscounts);
+        $this->assertDiscountAllowed($type, $value, $base, $order->branch_id, $approvedBy, $lineDiscounts, $order->subtotal);
 
         $this->releasePromoCode($order);
         $order->discount_type = $type;
@@ -280,12 +281,15 @@ class OrderService
             if (blank($reason)) {
                 throw new DiscountException(__('orders::orders.errors.reason_required'));
             }
-            $this->assertDiscountAllowed($type, $value, $line->unitTotal()->multiply($line->quantity), $order->branch_id, $approvedBy);
+            // Everything already off the order except this line's own discount (which is being replaced).
+            $alreadyOff = $order->discount_total->subtract($line->itemDiscount());
+            $this->assertDiscountAllowed($type, $value, $line->unitTotal()->multiply($line->quantity), $order->branch_id, $approvedBy, $alreadyOff, $order->subtotal);
         }
 
         $line->item_discount_type = $value > 0 ? $type : null;
         $line->item_discount_value = $value > 0 && $type ? $value : 0;
         $line->item_discount_reason = $value > 0 && $type ? $reason : null;
+        $line->item_discount_approved_by_id = $value > 0 && $type ? $approvedBy?->id : null;
         $line->save();
         $this->recalculate($order);
         $line->refresh();
@@ -656,21 +660,29 @@ class OrderService
             : 0;
     }
 
-    /** Does a discount of this size need a manager? Threshold is a % of the base amount (Till settings). */
-    public function discountNeedsManager(DiscountType $type, int $value, Money $base, ?string $branchId = null): bool
+    /**
+     * Does a discount of this size need a manager? Threshold is a % of the base amount (Till settings).
+     * When $alreadyOff and $subtotal are given, the discount is also judged together with everything
+     * already off the order (security review M1): 10 % on each line plus 10 % on the order is 19 %, not 10 %.
+     */
+    public function discountNeedsManager(DiscountType $type, int $value, Money $base, ?string $branchId = null, ?Money $alreadyOff = null, ?Money $subtotal = null): bool
     {
         $threshold = $this->settings->discountThresholdBp($branchId);
-        if ($type === DiscountType::Percent) {
-            return $value > $threshold;
-        }
-        if ($base->isZero()) {
+        $thisOne = $type === DiscountType::Percent
+            ? $value > $threshold
+            : ($base->isZero() || Money::of($value)->greaterThan($base->basisPoints($threshold)));
+        if ($thisOne) {
             return true;
         }
+        if ($alreadyOff === null || $subtotal === null || $subtotal->isZero()) {
+            return false;
+        }
+        $proposed = $type === DiscountType::Percent ? $base->basisPoints($value) : Money::of($value);
 
-        return Money::of($value)->greaterThan($base->basisPoints($threshold));
+        return $alreadyOff->add($proposed)->greaterThan($subtotal->basisPoints($threshold));
     }
 
-    private function assertDiscountAllowed(DiscountType $type, int $value, Money $base, ?string $branchId, ?User $approvedBy): void
+    private function assertDiscountAllowed(DiscountType $type, int $value, Money $base, ?string $branchId, ?User $approvedBy, ?Money $alreadyOff = null, ?Money $subtotal = null): void
     {
         if ($type === DiscountType::Fixed && Money::of($value)->greaterThan($base)) {
             throw new DiscountException(__('orders::orders.errors.discount_too_big'));
@@ -678,7 +690,7 @@ class OrderService
         if ($type === DiscountType::Percent && $value > 10000) {
             throw new DiscountException(__('orders::orders.errors.discount_too_big'));
         }
-        if ($this->discountNeedsManager($type, $value, $base, $branchId) && ! $approvedBy?->can(Permission::OrdersDiscount->value)) {
+        if ($this->discountNeedsManager($type, $value, $base, $branchId, $alreadyOff, $subtotal) && ! $approvedBy?->can(Permission::OrdersDiscount->value)) {
             throw new ManagerPinRequiredException(Permission::OrdersDiscount->value);
         }
     }

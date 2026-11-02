@@ -64,6 +64,12 @@ class OrderItem extends BusinessModel
         return $this->belongsTo(User::class, 'removed_by_id');
     }
 
+    /** The manager who approved this line's discount (null when it was under the threshold). */
+    public function itemDiscountApprovedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'item_discount_approved_by_id');
+    }
+
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);
