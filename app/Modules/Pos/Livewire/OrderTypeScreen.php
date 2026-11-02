@@ -129,6 +129,9 @@ class OrderTypeScreen extends Component
     /** Only reachable through approve() with a manager PIN (protected: never callable from the browser). */
     protected function trainingApproved(User $manager, bool $on): void
     {
+        // Checked again on the server: only someone allowed to run training mode can switch it (security review H1).
+        abort_unless($manager->can(Permission::TrainingMode->value), 403);
+
         app(TrainingMode::class)->set($on);
         activity('training_mode')->causedBy(auth()->user())->withProperties(['on' => $on, 'approved_by' => $manager->id])->log($on ? 'training_on' : 'training_off');
         $this->redirectRoute('pos.home');
