@@ -181,6 +181,7 @@ class OrderService
         $line->quantity = $quantity;
         $line->save();
         $this->recalculate($order);
+        $this->dropUnapprovedDiscountsOverThreshold($order, $by);
         $line->refresh();
 
         if ($reducedAfterBill && ! $order->is_training) {
@@ -211,6 +212,7 @@ class OrderService
         $line->forceFill(['removed_by_id' => $by?->id])->save();
         $line->delete();
         $this->recalculate($order);
+        $this->dropUnapprovedDiscountsOverThreshold($order, $by);
         ItemRemoved::dispatch($order, $line, $by?->id);
 
         return $line;
@@ -328,19 +330,29 @@ class OrderService
             throw new DiscountException(__('orders::orders.promo.unknown'));
         }
 
-        $base = $order->subtotal->subtract($this->itemDiscountTotal($order));
+        $lineDiscounts = $this->itemDiscountTotal($order);
+        $base = $order->subtotal->subtract($lineDiscounts);
         if ($reason = $promo->rejectionReason($base)) {
             throw new DiscountException($reason);
         }
+        // A promo code is pre-approved on its own, but not stacked on top of line discounts past the threshold (re-review of M1).
+        if ($lineDiscounts->isPositive() && $lineDiscounts->add($promo->discountFor($base))->greaterThan($order->subtotal->basisPoints($this->settings->discountThresholdBp($order->branch_id)))) {
+            throw new DiscountException(__('orders::orders.promo.with_line_discounts'));
+        }
 
         $this->releasePromoCode($order);
+        // Claim a use atomically: two tills at the last use cannot both get it.
+        $claimed = PromoCode::query()->whereKey($promo->id)->where(fn ($q) => $q->whereNull('max_uses')->orWhereColumn('uses_count', '<', 'max_uses'))->increment('uses_count');
+        if ($claimed === 0) {
+            throw new DiscountException(__('orders::orders.promo.used_up'));
+        }
+        $promo->refresh();
         $order->discount_type = $promo->type;
         $order->discount_value = $promo->value;
         $order->discount_reason = $promo->name;
         $order->discount_approved_by_id = null;
         $order->promo_code_id = $promo->id;
         $order->promo_code = $promo->code;
-        $promo->increment('uses_count');
         $order->setRelation('promoCode', $promo);
         $this->recalculate($order);
         OrderDiscountApplied::dispatch($order, $by?->id);
@@ -476,6 +488,7 @@ class OrderService
 
             $order->covers = max(1, $order->covers - $seats);
             $this->recalculate($order);
+            $this->dropUnapprovedDiscountsOverThreshold($order, $by);
             $this->recalculate($new);
 
             OrderSplit::dispatch($new, $order->id, $by?->id);
@@ -734,6 +747,43 @@ class OrderService
     private function itemDiscountTotal(Order $order): Money
     {
         return $order->activeItems()->get()->reduce(fn (Money $c, OrderItem $l) => $c->add($l->itemDiscount()), Money::zero());
+    }
+
+    /**
+     * A fixed-amount discount is judged against the threshold when it is given. If the order then shrinks
+     * (lines removed, quantities reduced, lines split off) the same amount can become a far bigger share:
+     * GH₵ 5 off GH₵ 50 is 10 %, GH₵ 5 off GH₵ 5 is everything. Fixed discounts nobody approved are taken
+     * off again when that happens (re-review of M1); approved ones and percentages are left alone.
+     */
+    private function dropUnapprovedDiscountsOverThreshold(Order $order, ?User $by = null): void
+    {
+        $threshold = $this->settings->discountThresholdBp($order->branch_id);
+        $dropped = [];
+
+        foreach ($order->activeItems()->get() as $line) {
+            if ($line->item_discount_type !== DiscountType::Fixed || ! $line->hasItemDiscount() || $line->item_discount_approved_by_id !== null) {
+                continue;
+            }
+            if ($line->itemDiscount()->greaterThan($line->unitTotal()->multiply($line->quantity)->basisPoints($threshold))) {
+                $dropped[] = $line->displayName().' '.money($line->itemDiscount());
+                $line->forceFill(['item_discount_type' => null, 'item_discount_value' => 0, 'item_discount_reason' => null])->save();
+            }
+        }
+
+        if ($order->discount_type === DiscountType::Fixed && $order->discount_value > 0 && $order->discount_approved_by_id === null && $order->promo_code_id === null) {
+            $base = $order->subtotal->subtract($this->itemDiscountTotal($order));
+            if (Money::of($order->discount_value)->greaterThan($base->basisPoints($threshold))) {
+                $dropped[] = __('orders::orders.discount').' '.money(Money::of($order->discount_value));
+                $order->discount_type = null;
+                $order->discount_value = 0;
+                $order->discount_reason = null;
+            }
+        }
+
+        if ($dropped !== []) {
+            $this->recalculate($order);
+            activity('order')->performedOn($order)->causedBy($by)->withProperties(['dropped' => $dropped])->log('discount_dropped_over_threshold');
+        }
     }
 
     /** Give a promo code its use back when it is removed or replaced. */

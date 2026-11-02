@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'discount' => 'Discount',
     'type' => ['dine_in' => 'Dine-in', 'takeaway' => 'Takeaway', 'delivery' => 'Delivery'],
     'status' => ['open' => 'Open', 'sent' => 'Sent to kitchen', 'paid' => 'Paid', 'void' => 'Cancelled', 'refunded' => 'Refunded', 'merged' => 'Merged'],
     'shape' => ['square' => 'Square', 'round' => 'Round', 'rect' => 'Long'],
@@ -31,6 +32,7 @@ return [
         'used_up' => 'This code has been used up.',
         'min_order' => 'This code needs an order of at least :amount.',
         'unknown' => 'Unknown promo code.',
+        'with_line_discounts' => 'Take the line discounts off before using a promo code, or ask a manager for an order discount.',
         'navigation_group' => 'Discounts & promos',
         'promo_code' => 'Promo code',
         'promo_codes' => 'Promo codes',
