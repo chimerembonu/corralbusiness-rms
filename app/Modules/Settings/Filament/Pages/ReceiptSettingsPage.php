@@ -72,7 +72,7 @@ class ReceiptSettingsPage extends Page
 
         return $schema->components([
             Section::make($t('top'))->columns(2)->schema([
-                FileUpload::make('logo_path')->label($t('logo'))->image()->disk('public')->directory('receipts')->maxSize(512)->helperText($t('logo_help'))->columnSpanFull(),
+                FileUpload::make('logo_path')->label($t('logo'))->image()->acceptedFileTypes(['image/png', 'image/jpeg', 'image/webp'])->disk('public')->directory('receipts')->maxSize(512)->helperText($t('logo_help'))->columnSpanFull(),
                 TextInput::make('tax_number')->label($t('tax_number'))->maxLength(40)->helperText($t('tax_number_help')),
                 Toggle::make('show_server')->label($t('show_server'))->inline(false),
                 Textarea::make('header')->label($t('header'))->rows(3)->helperText($t('header_help'))->columnSpanFull(),

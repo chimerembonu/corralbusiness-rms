@@ -66,7 +66,7 @@ class CategoryResource extends Resource
                 TextInput::make('description')->label(__('menu::menu.fields.description'))->maxLength(255)->columnSpanFull(),
                 ColorPicker::make('color')->label(__('menu::menu.fields.color')),
                 Toggle::make('is_active')->label(__('menu::menu.fields.is_active'))->default(true)->inline(false),
-                FileUpload::make('image_path')->label(__('menu::menu.fields.image'))->image()->disk('public')->directory('menu/categories')->columnSpanFull(),
+                FileUpload::make('image_path')->label(__('menu::menu.fields.image'))->image()->acceptedFileTypes(['image/png', 'image/jpeg', 'image/webp'])->disk('public')->directory('menu/categories')->columnSpanFull(),
             ]),
             AvailabilityFields::make()->columnSpanFull(),
         ]);

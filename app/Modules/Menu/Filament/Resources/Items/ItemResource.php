@@ -92,7 +92,7 @@ class ItemResource extends Resource
                     ->helperText(__('menu::menu.hints.price_with_variants')),
                 TextInput::make('sort_order')->label(__('menu::menu.fields.sort_order'))->numeric()->default(0),
                 Textarea::make('description')->label(__('menu::menu.fields.description'))->rows(2)->maxLength(500)->columnSpanFull(),
-                FileUpload::make('image_path')->label(__('menu::menu.fields.image'))->image()->disk('public')->directory('menu/items')->columnSpanFull(),
+                FileUpload::make('image_path')->label(__('menu::menu.fields.image'))->image()->acceptedFileTypes(['image/png', 'image/jpeg', 'image/webp'])->disk('public')->directory('menu/items')->columnSpanFull(),
             ]),
             Section::make(__('menu::menu.fields.tags'))->columns(2)->schema([
                 CheckboxList::make('allergens')->label(__('menu::menu.fields.allergens'))->options(Allergen::options())->columns(3)->columnSpanFull(),
