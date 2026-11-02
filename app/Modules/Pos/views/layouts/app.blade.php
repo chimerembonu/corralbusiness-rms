@@ -6,6 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title ?? __('pos::pos.title') }} · {{ __('rms.product_name') }}</title>
     <link rel="icon" href="{{ asset(config('rms.brand.favicon')) }}" type="image/svg+xml">
+    @include('partials.realtime-meta')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <script>
         // Browser-print agent: this till prints "browser" print jobs through a hidden frame (CLAUDE.md §3.8).

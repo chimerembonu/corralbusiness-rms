@@ -1,5 +1,5 @@
 # CorralBusiness – RMS store-server image.
-# Stage 1 builds the front-end (Tailwind/Vite); stage 2 is the PHP app that nginx talks to.
+# Stage 1 builds the front-end (Tailwind/Vite); stage 2 is the PHP app; stage 3 is nginx with the built front-end.
 
 FROM node:22-alpine AS assets
 WORKDIR /app
@@ -43,3 +43,10 @@ RUN composer dump-autoload --optimize --no-dev \
 ENV CUPS_SERVER=/run/cups/cups.sock
 ENTRYPOINT ["docker/entrypoint.sh"]
 CMD ["php-fpm"]
+
+# Stage 3: nginx with the compiled front-end baked in, so the web container never depends on files on the host.
+FROM nginx:1.27-alpine AS web
+COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf
+COPY --from=app /var/www/html/public /var/www/html/public
+# Uploaded images (logos) live on the shared storage volume; nginx reaches them through this link.
+RUN rm -rf /var/www/html/public/storage && ln -s /var/www/html/storage/app/public /var/www/html/public/storage

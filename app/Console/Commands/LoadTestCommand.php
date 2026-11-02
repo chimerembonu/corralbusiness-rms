@@ -82,8 +82,10 @@ class LoadTestCommand extends Command
 
     private function simulate(int $tills, int $orders, int $lines): void
     {
-        $cashiers = User::query()->active()->permission(Permission::PaymentsTake->value)->orderBy('name')->get();
-        $cashiers = $cashiers->isEmpty() ? User::query()->active()->get() : $cashiers;
+        // Only this restaurant's staff: the store database may hold more than one restaurant.
+        $staff = fn () => User::query()->where('tenant_id', Tenancy::tenantId())->active();
+        $cashiers = $staff()->permission(Permission::PaymentsTake->value)->orderBy('name')->get();
+        $cashiers = $cashiers->isEmpty() ? $staff()->get() : $cashiers;
         $tillRows = Till::query()->active()->orderBy('code')->limit($tills)->get();
         $tables = DiningTable::query()->get();
         $cash = app(CashService::class);
@@ -151,7 +153,7 @@ class LoadTestCommand extends Command
         $bar->finish();
         $this->newLine(2);
 
-        $owner = User::query()->active()->permission(Permission::ReportsView->value)->first() ?? $sessions[0]['user'];
+        $owner = User::query()->where('tenant_id', Tenancy::tenantId())->active()->permission(Permission::ReportsView->value)->first() ?? $sessions[0]['user'];
         foreach ([1, 2, 3] as $i) {
             $this->measure('screen: /pos (HTTP)', fn () => $this->http($sessions[0]['user'], '/pos'));
             $this->measure('screen: /kitchen (HTTP)', fn () => $this->http($owner, '/kitchen'));

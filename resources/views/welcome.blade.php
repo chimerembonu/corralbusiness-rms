@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ __('rms.product_name') }}</title>
     <link rel="icon" href="{{ asset(config('rms.brand.favicon')) }}" type="image/svg+xml">
+    @include('partials.realtime-meta')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="min-h-full bg-slate-950 text-slate-100 antialiased">
@@ -29,9 +30,9 @@
                 <span class="text-3xl font-black">{{ __('rms.landing.admin') }}</span>
                 <span class="mt-1 text-base font-medium opacity-80">{{ __('rms.landing.admin_hint') }}</span>
             </a>
-            <a href="{{ route('clock-in') }}" class="flex min-h-36 flex-col justify-center rounded-3xl bg-slate-800 p-6 text-slate-100 ring-1 ring-slate-700 hover:bg-slate-700">
+            <a href="{{ route('staff.clock') }}" class="flex min-h-36 flex-col justify-center rounded-3xl bg-slate-800 p-6 text-slate-100 ring-1 ring-slate-700 hover:bg-slate-700">
                 <span class="text-3xl font-black">{{ __('rms.landing.clock_in') }}</span>
-                <span class="mt-1 text-base font-medium text-slate-400">{{ __('rms.landing.clock_in_hint') }} · {{ __('rms.landing.coming') }}</span>
+                <span class="mt-1 text-base font-medium text-slate-400">{{ __('rms.landing.clock_in_hint') }}</span>
             </a>
         </div>
 

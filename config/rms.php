@@ -37,6 +37,16 @@ return [
     ],
 
     // Filament panel paths.
+    // Realtime (Reverb) as the BROWSER sees it. Empty = same address, port and scheme as the page the till opened.
+    // The PHP side reaches the Reverb server through REVERB_HOST/PORT/SCHEME in config/broadcasting.php instead.
+    'realtime' => [
+        'key' => env('REVERB_APP_KEY'),
+        'host' => env('REVERB_CLIENT_HOST'),
+        'port' => env('REVERB_CLIENT_PORT'),
+        'scheme' => env('REVERB_CLIENT_SCHEME'),
+        'path' => env('REVERB_CLIENT_PATH'),
+    ],
+
     'admin_path' => env('RMS_ADMIN_PATH', 'admin'),
     'hq_path' => env('RMS_HQ_PATH', 'hq'),
 

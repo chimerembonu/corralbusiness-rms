@@ -5,10 +5,16 @@ it('shows the start screen with big buttons to every screen', function () {
         ->assertOk()
         ->assertSee('CorralBusiness – RMS')
         ->assertSee('Till (POS)')->assertSee('Kitchen')->assertSee('Back office')->assertSee('Clock-in')
-        ->assertSee(url('pos'))->assertSee(url('kitchen'))->assertSee(url('admin'))->assertSee(route('clock-in'))
+        ->assertSee(url('pos'))->assertSee(url('kitchen'))->assertSee(url('admin'))->assertSee(route('staff.clock'))
         ->assertSee('Store server running');
 });
 
-it('shows the clock-in placeholder', function () {
-    $this->get('/clock-in')->assertOk()->assertSee('Phase 2');
+it('sends the old clock-in address to the clock screen', function () {
+    $this->get('/clock-in')->assertRedirect('/clock');
+});
+
+it('prints the realtime settings into every page for the browser', function () {
+    config()->set('rms.realtime', ['key' => 'abc123', 'host' => '', 'port' => '', 'scheme' => '', 'path' => '/reverb']);
+
+    $this->get('/')->assertOk()->assertSee('name="rms-realtime"', false)->assertSee('&quot;key&quot;:&quot;abc123&quot;', false)->assertSee('&quot;path&quot;:&quot;\/reverb&quot;', false)->assertDontSee('&quot;host&quot;', false);
 });

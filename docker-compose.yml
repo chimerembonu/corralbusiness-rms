@@ -2,17 +2,26 @@
 # Everything listens only on the restaurant network: set RMS_BIND_IP in .env to the server's LAN address.
 name: corralbusiness-rms
 
+# The workers start only after "app" is healthy: it owns the shared storage volume's first fill
+# and runs the database updates, so nothing else touches the volume or the database before that.
+x-after-app: &after-app
+  db:
+    condition: service_healthy
+  app:
+    condition: service_healthy
+
 x-app: &app
   image: corralbusiness-rms:latest
   build:
     context: .
     dockerfile: docker/Dockerfile
+    target: app
   env_file: .env
   restart: unless-stopped
   volumes:
     - storage:/var/www/html/storage
     - ./docker/cups:/run/cups:ro          # host CUPS socket (USB printers); harmless when empty
-    - /media:/media                      # USB sticks plugged into the server (backup copies)
+    - ${RMS_USB_DIR:-/media}:/media      # USB sticks plugged into the server (backup copies); set RMS_USB_DIR on Windows/Mac
   depends_on:
     db:
       condition: service_healthy
@@ -30,16 +39,20 @@ services:
       retries: 5
 
   web:
-    image: nginx:1.27-alpine
+    image: corralbusiness-rms-web:latest
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: web
     restart: unless-stopped
     ports:
       - "${RMS_BIND_IP:-127.0.0.1}:${RMS_HTTP_PORT:-80}:80"
     volumes:
-      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./public:/var/www/html/public:ro
       - storage:/var/www/html/storage:ro
     depends_on:
       app:
+        condition: service_healthy
+      reverb:
         condition: service_started
     networks: [rms]
 
@@ -47,18 +60,21 @@ services:
     <<: *app
     environment:
       RMS_ROLE: queue
+    depends_on: *after-app
     command: ["php", "artisan", "queue:work", "--sleep=1", "--tries=3", "--max-time=3600"]
 
   scheduler:
     <<: *app
     environment:
       RMS_ROLE: scheduler
+    depends_on: *after-app
     command: ["php", "artisan", "schedule:work"]
 
   reverb:
     <<: *app
     environment:
       RMS_ROLE: reverb
+    depends_on: *after-app
     command: ["php", "artisan", "reverb:start", "--host=0.0.0.0", "--port=8080"]
 
   db:

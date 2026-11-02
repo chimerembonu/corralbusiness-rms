@@ -25,11 +25,14 @@ jobs:
       - name: Create the .env the compose file expects
         run: cp .env.docker.example .env
 
-      - name: Build the image
+      - name: Build the images (app and web)
         env:
           DB_PASSWORD: ci-only
           DB_ROOT_PASSWORD: ci-only
-        run: docker compose build app
+        run: docker compose build
+
+      - name: Check the web image carries the compiled front-end
+        run: docker run --rm --entrypoint sh corralbusiness-rms-web:latest -c 'test -f /var/www/html/public/build/manifest.json && nginx -t'
 
       - name: Check PHP and extensions inside the image
         run: |

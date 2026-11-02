@@ -18,5 +18,5 @@ Route::get('/', function (StoreTenantResolver $store) {
     return view('welcome', ['databaseOk' => $databaseOk, 'branch' => $branch]);
 })->name('home');
 
-// Clock-in placeholder until the Staff module screen lands in Phase 2.1.
-Route::get('/clock-in', fn () => view('clock-in'))->name('clock-in');
+// Old address of the clock-in screen (printed on early cheat-sheets); the real screen is /clock.
+Route::redirect('/clock-in', '/clock');

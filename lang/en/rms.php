@@ -16,8 +16,6 @@ return [
         'clock_in_hint' => 'Start and end your shift',
         'status_ok' => 'Store server running',
         'status_db' => 'Database not connected',
-        'coming' => 'Coming in Phase 2',
-        'clock_in_soon' => 'Clock-in arrives in Phase 2 (staff module). Until then, staff sign in on the till with their PIN.',
         'back' => 'Back to the start screen',
     ],
     'placeholder' => [

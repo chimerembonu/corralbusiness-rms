@@ -41,7 +41,7 @@ The same Docker package runs on a Windows 10/11 PC or a Mac. It is fine for a de
 
 1. Install **Docker Desktop** (docker.com) and start it. On Windows it asks to enable WSL 2; say yes and restart.
 2. Get the code: install GitHub Desktop or `gh`, sign in, and clone `chimerembonu/corralbusiness-rms` to a folder such as `C:\rms` or `~/rms`. Or copy the folder from a USB stick.
-3. Make a copy of `.env.docker.example` called `.env` in that folder and fill in the lines marked "set by install": any long random text for the passwords and keys, `APP_KEY=base64:` followed by 32 random bytes in base64 (run `openssl rand -base64 32` on a Mac, or use the Mac's value), `APP_URL` and `RMS_BIND_IP` set to the computer's Wi-Fi address (Windows: `ipconfig`; Mac: System Settings → Wi-Fi → Details).
+3. Make a copy of `.env.docker.example` called `.env` in that folder and fill in the lines marked "set by install": any long random text for the passwords and keys, `APP_KEY=base64:` followed by 32 random bytes in base64 (run `openssl rand -base64 32` on a Mac, or use the Mac's value), `APP_URL` and `RMS_BIND_IP` set to the computer's Wi-Fi address (Windows: `ipconfig`; Mac: System Settings → Wi-Fi → Details). Also add a line `RMS_USB_DIR=` followed by a folder of your own (for example `C:\rms-usb` or `/Users/you/rms-usb`); that is where backup copies go, since Windows and Mac have no `/media` folder for USB sticks. On a Mac, Docker Desktop must be allowed to see that folder (Settings → Resources → File sharing).
 4. Open a terminal in the folder (Windows: PowerShell) and run:
 
 ```bash
