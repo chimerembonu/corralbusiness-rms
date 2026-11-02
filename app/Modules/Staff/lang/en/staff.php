@@ -143,9 +143,11 @@ return [
                     ['heading' => 'Takeaway or delivery', 'steps' => ['Tap Takeaway (or Delivery and fill the phone, name and address; tap Find to reuse a known customer).', 'Add items, tap Send to kitchen, then Pay when the customer pays.']],
                     ['heading' => 'Payment', 'steps' => ['Tap Pay. Choose Cash, Mobile Money or Card.', 'Cash: type what the customer handed over; the change shows. Mobile Money: pick the network and type the transaction ID.', 'Tap Complete payment. The receipt prints; the drawer opens for cash.', 'Splitting the bill: Actions → Split bill, by items, by seats or into equal shares.']],
                     ['heading' => 'Mistakes and changes', 'steps' => ['Remove a line before sending: tap the line, then Remove.', 'After sending, a void needs a reason and a manager PIN (Actions → Void).', 'Discounts: Actions → Discount, pick the reason; big discounts need a manager PIN.', 'Hold an order for later: Actions → Hold, type the customer name; find it on the home screen under On hold.']],
-                    ['heading' => 'End of shift', 'steps' => ['Cashiers: Cash → Cash up. Count the notes and coins on the sheet and tap Close till.', 'Clock out on the clock screen with your PIN.']],
+                    ['heading' => 'Leaving the till', 'steps' => ['Walking away, even for a minute? Tap Lock at the top of the till. The next person signs in with their own PIN.', 'A till left signed in rings every sale, void and drawer opening under your name.']],
+                    ['heading' => 'Customer paying off their account', 'steps' => ['Take it at a till: tap Customers, find the customer, tap Receive payment.', 'Never in the back office: money taken there goes into no drawer, so the cash-up will not match.']],
+                    ['heading' => 'End of shift', 'steps' => ['Cashiers: Cash → Cash up. Count the notes and coins on the sheet and tap Close till.', 'Tap Lock, then clock out on the clock screen with your PIN.']],
                 ],
-                'warn' => 'Never share your PIN. Every void, discount and refund is recorded with the name of the person who approved it.',
+                'warn' => 'Never share your PIN, and tap Lock whenever you leave the till. Every void, discount and refund is recorded with the name of the person who approved it.',
             ],
             'kitchen' => [
                 'for' => 'Kitchen',
@@ -161,14 +163,15 @@ return [
                 'for' => 'Riders',
                 'title' => 'Deliveries',
                 'topics' => [
-                    ['heading' => 'Your deliveries', 'steps' => ['Sign in on any till or phone with your PIN; you land on My deliveries.', 'Tap an order to see the address, phone and notes. Tap Out for delivery when you leave.', 'Tap Delivered when the customer has the food, or Failed with the reason if nobody was there.', 'Collect cash as shown on the order and hand it to the cashier when you are back.']],
+                    ['heading' => 'Your deliveries', 'steps' => ['Sign in on any till or phone with your PIN; you land on My deliveries.', 'Tap an order to see the address, phone and notes. Tap Out for delivery when you leave.', 'Tap Delivered when the customer has the food, or Failed with the reason if nobody was there.', 'Collect cash as shown on the order and hand it to the cashier when you are back.', 'Signed in on a shared till? Tap Lock when you are done.']],
                 ],
             ],
             'manager' => [
                 'for' => 'Managers',
                 'title' => 'Running the day',
                 'topics' => [
-                    ['heading' => 'Approvals', 'steps' => ['Voids, refunds, big discounts, waived service charge and cash-ups that are short need your PIN on the till. Type it on the keypad when asked.', 'Check Reports → Voids, discounts & refunds in the back office every day.']],
+                    ['heading' => 'Approvals', 'steps' => ['Voids, refunds, big discounts, waived service charge and cash-ups that are short need your PIN on the till. Type it on the keypad when asked.', 'Check Reports → Voids, discounts & refunds in the back office every day.', 'After approving, make sure the till is not left signed in as you: the cashier taps Lock when they leave.']],
+                    ['heading' => 'Customer account payments', 'steps' => ['Receive them at a till (Customers → the customer → Receive payment) so the cash lands in that till\'s drawer.', 'Do not receive them in the back office for now: that money goes into no drawer and the cash-up will be short of what it expects.']],
                     ['heading' => 'Closing the day', 'steps' => ['Make sure every open order is paid or cancelled and every till is cashed up (Cash screen shows what is left).', 'On the Cash screen tap Close day (Z report) and enter your PIN. The Z report prints.', 'If something comes in late, Reopen day from the same screen with your PIN and a reason.']],
                     ['heading' => 'Stock', 'steps' => ['Receive deliveries under Inventory → Purchases → Receive goods.', 'Do a stock take at least weekly: Inventory → Stock takes → Start, count on a phone or print the sheet, then Complete.', 'Watch the Low stock card on the dashboard.']],
                     ['heading' => 'Staff', 'steps' => ['Add staff and PINs under Staff. Build next week under Staff → Roster and print it.', 'Check Timesheets on payday; correct a missed clock-out with a reason.']],

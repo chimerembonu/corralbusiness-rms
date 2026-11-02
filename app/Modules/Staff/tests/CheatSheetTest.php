@@ -23,3 +23,20 @@ it('builds the staff cheat-sheet from the restaurant\'s own setup, as a page and
     $this->flushSession();
     $this->actingAs($waiter)->get('/staff/cheat-sheet')->assertForbidden();
 });
+
+it('tells staff to lock the till when they leave it and to take account payments at a till', function () {
+    seedRoles();
+    $branch = provisionTenant();
+    $manager = User::factory()->forBranch($branch)->create();
+    $manager->assignRole(Role::Manager->value);
+
+    $this->actingAs($manager)->get('/staff/cheat-sheet')->assertOk()
+        ->assertSee('Leaving the till')->assertSee('Tap Lock at the top of the till')
+        ->assertSee('Customer paying off their account')->assertSee('Never in the back office')
+        ->assertSee('Customer account payments')->assertSee('Do not receive them in the back office');
+
+    // The words match the buttons on the screens they point at.
+    expect(__('pos::pos.nav.lock'))->toBe('Lock')
+        ->and(__('customers::customers.pos.nav'))->toBe('Customers')
+        ->and(__('customers::customers.account.receive'))->toBe('Receive payment');
+});
