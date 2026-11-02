@@ -65,6 +65,7 @@ return [
         'enter' => 'Sign in',
         'no_store' => 'This till is not linked to a restaurant yet. Ask the owner to run the demo or set RMS_STORE_TENANT.',
         'no_access' => 'Your account is not allowed to use the till. Ask a manager.',
+        'wrong_branch' => 'This till belongs to another branch. Sign in at your own branch, or ask a manager to move you.',
         'choose_till' => 'Which till is this device?',
         'this_till' => 'This device is :till.',
         'change_till' => 'Change',

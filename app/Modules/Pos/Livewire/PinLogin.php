@@ -83,6 +83,13 @@ class PinLogin extends Component
             return;
         }
 
+        $till = Till::query()->active()->find($this->tillId);
+        if ($till && $user->branch_id !== null && $till->branch_id !== $user->branch_id) {
+            $this->error = __('pos::pos.login.wrong_branch'); // security review M7
+
+            return;
+        }
+
         Auth::login($user);
         session()->regenerate();
 

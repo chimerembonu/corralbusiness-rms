@@ -9,6 +9,7 @@ use App\Modules\Pos\Services\CurrentTill;
 use App\Modules\Settings\Models\Branch;
 use App\Modules\Staff\Enums\Role;
 use App\Modules\Staff\Models\User;
+use App\Support\Tenancy\Tenancy;
 use Livewire\Livewire;
 
 /*
@@ -26,7 +27,8 @@ beforeEach(function () {
     $this->managerA->assignRole(Role::Manager->value);
     $this->managerB = User::factory()->forBranch($this->branchB)->withPin('3579')->create(['name' => 'Yaw']);
     $this->managerB->assignRole(Role::Manager->value);
-    $this->owner = User::factory()->withPin('9999')->create(['name' => 'Chimere', 'tenant_id' => $this->branchA->tenant_id, 'branch_id' => null]); // the owner has no home branch
+    // Like rms:setup, the owner is created with no home branch (the tenant context carries no branch here).
+    $this->owner = Tenancy::runAs($this->branchA->tenant, null, fn () => User::factory()->withPin('9999')->create(['name' => 'Chimere', 'tenant_id' => $this->branchA->tenant_id]));
     $this->owner->assignRole(Role::Owner->value);
     $this->tillA1 = Till::create(['name' => 'Till 1', 'code' => 'T1']);
     $this->tillA2 = Till::create(['name' => 'Till 2', 'code' => 'T2']);
