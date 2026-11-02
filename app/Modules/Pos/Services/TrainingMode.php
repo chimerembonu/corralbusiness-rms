@@ -2,26 +2,31 @@
 
 namespace App\Modules\Pos\Services;
 
-use Illuminate\Support\Facades\Cookie;
-
 /**
- * Training mode is switched on per device (cookie): new staff practise on one till while the
- * others trade. Orders taken while it is on are marked and never count in reports or cash-ups.
+ * Training mode: the till rings practice orders that never count. The state lives on the till row
+ * (tills.training_mode), switched by a manager and cleared at day close; nothing in the browser
+ * can turn it on (re-review of H1: the old cookie could be copied and replayed).
  */
 class TrainingMode
 {
-    public const COOKIE = 'rms_training';
-
     private ?bool $on = null;
+
+    public function __construct(private readonly CurrentTill $till) {}
 
     public function isOn(): bool
     {
-        return $this->on ?? ($this->on = request()?->cookie(self::COOKIE) === '1');
+        return $this->on ??= (bool) ($this->till->get()?->training_mode ?? false);
     }
 
+    /** Switch this device's till. Without a till (a tablet that never chose one) only this request is affected. */
     public function set(bool $on): void
     {
-        Cookie::queue($on ? Cookie::make(self::COOKIE, '1', 60 * 24 * 7, httpOnly: true) : Cookie::forget(self::COOKIE));
+        $this->till->get()?->forceFill(['training_mode' => $on])->save();
         $this->on = $on;
+    }
+
+    public function hasTill(): bool
+    {
+        return $this->till->get() !== null;
     }
 }

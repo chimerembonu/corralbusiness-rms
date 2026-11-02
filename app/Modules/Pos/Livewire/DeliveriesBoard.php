@@ -34,7 +34,7 @@ class DeliveriesBoard extends Component
     public function assign(string $orderId, string $riderId, DeliveryService $delivery): void
     {
         $this->run(function () use ($orderId, $riderId, $delivery) {
-            $order = Order::query()->findOrFail($orderId);
+            $order = Order::query()->forBranch()->findOrFail($orderId);
             $rider = User::query()->findOrFail($riderId);
             $delivery->assignRider($order, $rider, auth()->user());
             $this->assigning = null;
@@ -44,17 +44,17 @@ class DeliveriesBoard extends Component
 
     public function markOut(string $orderId, DeliveryService $delivery): void
     {
-        $this->run(fn () => $delivery->markOut(Order::query()->findOrFail($orderId), auth()->user()));
+        $this->run(fn () => $delivery->markOut(Order::query()->forBranch()->findOrFail($orderId), auth()->user()));
     }
 
     public function markDelivered(string $orderId, DeliveryService $delivery): void
     {
-        $this->run(fn () => $delivery->markDelivered(Order::query()->findOrFail($orderId), auth()->user()));
+        $this->run(fn () => $delivery->markDelivered(Order::query()->forBranch()->findOrFail($orderId), auth()->user()));
     }
 
     public function reopen(string $orderId, DeliveryService $delivery): void
     {
-        $this->run(fn () => $delivery->reopen(Order::query()->findOrFail($orderId), auth()->user()));
+        $this->run(fn () => $delivery->reopen(Order::query()->forBranch()->findOrFail($orderId), auth()->user()));
     }
 
     private function run(callable $callback): void

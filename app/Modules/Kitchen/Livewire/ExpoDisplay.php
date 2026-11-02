@@ -7,6 +7,7 @@ use App\Modules\Kitchen\Services\KitchenService;
 use App\Modules\Staff\Enums\Permission;
 use App\Support\Tenancy\Tenancy;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -14,6 +15,7 @@ use Livewire\Component;
 #[Layout('pos::layouts.app', ['title' => 'Expo'])]
 class ExpoDisplay extends Component
 {
+    #[Locked]
     public string $branchId = '';
 
     public ?string $notice = null;

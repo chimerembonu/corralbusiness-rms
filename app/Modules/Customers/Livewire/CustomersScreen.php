@@ -9,6 +9,7 @@ use App\Modules\Payments\Enums\MomoProvider;
 use App\Modules\Payments\Enums\PaymentMethod;
 use App\Modules\Staff\Enums\Permission;
 use App\Support\Money\Money;
+use Illuminate\Support\Arr;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -134,7 +135,8 @@ class CustomersScreen extends Component
     {
         $this->error = null;
         try {
-            $customer = app(CustomerService::class)->create($this->newCustomer, auth()->user());
+            // Only these three fields come from the till; account permission and credit limit are back-office settings.
+            $customer = app(CustomerService::class)->create(Arr::only($this->newCustomer, ['name', 'phone', 'address']), auth()->user());
         } catch (RuntimeException $e) {
             $this->error = $e->getMessage();
 

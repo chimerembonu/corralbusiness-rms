@@ -14,7 +14,7 @@ class EditStaff extends EditRecord
 
     protected function getHeaderActions(): array
     {
-        return [StaffResource::resetPinAction(), DeleteAction::make()->hidden(fn () => $this->record->is(auth()->user()))];
+        return [StaffResource::resetPinAction(), DeleteAction::make()->hidden(fn () => $this->record->is(auth()->user()) || StaffResource::ownerGuarded($this->record))];
     }
 
     protected function mutateFormDataBeforeFill(array $data): array

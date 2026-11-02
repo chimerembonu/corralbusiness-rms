@@ -24,6 +24,7 @@ use App\Modules\Staff\Exceptions\ManagerPinRequiredException;
 use App\Modules\Staff\Models\User;
 use App\Support\Money\Money;
 use App\Support\Tenancy\Tenancy;
+use Illuminate\Support\Arr;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -91,6 +92,7 @@ class OrderScreen extends Component
 
     public function mount(Order $order): void
     {
+        abort_unless(auth()->user()->can(Permission::OrdersCreate->value), 403); // riders / kitchen staff cannot edit orders
         Tenancy::assertOwns($order);
         $this->orderId = $order->id;
 
@@ -432,7 +434,7 @@ class OrderScreen extends Component
     {
         $this->error = null;
         try {
-            $customer = app(CustomerService::class)->create($this->newCustomer, auth()->user());
+            $customer = app(CustomerService::class)->create(Arr::only($this->newCustomer, ['name', 'phone', 'address']), auth()->user()); // never account settings from the till
         } catch (RuntimeException $e) {
             $this->error = $e->getMessage();
 

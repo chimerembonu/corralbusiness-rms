@@ -95,7 +95,12 @@ class PinLogin extends Component
         Auth::login($user);
         session()->regenerate();
 
-        $home = $user->can(Permission::OrdersCreate->value) ? route('pos.home') : ($user->can(Permission::DeliveryRide->value) ? route('pos.rider') : route('pos.home'));
+        $home = match (true) {
+            $user->can(Permission::OrdersCreate->value) => route('pos.home'),
+            $user->can(Permission::DeliveryRide->value) => route('pos.rider'),
+            $user->can(Permission::KitchenView->value) => route('kitchen.display'),
+            default => route('pos.home'),
+        };
         $this->redirect(session()->pull('url.intended', $home));
     }
 

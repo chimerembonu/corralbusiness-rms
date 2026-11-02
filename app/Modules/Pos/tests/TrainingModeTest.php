@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Inventory\Models\StockMovement;
+use App\Modules\Kitchen\Models\Ticket;
 use App\Modules\Orders\Enums\OrderType;
 use App\Modules\Orders\Services\DailySummaryService;
 use App\Modules\Orders\Services\OrderService;
@@ -9,6 +10,7 @@ use App\Modules\Payments\Services\DayCloseService;
 use App\Modules\Payments\Services\PaymentService;
 use App\Modules\Pos\Livewire\OrderTypeScreen;
 use App\Modules\Pos\Models\Till;
+use App\Modules\Pos\Services\CurrentTill;
 use App\Modules\Pos\Services\TrainingMode;
 use App\Modules\Reports\Services\ReportService;
 use App\Modules\Staff\Enums\Role;
@@ -59,7 +61,7 @@ it('marks orders taken in training mode and keeps them out of reports, cash and 
     // Receipt and kitchen ticket say so.
     $this->actingAs($this->cashier);
     $this->get(route('pos.receipt', $practice))->assertOk()->assertSee('TRAINING');
-    expect(\App\Modules\Kitchen\Models\Ticket::query()->where('order_id', $practice->id)->first()->is_training)->toBeTrue();
+    expect(Ticket::query()->where('order_id', $practice->id)->first()->is_training)->toBeTrue();
     $this->get('/pos/orders')->assertSee('Training');
 });
 
@@ -68,6 +70,7 @@ it('needs a manager PIN to switch training mode on and off, and shows the banner
     $this->get('/pos')->assertOk()->assertDontSee('Training mode')->assertDontSee('Start training mode'); // cashiers cannot switch it
 
     $this->actingAs($this->manager);
+    app(CurrentTill::class)->remember($this->session->till); // training mode lives on the device's till
     Livewire::test(OrderTypeScreen::class)
         ->assertSee('Start training mode')
         ->call('toggleTraining')->assertSet('approval.permission', 'pos.training')

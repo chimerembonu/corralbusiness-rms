@@ -18,7 +18,7 @@ class Till extends BusinessModel
 
     protected function casts(): array
     {
-        return ['is_active' => 'boolean'];
+        return ['is_active' => 'boolean', 'training_mode' => 'boolean'];
     }
 
     public function receiptPrinter(): BelongsTo

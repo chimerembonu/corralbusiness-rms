@@ -160,7 +160,7 @@ class CashScreen extends Component
     public function openTill(CashService $cash, CurrentTill $current): void
     {
         $this->error = null;
-        $till = $this->tillId ? Till::query()->active()->find($this->tillId) : null;
+        $till = $this->tillId ? Till::query()->active()->forBranch()->find($this->tillId) : null;
 
         try {
             $cash->open($till, auth()->user(), Money::fromDecimal($this->amount === '' ? '0' : $this->amount), $this->date);
@@ -289,7 +289,7 @@ class CashScreen extends Component
 
     public function reprintCashUp(string $sessionId, PrintService $printing): void
     {
-        $session = CashierSession::query()->findOrFail($sessionId);
+        $session = CashierSession::query()->forBranch()->findOrFail($sessionId);
         $jobs = $printing->printCashUp($session);
         $this->notice = $jobs->isEmpty() ? __('pos::pos.orders.no_printer') : __('pos::pos.cash.printing');
     }

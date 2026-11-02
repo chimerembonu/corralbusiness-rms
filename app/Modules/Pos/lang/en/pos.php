@@ -7,6 +7,7 @@ return [
         'banner' => 'Training mode – orders on this till do not count',
         'badge' => 'Training',
         'receipt' => 'TRAINING – NOT A RECEIPT',
+        'no_till' => 'Choose a till for this device first (sign out, then pick the till).',
         'turn_on' => 'Start training mode on this till',
         'turn_off' => 'End training mode',
         'ticket' => 'TRAINING – DO NOT COOK',

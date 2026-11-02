@@ -47,7 +47,7 @@ class OrdersList extends Component
 
     public function reprint(string $orderId, PrintService $printing): void
     {
-        $order = Order::query()->findOrFail($orderId);
+        $order = Order::query()->forBranch()->findOrFail($orderId);
         $jobs = $printing->printReceipt($order, reprint: true);
         $this->notice = $jobs->isEmpty() ? __('pos::pos.orders.no_printer') : __('pos::pos.orders.reprinted', ['count' => $jobs->count()]);
     }
@@ -71,7 +71,7 @@ class OrdersList extends Component
             return;
         }
 
-        $payment = Payment::query()->findOrFail($this->refund['payment_id']);
+        $payment = Payment::query()->forBranch()->findOrFail($this->refund['payment_id']);
         $refund = $this->refund;
         $this->refund = null;
         $this->askManager(Permission::OrdersRefund, 'refundApproved', [$refund['payment_id'], $refund['reason']],
@@ -82,7 +82,7 @@ class OrdersList extends Component
     protected function refundApproved(User $manager, string $paymentId, string $reason): void
     {
         // A cash refund must leave a drawer: the till has to be open (same rule as taking a payment).
-        $payment = Payment::query()->findOrFail($paymentId);
+        $payment = Payment::query()->forBranch()->findOrFail($paymentId);
         if (app(TillSettings::class)->requireSession($payment->branch_id) && ! app(CashService::class)->current(auth()->user(), $payment->branch_id)) {
             $this->error = __('payments::payments.cash.errors.no_session');
 
@@ -90,7 +90,7 @@ class OrdersList extends Component
         }
 
         try {
-            app(PaymentService::class)->refund(Payment::query()->findOrFail($paymentId), $reason, $manager, auth()->user());
+            app(PaymentService::class)->refund(Payment::query()->forBranch()->findOrFail($paymentId), $reason, $manager, auth()->user());
             $this->notice = __('pos::pos.orders.refunded');
         } catch (RuntimeException $e) {
             $this->error = $e->getMessage();
@@ -118,7 +118,7 @@ class OrdersList extends Component
 
         return view('pos::livewire.orders-list', [
             'orders' => $query->limit(100)->get(),
-            'openOrder' => $this->openId ? Order::query()->with(['items.modifiers', 'payments.receivedBy', 'table'])->find($this->openId) : null,
+            'openOrder' => $this->openId ? Order::query()->forBranch()->with(['items.modifiers', 'payments.receivedBy', 'table'])->find($this->openId) : null,
             'canRefund' => auth()->user()->can(Permission::PaymentsTake->value),
         ]);
     }

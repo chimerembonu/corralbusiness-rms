@@ -8,6 +8,7 @@ use App\Modules\Kitchen\Services\KitchenService;
 use App\Modules\Staff\Enums\Permission;
 use App\Support\Tenancy\Tenancy;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -20,6 +21,7 @@ use Livewire\Component;
 #[Layout('pos::layouts.app', ['title' => 'Kitchen'])]
 class KitchenDisplay extends Component
 {
+    #[Locked]
     public string $branchId = '';
 
     /** Station code from the address bar, e.g. /kitchen?station=GRILL. Empty = all stations. */

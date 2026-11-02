@@ -11,6 +11,7 @@ use App\Modules\Payments\Exceptions\CashException;
 use App\Modules\Payments\Exceptions\DayClosedException;
 use App\Modules\Payments\Models\CashierSession;
 use App\Modules\Payments\Models\DayClose;
+use App\Modules\Pos\Models\Till;
 use App\Modules\Settings\Services\CounterService;
 use App\Modules\Staff\Enums\Permission;
 use App\Modules\Staff\Exceptions\ManagerPinRequiredException;
@@ -169,6 +170,8 @@ class DayCloseService
             ]);
             $close->branch_id = $branchId;
             $close->save();
+
+            Till::query()->where('branch_id', $branchId)->where('training_mode', true)->update(['training_mode' => false]); // practice never survives a day close
 
             DayClosed::dispatch($close, $by->id);
 

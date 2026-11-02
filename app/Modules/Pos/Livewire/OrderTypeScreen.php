@@ -27,6 +27,28 @@ class OrderTypeScreen extends Component
 
     public string $mode = 'home'; // home | tables
 
+    /**
+     * Riders and kitchen staff may sign in at a till, but they belong on their own screens; anyone else
+     * without orders.create (stock counters) may use the home screen but not start or resume an order (re-review).
+     */
+    public function mount(): void
+    {
+        $user = auth()->user();
+        if ($user->can(Permission::OrdersCreate->value)) {
+            return;
+        }
+        if ($user->can(Permission::DeliveryRide->value)) {
+            $this->redirectRoute('pos.rider');
+        } elseif ($user->can(Permission::KitchenView->value)) {
+            $this->redirectRoute('kitchen.display');
+        }
+    }
+
+    private function assertCanOrder(): void
+    {
+        abort_unless(auth()->user()->can(Permission::OrdersCreate->value), 403);
+    }
+
     public ?string $sectionId = null;
 
     public ?string $error = null;
@@ -58,6 +80,7 @@ class OrderTypeScreen extends Component
 
     public function startDelivery(): void
     {
+        $this->assertCanOrder();
         $this->error = null;
         $this->delivery = ['name' => '', 'phone' => '', 'address' => '', 'notes' => '', 'fee' => Money::of(app(TillSettings::class)->deliveryFee())->toDecimal()];
     }
@@ -125,6 +148,7 @@ class OrderTypeScreen extends Component
     /** Only reachable through approve() with a manager PIN, or from openDelivery() when no PIN is needed (protected). */
     protected function deliveryApproved(?User $manager, array $delivery): void
     {
+        $this->assertCanOrder();
         $this->delivery = $delivery;
         $orders = app(OrderService::class);
 
@@ -163,6 +187,11 @@ class OrderTypeScreen extends Component
         // Checked again on the server: only someone allowed to run training mode can switch it (security review H1).
         abort_unless($manager->can(Permission::TrainingMode->value), 403);
 
+        if (! app(TrainingMode::class)->hasTill()) { // the state is kept on the till, so the device must have chosen one
+            $this->error = __('pos::pos.training.no_till');
+
+            return;
+        }
         app(TrainingMode::class)->set($on);
         activity('training_mode')->causedBy(auth()->user())->withProperties(['on' => $on, 'approved_by' => $manager->id])->log($on ? 'training_on' : 'training_off');
         $this->redirectRoute('pos.home');
@@ -170,6 +199,7 @@ class OrderTypeScreen extends Component
 
     public function startTakeaway(OrderService $orders): void
     {
+        $this->assertCanOrder();
         try {
             $order = $orders->open(OrderType::Takeaway, auth()->user());
         } catch (RuntimeException $e) {
@@ -184,6 +214,7 @@ class OrderTypeScreen extends Component
     /** Tap a table: resume its order, follow a merged table to its host, or ask how many guests. */
     public function tapTable(string $tableId): void
     {
+        $this->assertCanOrder();
         $this->error = null;
         $table = DiningTable::query()->active()->with(['currentOrder', 'mergedInto.currentOrder'])->findOrFail($tableId);
 
@@ -218,6 +249,7 @@ class OrderTypeScreen extends Component
 
     public function openTable(OrderService $orders): void
     {
+        $this->assertCanOrder();
         $table = DiningTable::query()->active()->with('currentOrder')->findOrFail($this->coversFor);
 
         try {
@@ -234,7 +266,8 @@ class OrderTypeScreen extends Component
 
     public function resume(string $orderId, OrderService $orders): void
     {
-        $order = Order::query()->active()->findOrFail($orderId);
+        $this->assertCanOrder();
+        $order = Order::query()->active()->forBranch()->findOrFail($orderId);
         $orders->recall($order, auth()->user());
 
         $this->redirectRoute('pos.order', $order);

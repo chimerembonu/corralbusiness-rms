@@ -1,6 +1,8 @@
 <?php
 
 use App\Modules\Pos\Livewire\OrderTypeScreen;
+use App\Modules\Pos\Models\Till;
+use App\Modules\Pos\Services\CurrentTill;
 use App\Modules\Pos\Services\TrainingMode;
 use App\Modules\Staff\Enums\Permission;
 use App\Modules\Staff\Enums\Role;
@@ -35,6 +37,8 @@ it('refuses to switch training mode when the approver lacks the permission, even
 });
 
 it('switches training mode and logs it when a real manager approves by PIN', function () {
+    $till = Till::create(['name' => 'T1', 'code' => 'T1']);
+    app(CurrentTill::class)->remember($till); // training mode lives on the device's till
     Livewire::test(OrderTypeScreen::class)->call('toggleTraining')
         ->assertSet('approval.permission', Permission::TrainingMode->value)
         ->call('approve', '1111')->assertSet('approval.error', 'A manager PIN is required for this action.')

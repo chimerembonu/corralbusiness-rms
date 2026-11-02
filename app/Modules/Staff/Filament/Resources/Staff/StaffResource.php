@@ -28,6 +28,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Validation\ValidationException;
 
 /** Back office → Staff: profiles, roles, PINs and back-office logins. */
@@ -115,16 +116,34 @@ class StaffResource extends Resource
                 TextColumn::make('last_login_at')->label($f('last_login_at'))->since()->placeholder('—'),
             ])
             ->filters([TernaryFilter::make('is_active')->label($f('is_active'))->default(true)])
-            ->recordActions([EditAction::make(), self::resetPinAction(), DeleteAction::make()->hidden(fn (User $r) => $r->is(auth()->user()))]);
+            ->recordActions([EditAction::make(), self::resetPinAction(), DeleteAction::make()->hidden(fn (User $r) => $r->is(auth()->user()) || self::ownerGuarded($r))]);
+    }
+
+    /** Only the owner may edit, delete or reset the PIN of an owner account (re-review: a manager could take over the owner's PIN). */
+    public static function ownerGuarded(User $record): bool
+    {
+        return $record->hasRole(Role::Owner->value) && ! auth()->user()?->hasRole(Role::Owner->value);
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return parent::canEdit($record) && ! self::ownerGuarded($record);
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return parent::canDelete($record) && ! self::ownerGuarded($record);
     }
 
     public static function resetPinAction(): Action
     {
         return Action::make('resetPin')
             ->label(__('staff::staff.actions.reset_pin'))
+            ->hidden(fn (User $record) => self::ownerGuarded($record))
             ->icon(Heroicon::Key)
             ->schema([TextInput::make('new_pin')->label(__('staff::staff.actions.new_pin'))->required()->numeric()->inputMode('numeric')->regex('/^\d{4,6}$/')])
             ->action(function (User $record, array $data) {
+                abort_if(self::ownerGuarded($record), 403);
                 self::assertPinFree($data['new_pin'], $record, 'mountedActions.0.data.new_pin');
                 $record->pin = $data['new_pin'];
                 $record->save();
