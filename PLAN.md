@@ -68,6 +68,18 @@ DoD
 
 ## Post-go-live phases (sequence may change based on the pilot's pain points)
 
+## Post-go-live week 1 — security follow-ups (week of 16 Nov, before Phase 4 work starts)
+From the two security review passes (SECURITY-REVIEW.md, SECURITY-REVIEW-2.md). None blocks the pilot; all are small.
+
+- [ ] **N3** Login lockout: add a per-network-address ceiling in `PinAuthenticator::attempt` so a browser cannot get 5 tries per till across every till (`Pos/Livewire/PinLogin.php`).
+- [ ] **N4** Log every quantity decrease on a sent line (before the bill is printed too) and show it in the voids & discounts report, like reductions after the bill already are.
+- [ ] **N6** Kitchen bump/recall and rider assignment: look up tickets and riders with `->forBranch()` (`Kitchen/Livewire/KitchenDisplay.php`, `ExpoDisplay.php`, `Pos/Livewire/DeliveriesBoard.php`).
+- [ ] **N7** Backup restore/delete: add `->authorize()` next to `->visible()` so Owner-only is explicit (`Settings/Filament/Pages/BackupsPage.php`).
+- [ ] **D1** Idle lock on a shared till: configurable idle timeout in Till settings and auto sign-out in the till layout. Until then the cheat-sheet says "tap Sign out when you leave the till".
+- [ ] **D2** Branch scoping of `/admin` lists (cashier sessions, day closes, stock takes, purchases, stock movements) and the kitchen broadcast channel. Must land before Phase 6 (cloud / HQ).
+- [ ] **D3** On-account receipts taken in the back office land in no drawer: take them at a till only, or add a drawer choice to the back-office form. Until then the restaurant is told to receive account payments at a till.
+- [ ] Re-run the security review after the first week of live trading.
+
 ## Phase 4 — Recipe-level inventory & food cost (Week of 16 Nov)
 Recipes/BOM per item & variant, auto-deduction, theoretical vs actual usage, COGS and margin reports, inventory valuation, purchase price history, supplier price comparison.
 
