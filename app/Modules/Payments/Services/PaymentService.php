@@ -148,6 +148,14 @@ class PaymentService
         $session = $this->cash->current($by ?? $approvedBy, $payment->branch_id);
 
         return DB::transaction(function () use ($payment, $reason, $approvedBy, $session, $businessDate) {
+            // Lock the payment row and read it again: a double tap on Refund (or a stale copy on a second
+            // till) must not refund twice (re-review N5).
+            Payment::query()->whereKey($payment->id)->lockForUpdate()->first();
+            $payment->refresh();
+            if ($payment->isRefunded()) {
+                throw new PaymentException(__('payments::payments.errors.already_refunded'));
+            }
+
             $payment->forceFill([
                 'status' => PaymentStatus::Refunded,
                 'refunded_at' => now(),
