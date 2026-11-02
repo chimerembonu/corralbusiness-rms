@@ -16,7 +16,13 @@ class RestoreCommand extends Command
     public function handle(BackupService $backups): int
     {
         try {
-            $path = $this->argument('file') ? $backups->resolve($this->argument('file')) : ($backups->latest()['path'] ?? null);
+            // On the command line (run by the owner on the server) a full path is fine, e.g. a zip on a USB stick.
+            $file = (string) $this->argument('file');
+            $path = match (true) {
+                $file === '' => $backups->latest()['path'] ?? null,
+                str_contains($file, DIRECTORY_SEPARATOR) && is_file($file) => realpath($file),
+                default => $backups->resolve($file),
+            };
             if (! $path) {
                 $this->components->error('No backup found in storage/backups.');
 

@@ -161,16 +161,26 @@ class BackupService
         return $target;
     }
 
-    public function resolve(string $nameOrPath): string
+    /**
+     * Turn a backup name coming from a screen (download, restore, delete) into a path INSIDE storage/backups.
+     * Only "rms-backup-<date>-<time>.zip" names are accepted; folders, "..", and paths elsewhere on the
+     * server are never followed (security review H2).
+     */
+    public function resolve(string $name): string
     {
-        if (is_file($nameOrPath)) {
-            return $nameOrPath;
+        $name = basename(trim($name));
+        $pattern = '/^'.preg_quote(self::PREFIX, '/').'[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{6}(-[0-9]+)?\.zip$/';
+        if (! preg_match($pattern, $name)) {
+            throw new RuntimeException("Backup not found: {$name}");
         }
-        $candidate = $this->directory().'/'.basename($nameOrPath);
-        if (is_file($candidate)) {
-            return $candidate;
+
+        $dir = realpath($this->directory());
+        $path = realpath($dir.DIRECTORY_SEPARATOR.$name);
+        if ($dir === false || $path === false || ! str_starts_with($path, $dir.DIRECTORY_SEPARATOR) || ! is_file($path)) {
+            throw new RuntimeException("Backup not found: {$name}");
         }
-        throw new RuntimeException("Backup not found: {$nameOrPath}");
+
+        return $path;
     }
 
     private function dumper(): DatabaseDumper

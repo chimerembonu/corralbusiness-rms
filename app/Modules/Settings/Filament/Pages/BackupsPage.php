@@ -113,8 +113,10 @@ class BackupsPage extends Page
     public function deleteAction(): Action
     {
         return Action::make('delete')->label(__('filament-actions::delete.single.label'))->icon(Heroicon::Trash)->color('gray')->requiresConfirmation()
+            ->visible(fn () => auth()->user()->hasRole(Role::Owner->value)) // security review H2: owner only, like restore
             ->action(function (array $arguments) {
-                @unlink(app(BackupService::class)->resolve($arguments['file']));
+                abort_unless(auth()->user()->hasRole(Role::Owner->value), 403);
+                @unlink(app(BackupService::class)->resolve((string) ($arguments['file'] ?? '')));
                 Notification::make()->success()->title(__('settings::settings.backups.deleted'))->send();
             });
     }
