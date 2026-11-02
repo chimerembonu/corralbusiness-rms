@@ -144,7 +144,7 @@
                     <p class="mt-2 text-sm text-slate-400">{{ $c('reason') }}</p>
                     <div class="mt-1 flex flex-wrap gap-2">
                         @foreach ($modal === 'pay_in' ? $payInReasons : $payOutReasons as $r)
-                            <button type="button" wire:click="setReason('{{ addslashes($r) }}')" class="h-11 rounded-xl px-3 text-sm font-semibold {{ $reason === $r ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 hover:bg-slate-700' }}">{{ $r }}</button>
+                            <button type="button" wire:click="setReason(@js($r))" class="h-11 rounded-xl px-3 text-sm font-semibold {{ $reason === $r ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 hover:bg-slate-700' }}">{{ $r }}</button>
                         @endforeach
                     </div>
                     <input type="text" wire:model="reason" placeholder="{{ $c('reason') }}" class="mt-2 h-12 w-full rounded-xl border-0 bg-slate-800 px-4 text-base text-slate-100 placeholder:text-slate-500">

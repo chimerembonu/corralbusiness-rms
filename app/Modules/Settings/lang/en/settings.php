@@ -73,6 +73,7 @@ return [
         'deleted' => 'Backup deleted.',
     ],
     'import' => [
+        'pin_set' => 'PIN set',
         'title' => 'Import data',
         'intro' => 'Download the template, fill it in (Excel, Numbers or Google Sheets, then save as .xlsx or .csv), upload it, check the preview, then import. Rows that already exist are updated, never duplicated.',
         'what' => 'What to import',

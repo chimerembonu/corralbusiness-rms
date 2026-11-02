@@ -75,12 +75,26 @@ class ImportPage extends Page
     private function uploadedPath(): string
     {
         $file = $this->form->getState()['file'] ?? null;
+        if ($path = $this->storedUploadPath(is_string($file) ? $file : null)) {
+            return $path;
+        }
+
+        throw new RuntimeException(__('settings::settings.import.errors.file_missing'));
+    }
+
+    /** Where a saved upload sits on disk (the "local" disk is private); null when there is none. */
+    private function storedUploadPath(?string $file): ?string
+    {
+        if (! $file) {
+            return null;
+        }
         foreach ([storage_path('app/private/'.$file), storage_path('app/'.$file)] as $path) {
-            if ($file && is_file($path)) {
+            if (is_file($path)) {
                 return $path;
             }
         }
-        throw new RuntimeException(__('settings::settings.import.errors.file_missing'));
+
+        return null;
     }
 
     public function previewFile(): void
@@ -95,12 +109,23 @@ class ImportPage extends Page
 
     public function importFile(): void
     {
+        $path = null;
+
         try {
-            $result = Importers::import($this->form->getState()['type'], $this->uploadedPath(), auth()->user());
+            $state = $this->form->getState(); // validates and saves the upload under imports/
+            $path = $this->storedUploadPath(is_string($state['file'] ?? null) ? $state['file'] : null)
+                ?? throw new RuntimeException(__('settings::settings.import.errors.file_missing'));
+            $result = Importers::import($state['type'], $path, auth()->user());
             $this->show($result);
             Notification::make()->success()->title(__('settings::settings.import.done', ['summary' => $result->summary()]))->persistent()->send();
         } catch (RuntimeException|\Throwable $e) {
             Notification::make()->danger()->title($e->getMessage())->send();
+        } finally {
+            // The spreadsheet (which may hold every staff PIN) is not kept on the server once it has been read (re-review).
+            if ($path && is_file($path)) {
+                @unlink($path);
+            }
+            $this->data['file'] = null;
         }
     }
 

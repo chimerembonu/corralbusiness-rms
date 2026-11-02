@@ -348,7 +348,7 @@
                 @if ($error)<p class="mt-2 rounded-xl bg-rose-500/15 px-3 py-2 text-sm font-semibold text-rose-300" role="alert">{{ $error }}</p>@endif
                 <div class="mt-3 grid grid-cols-2 gap-2">
                     @foreach ($this->settings->voidReasons($order->branch_id) as $reason)
-                        <button type="button" wire:click="chooseVoidReason('{{ $reason }}')" class="h-14 rounded-xl px-3 text-sm font-semibold {{ $void['reason'] === $reason ? 'bg-rose-500 text-slate-950' : 'bg-slate-800 hover:bg-slate-700' }}">{{ $reason }}</button>
+                        <button type="button" wire:click="chooseVoidReason(@js($reason))" class="h-14 rounded-xl px-3 text-sm font-semibold {{ $void['reason'] === $reason ? 'bg-rose-500 text-slate-950' : 'bg-slate-800 hover:bg-slate-700' }}">{{ $reason }}</button>
                     @endforeach
                 </div>
                 <input type="text" wire:model.live="void.reason" placeholder="{{ __('pos::pos.order.other_reason') }}" class="mt-3 h-12 w-full rounded-xl border-0 bg-slate-800 px-4 text-base text-slate-100 placeholder:text-slate-500">
@@ -383,7 +383,7 @@
                 <p class="mt-3 text-xs uppercase tracking-wide text-slate-400">{{ __('pos::pos.order.reason') }}</p>
                 <div class="mt-1 grid grid-cols-2 gap-2">
                     @foreach ($this->settings->discountReasons($order->branch_id) as $reason)
-                        <button type="button" wire:click="chooseDiscountReason('{{ $reason }}')" class="h-12 rounded-xl px-3 text-sm font-semibold {{ $discount['reason'] === $reason ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 hover:bg-slate-700' }}">{{ $reason }}</button>
+                        <button type="button" wire:click="chooseDiscountReason(@js($reason))" class="h-12 rounded-xl px-3 text-sm font-semibold {{ $discount['reason'] === $reason ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 hover:bg-slate-700' }}">{{ $reason }}</button>
                     @endforeach
                 </div>
                 <p class="mt-3 text-xs text-slate-500">{{ __('pos::pos.order.discount_threshold_hint', ['threshold' => rtrim(rtrim(number_format($this->settings->discountThresholdBp($order->branch_id) / 100, 2), '0'), '.')]) }}</p>

@@ -59,6 +59,7 @@ services:
 
   queue:
     <<: *app
+    user: www-data  # never root: files it creates (logs, backups) must stay writable by php-fpm
     environment:
       RMS_ROLE: queue
     depends_on: *after-app
@@ -66,6 +67,7 @@ services:
 
   scheduler:
     <<: *app
+    user: www-data  # never root: files it creates (logs, backups) must stay writable by php-fpm
     environment:
       RMS_ROLE: scheduler
     depends_on: *after-app
@@ -73,6 +75,7 @@ services:
 
   reverb:
     <<: *app
+    user: www-data  # never root: files it creates (logs, backups) must stay writable by php-fpm
     environment:
       RMS_ROLE: reverb
     depends_on: *after-app

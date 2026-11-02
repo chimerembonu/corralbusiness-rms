@@ -186,7 +186,7 @@ class BackupService
     }
 
     /** Files a backup may contain under uploads/ (logos, item images). */
-    public const UPLOAD_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp'];
+    public const UPLOAD_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'webp']; // no SVG: it can carry a script (re-review)
 
     /**
      * Every name inside the zip is checked before anything is extracted (security review H3, "zip-slip"):

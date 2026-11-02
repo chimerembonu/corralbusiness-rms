@@ -38,6 +38,7 @@ COPY . .
 COPY --from=assets /app/public/build ./public/build
 RUN composer dump-autoload --optimize --no-dev \
     && chmod +x docker/entrypoint.sh \
+    && mkdir -p storage/backups \
     && chown -R www-data:www-data storage bootstrap/cache
 
 ENV CUPS_SERVER=/run/cups/cups.sock

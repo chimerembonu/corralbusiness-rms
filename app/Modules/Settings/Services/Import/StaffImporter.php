@@ -135,7 +135,7 @@ class StaffImporter
         $user->save();
         $user->syncRoles($roles);
 
-        $result->add($rowNo, $isNew ? 'new' : 'update', $name, implode(', ', array_map(fn ($r) => Role::from($r)->label(), $roles)).($pin ? ' · PIN '.$pin : ''));
+        $result->add($rowNo, $isNew ? 'new' : 'update', $name, implode(', ', array_map(fn ($r) => Role::from($r)->label(), $roles)).($pin ? ' · '.__('settings::settings.import.pin_set') : ''));
     }
 
     private function date(mixed $value): ?string

@@ -62,7 +62,7 @@ cd "$TARGET"
 
 # 3. Settings ------------------------------------------------------------------
 LAN_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
-[ -n "$LAN_IP" ] || LAN_IP="0.0.0.0"
+[ -n "$LAN_IP" ] || die "Could not work out this computer's network address. Connect it to the restaurant network and run the installer again."
 if [ ! -f .env ]; then
     say "Creating .env (keys and passwords are generated once and kept)…"
     cp .env.docker.example .env
