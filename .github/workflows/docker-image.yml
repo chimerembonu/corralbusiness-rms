@@ -32,7 +32,8 @@ jobs:
         run: docker compose build
 
       - name: Check the web image carries the compiled front-end
-        run: docker run --rm --entrypoint sh corralbusiness-rms-web:latest -c 'test -f /var/www/html/public/build/manifest.json && nginx -t'
+        # (nginx -t cannot run here: the "app" and "reverb" host names only exist inside the compose network)
+        run: docker run --rm --entrypoint sh corralbusiness-rms-web:latest -c 'test -f /var/www/html/public/build/manifest.json && test -f /etc/nginx/conf.d/default.conf && test -L /var/www/html/public/storage'
 
       - name: Check PHP and extensions inside the image
         run: |
