@@ -175,11 +175,20 @@ class OrderService
         return $line;
     }
 
+    /**
+     * Remove a line that was never sent to the kitchen. Once a bill has been printed for the order
+     * this is no longer a quiet removal: it has to go through voidItem() with a manager (security review H5).
+     */
     public function removeItem(Order $order, OrderItem $line, ?User $by = null): OrderItem
     {
         $this->assertEditable($order);
         $this->assertPending($line);
 
+        if ($order->bill_printed_at !== null) {
+            throw new ManagerPinRequiredException(Permission::OrdersVoid->value);
+        }
+
+        $line->forceFill(['removed_by_id' => $by?->id])->save();
         $line->delete();
         $this->recalculate($order);
         ItemRemoved::dispatch($order, $line, $by?->id);
@@ -547,7 +556,9 @@ class OrderService
     {
         $this->assertEditable($order);
 
-        if ($order->status === OrderStatus::Sent && ! $by->can(Permission::OrdersVoid->value)) {
+        // Sent to the kitchen, or a bill already printed: cancelling needs a manager (security review H5).
+        $needsManager = $order->status === OrderStatus::Sent || $order->bill_printed_at !== null;
+        if ($needsManager && ! $by->can(Permission::OrdersVoid->value)) {
             throw new ManagerPinRequiredException(Permission::OrdersVoid->value);
         }
 
@@ -559,6 +570,19 @@ class OrderService
         ])->save();
 
         OrderVoided::dispatch($order, $by->id);
+
+        return $order;
+    }
+
+    /** The customer has seen the bill: from now on removing lines or cancelling needs a manager (security review H5). */
+    public function markBillPrinted(Order $order, ?User $by = null): Order
+    {
+        if ($order->bill_printed_at !== null || ! $order->isActive()) {
+            return $order;
+        }
+
+        $order->forceFill(['bill_printed_at' => now()])->save();
+        activity('order')->performedOn($order)->causedBy($by)->log('bill_printed');
 
         return $order;
     }

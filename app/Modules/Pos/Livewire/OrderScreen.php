@@ -259,6 +259,12 @@ class OrderScreen extends Component
 
     public function removeLine(string $lineId): void
     {
+        if ($this->order->bill_printed_at !== null) { // the customer has seen the bill: manager void with a reason
+            $this->startVoid($lineId);
+
+            return;
+        }
+
         $this->run(fn (OrderService $orders) => $orders->removeItem($this->order, $this->line($lineId), auth()->user()));
     }
 
@@ -754,10 +760,10 @@ class OrderScreen extends Component
         }
     }
 
-    /** Cancel: an untouched order just closes; once sent to the kitchen it needs a reason and a manager. */
+    /** Cancel: an untouched order just closes; once sent to the kitchen or billed it needs a reason and a manager. */
     public function cancelOrder(): void
     {
-        if ($this->order->status === OrderStatus::Sent) {
+        if ($this->order->status === OrderStatus::Sent || $this->order->bill_printed_at !== null) {
             $this->startVoid(null);
 
             return;

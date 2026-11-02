@@ -58,6 +58,12 @@ class OrderItem extends BusinessModel
         return $this->belongsTo(User::class, 'voided_by_id');
     }
 
+    /** Who removed this (not yet sent) line from the order; the row is soft-deleted. */
+    public function removedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'removed_by_id');
+    }
+
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);

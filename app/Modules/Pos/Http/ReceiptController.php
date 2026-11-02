@@ -3,6 +3,7 @@
 namespace App\Modules\Pos\Http;
 
 use App\Modules\Orders\Models\Order;
+use App\Modules\Orders\Services\OrderService;
 use App\Modules\Printing\Services\PrintService;
 use App\Modules\Settings\Services\SettingsService;
 use App\Support\Tenancy\Tenancy;
@@ -14,6 +15,9 @@ class ReceiptController
     public function __invoke(Order $order, SettingsService $settings, PrintService $printing): View
     {
         Tenancy::assertOwns($order);
+        if ($order->isActive()) {
+            app(OrderService::class)->markBillPrinted($order, request()->user()); // security review H5
+        }
         $order->load(['items.modifiers', 'payments', 'table', 'openedBy', 'rider', 'branch.tenant']);
 
         return view('pos::receipt', [

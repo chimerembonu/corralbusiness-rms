@@ -196,18 +196,22 @@ class ReportService
         $voidedOrders = Order::query()->tap($inRange)->where('status', OrderStatus::Void->value)->with(['voidedBy', 'openedBy'])->orderBy('voided_at')->get();
         $orderIds = Order::query()->tap($inRange)->pluck('id');
         $voidedLines = OrderItem::query()->withoutGlobalScopes()->whereIn('order_id', $orderIds)->where('status', OrderItemStatus::Voided->value)->with(['order', 'voidedBy'])->orderBy('voided_at')->get();
+        // Lines taken off before the order was sent (soft-deleted), so quiet removals are visible too (security review H5).
+        $removedLines = OrderItem::query()->withoutGlobalScopes()->whereIn('order_id', $orderIds)->whereNotNull('deleted_at')->with(['order' => fn ($q) => $q->withoutGlobalScopes(), 'removedBy'])->orderBy('deleted_at')->get();
         $discounted = Order::query()->tap($inRange)->whereIn('status', [OrderStatus::Paid->value, OrderStatus::Refunded->value])->where('discount_total', '>', 0)->with(['discountApprovedBy', 'openedBy'])->orderBy('paid_at')->get();
         $refunds = Payment::query()->real()->where('branch_id', $branchId)->where('status', PaymentStatus::Refunded->value)
             ->whereBetween('refunded_at', [$from.' 00:00:00', $to.' 23:59:59'])->with(['order', 'refundedBy'])->orderBy('refunded_at')->get();
 
         return [
             'voided_orders' => $voidedOrders->map(fn (Order $o) => ['when' => $o->voided_at?->format('d/m H:i') ?? '', 'order' => '#'.$o->displayNumber(), 'detail' => $o->void_reason ?? '', 'value' => $o->total->amount, 'by' => $o->voidedBy?->name ?? '', 'opened_by' => $o->openedBy?->name ?? ''])->all(),
+            'removed_lines' => $removedLines->map(fn (OrderItem $l) => ['when' => $l->deleted_at?->format('d/m H:i') ?? '', 'order' => '#'.$l->order->displayNumber(), 'detail' => $l->quantity.' × '.$l->displayName(), 'value' => $l->line_total->amount, 'by' => $l->removedBy?->name ?? ''])->all(),
             'voided_lines' => $voidedLines->map(fn (OrderItem $l) => ['when' => $l->voided_at?->format('d/m H:i') ?? '', 'order' => '#'.$l->order->displayNumber(), 'detail' => $l->quantity.' × '.$l->displayName().($l->void_reason ? ' · '.$l->void_reason : ''), 'value' => $l->line_total->amount, 'by' => $l->voidedBy?->name ?? ''])->all(),
             'discounts' => $discounted->map(fn (Order $o) => ['when' => $o->paid_at?->format('d/m H:i') ?? '', 'order' => '#'.$o->displayNumber(), 'detail' => trim(($o->discountLabel() ?? '').' '.($o->discount_reason ?? '').($o->promo_code ? ' · '.$o->promo_code : '')), 'value' => $o->discount_total->amount, 'by' => $o->discountApprovedBy?->name ?? $o->openedBy?->name ?? ''])->all(),
             'refunds' => $refunds->map(fn (Payment $p) => ['when' => $p->refunded_at?->format('d/m H:i') ?? '', 'order' => $p->order ? '#'.$p->order->displayNumber() : '', 'detail' => $p->methodLabel().($p->refund_reason ? ' · '.$p->refund_reason : ''), 'value' => $p->amount->amount, 'by' => $p->refundedBy?->name ?? ''])->all(),
             'totals' => [
                 'voided_orders' => (int) $voidedOrders->sum(fn (Order $o) => $o->total->amount),
                 'voided_lines' => (int) $voidedLines->sum(fn (OrderItem $l) => $l->line_total->amount),
+                'removed_lines' => (int) $removedLines->sum(fn (OrderItem $l) => $l->line_total->amount),
                 'discounts' => (int) $discounted->sum(fn (Order $o) => $o->discount_total->amount),
                 'refunds' => (int) $refunds->sum(fn (Payment $p) => $p->amount->amount),
             ],

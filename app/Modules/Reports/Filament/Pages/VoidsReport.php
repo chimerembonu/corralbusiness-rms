@@ -49,6 +49,7 @@ class VoidsReport extends Page
         return (new ReportDocument(__('reports::reports.voids.title'), $from, $to))
             ->section(__('reports::reports.voids.voided_orders'), [$c('when'), $c('order'), $c('detail'), $c('value'), $c('by')], $rows('voided_orders'), [3], $total('voided_orders'))
             ->section(__('reports::reports.voids.voided_lines'), [$c('when'), $c('order'), $c('detail'), $c('value'), $c('by')], $rows('voided_lines'), [3], $total('voided_lines'))
+            ->section(__('reports::reports.voids.removed_lines'), [$c('when'), $c('order'), $c('detail'), $c('value'), $c('by')], $rows('removed_lines'), [3], $total('removed_lines'))
             ->section(__('reports::reports.voids.discounts'), [$c('when'), $c('order'), $c('detail'), $c('value'), $c('by')], $rows('discounts'), [3], $total('discounts'))
             ->section(__('reports::reports.voids.refunds'), [$c('when'), $c('order'), $c('detail'), $c('value'), $c('by')], $rows('refunds'), [3], $total('refunds'));
     }

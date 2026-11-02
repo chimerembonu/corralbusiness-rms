@@ -70,6 +70,7 @@ class Order extends BusinessModel
             'sent_at' => 'datetime',
             'paid_at' => 'datetime',
             'voided_at' => 'datetime',
+            'bill_printed_at' => 'datetime',
         ];
     }
 

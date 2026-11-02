@@ -37,6 +37,7 @@ return [
         'title' => 'Voids, discounts & refunds',
         'voided_orders' => 'Cancelled orders',
         'voided_lines' => 'Voided lines',
+        'removed_lines' => 'Lines removed before sending',
         'discounts' => 'Discounts',
         'refunds' => 'Refunds',
         'columns' => ['when' => 'When', 'order' => 'Order', 'detail' => 'Detail', 'value' => 'Value', 'by' => 'By', 'opened_by' => 'Opened by'],
