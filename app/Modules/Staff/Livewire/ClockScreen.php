@@ -13,6 +13,8 @@ use App\Modules\Staff\Models\TimeEntry;
 use App\Modules\Staff\Services\PinAuthenticator;
 use App\Modules\Staff\Services\RosterService;
 use App\Modules\Staff\Services\TimeClockService;
+use App\Support\Errors\FriendlyError;
+use App\Support\Livewire\ShowsFriendlyErrors;
 use App\Support\Tenancy\StoreTenantResolver;
 use App\Support\Tenancy\Tenancy;
 use Illuminate\Database\Eloquent\Collection;
@@ -24,6 +26,8 @@ use Livewire\Component;
 #[Layout('pos::layouts.app', ['title' => 'Clock in / out', 'chrome' => false])]
 class ClockScreen extends Component
 {
+    use ShowsFriendlyErrors;
+
     public ?string $message = null;
 
     public ?string $detail = null;
@@ -64,7 +68,7 @@ class ClockScreen extends Component
             }
             $result = $clock->toggle($user, TimeEntrySource::Clock, app(CurrentTill::class)->id());
         } catch (PinLockedException|InvalidPinException|TimeClockException $e) {
-            $this->error = $e->getMessage();
+            $this->error = FriendlyError::message($e);
 
             return;
         }

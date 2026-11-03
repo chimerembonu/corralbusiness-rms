@@ -6,6 +6,7 @@ use App\Modules\Kitchen\Models\Station;
 use App\Modules\Kitchen\Models\Ticket;
 use App\Modules\Kitchen\Services\KitchenService;
 use App\Modules\Staff\Enums\Permission;
+use App\Support\Livewire\ShowsFriendlyErrors;
 use App\Support\Tenancy\Tenancy;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -21,6 +22,10 @@ use Livewire\Component;
 #[Layout('pos::layouts.app', ['title' => 'Kitchen'])]
 class KitchenDisplay extends Component
 {
+    use ShowsFriendlyErrors;
+
+    public ?string $error = null;
+
     #[Locked]
     public string $branchId = '';
 

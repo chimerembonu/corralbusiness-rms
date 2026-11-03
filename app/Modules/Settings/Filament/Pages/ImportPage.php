@@ -6,6 +6,8 @@ use App\Modules\Settings\Services\Import\Importers;
 use App\Modules\Settings\Services\Import\ImportResult;
 use App\Modules\Settings\Services\Import\ImportTemplates;
 use App\Modules\Staff\Enums\Permission;
+use App\Support\Errors\FriendlyError;
+use App\Support\Errors\UserFacingException;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
@@ -79,7 +81,7 @@ class ImportPage extends Page
             return $path;
         }
 
-        throw new RuntimeException(__('settings::settings.import.errors.file_missing'));
+        throw new UserFacingException(__('settings::settings.import.errors.file_missing'));
     }
 
     /** Where a saved upload sits on disk (the "local" disk is private); null when there is none. */
@@ -103,7 +105,7 @@ class ImportPage extends Page
             $result = Importers::preview($this->form->getState()['type'], $this->uploadedPath());
             $this->show($result);
         } catch (RuntimeException|\Throwable $e) {
-            Notification::make()->danger()->title($e->getMessage())->send();
+            Notification::make()->danger()->title(FriendlyError::message($e))->send();
         }
     }
 
@@ -114,12 +116,12 @@ class ImportPage extends Page
         try {
             $state = $this->form->getState(); // validates and saves the upload under imports/
             $path = $this->storedUploadPath(is_string($state['file'] ?? null) ? $state['file'] : null)
-                ?? throw new RuntimeException(__('settings::settings.import.errors.file_missing'));
+                ?? throw new UserFacingException(__('settings::settings.import.errors.file_missing'));
             $result = Importers::import($state['type'], $path, auth()->user());
             $this->show($result);
             Notification::make()->success()->title(__('settings::settings.import.done', ['summary' => $result->summary()]))->persistent()->send();
         } catch (RuntimeException|\Throwable $e) {
-            Notification::make()->danger()->title($e->getMessage())->send();
+            Notification::make()->danger()->title(FriendlyError::message($e))->send();
         } finally {
             // The spreadsheet (which may hold every staff PIN) is not kept on the server once it has been read (re-review).
             if ($path && is_file($path)) {

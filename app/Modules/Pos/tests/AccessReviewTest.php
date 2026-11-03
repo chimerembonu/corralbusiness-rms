@@ -20,7 +20,6 @@ use App\Modules\Staff\Enums\Role;
 use App\Modules\Staff\Models\User;
 use App\Support\Money\Money;
 use App\Support\Tenancy\Tenancy;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 
@@ -91,10 +90,12 @@ it('lets a stock counter use the home screen but not start or resume an order', 
     $counter->assignRole(Role::Inventory->value);
     $this->actingAs($counter);
     $this->get('/pos')->assertOk();
-    Livewire::test(OrderTypeScreen::class)->assertOk();
+    Livewire::test(OrderTypeScreen::class)->assertOk()
+        ->assertDontSee('Takeaway')->assertSee('Your role does not take orders'); // the order tiles are not offered at all
     $parked = $this->orders->open(OrderType::Takeaway, $this->cashier);
-    Livewire::test(OrderTypeScreen::class)->call('startTakeaway')->assertForbidden();
-    Livewire::test(OrderTypeScreen::class)->call('resume', $parked->id)->assertForbidden();
+    // Even a forced press is refused, with the till's own message line rather than an error box.
+    Livewire::test(OrderTypeScreen::class)->call('startTakeaway')->assertSet('error', __('errors.action.forbidden'))->assertNoRedirect();
+    Livewire::test(OrderTypeScreen::class)->call('resume', $parked->id)->assertSet('error', __('errors.action.forbidden'))->assertNoRedirect();
     expect(Order::query()->count())->toBe(1);
 });
 
@@ -140,7 +141,8 @@ it('looks up ids sent to till actions in this branch only, and locks the kitchen
 
     $this->actingAs($this->cashier);
     Livewire::test(OrdersList::class)->call('open', $elsewhere->id)->assertDontSee('#'.$elsewhere->displayNumber());
-    expect(fn () => Livewire::test(OrdersList::class)->call('reprint', $elsewhere->id))->toThrow(ModelNotFoundException::class);
-    expect(fn () => Livewire::test(OrderTypeScreen::class)->call('resume', $elsewhere->id))->toThrow(ModelNotFoundException::class);
+    // Another branch's order is "not here", in plain words, and nothing about it is shown or done.
+    Livewire::test(OrdersList::class)->call('reprint', $elsewhere->id)->assertSet('error', __('errors.action.gone'))->assertDontSee('#'.$elsewhere->displayNumber());
+    Livewire::test(OrderTypeScreen::class)->call('resume', $elsewhere->id)->assertSet('error', __('errors.action.gone'))->assertNoRedirect();
     expect(fn () => Livewire::test(KitchenDisplay::class)->set('branchId', $other->id))->toThrow(CannotUpdateLockedPropertyException::class);
 });

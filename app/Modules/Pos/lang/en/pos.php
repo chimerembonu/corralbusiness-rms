@@ -88,6 +88,7 @@ return [
         'free' => 'Free',
         'occupied' => 'Open',
         'open_orders' => 'Open orders',
+        'no_orders_for_role' => 'Your role does not take orders. Use the buttons at the top of the screen for your work.',
         'none_open' => 'No open orders right now.',
         'seats' => ':count seats',
         'guests' => ':count guests',

@@ -13,6 +13,7 @@ use App\Modules\Customers\Services\AccountService;
 use App\Modules\Payments\Enums\MomoProvider;
 use App\Modules\Payments\Enums\PaymentMethod;
 use App\Modules\Staff\Enums\Permission;
+use App\Support\Errors\FriendlyError;
 use App\Support\Filament\MoneyInput;
 use App\Support\Money\Money;
 use BackedEnum;
@@ -135,7 +136,7 @@ class CustomerResource extends Resource
                     app(AccountService::class)->receivePayment($record, PaymentMethod::from($data['method']), Money::of((int) $data['amount']), auth()->user(), $data['reference'] ?? null, isset($data['provider']) ? MomoProvider::from($data['provider']) : null);
                     Notification::make()->success()->title(__('customers::customers.account.received', ['amount' => money((int) $data['amount']), 'name' => $record->name, 'balance' => money($record->fresh()->balance())]))->send();
                 } catch (RuntimeException $e) {
-                    Notification::make()->danger()->title($e->getMessage())->send();
+                    Notification::make()->danger()->title(FriendlyError::message($e))->send();
                 }
             });
     }
@@ -156,7 +157,7 @@ class CustomerResource extends Resource
                     app(AccountService::class)->adjust($record, Money::fromDecimal((string) $data['amount']), auth()->user(), $data['reason']);
                     Notification::make()->success()->title(__('customers::customers.account.adjusted', ['balance' => money($record->fresh()->balance())]))->send();
                 } catch (RuntimeException $e) {
-                    Notification::make()->danger()->title($e->getMessage())->send();
+                    Notification::make()->danger()->title(FriendlyError::message($e))->send();
                 }
             });
     }

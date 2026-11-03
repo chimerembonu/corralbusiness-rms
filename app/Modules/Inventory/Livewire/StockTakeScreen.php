@@ -9,6 +9,8 @@ use App\Modules\Inventory\Services\StockTakeService;
 use App\Modules\Pos\Concerns\AsksForManagerPin;
 use App\Modules\Staff\Enums\Permission;
 use App\Modules\Staff\Models\User;
+use App\Support\Errors\FriendlyError;
+use App\Support\Livewire\ShowsFriendlyErrors;
 use Illuminate\Database\Eloquent\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -19,7 +21,7 @@ use Livewire\Component;
 #[Layout('pos::layouts.app', ['title' => 'Stock take'])]
 class StockTakeScreen extends Component
 {
-    use AsksForManagerPin;
+    use AsksForManagerPin, ShowsFriendlyErrors;
 
     #[Url(as: 'take')]
     public ?string $takeId = null;
@@ -96,7 +98,7 @@ class StockTakeScreen extends Component
         try {
             $take = app(StockTakeService::class)->start(auth()->user(), $category);
         } catch (InventoryException $e) {
-            $this->error = $e->getMessage();
+            $this->error = FriendlyError::message($e);
 
             return;
         }
@@ -124,7 +126,7 @@ class StockTakeScreen extends Component
         try {
             app(StockTakeService::class)->count($line, $value === '' ? null : (float) $value, auth()->user());
         } catch (InventoryException $e) {
-            $this->error = $e->getMessage();
+            $this->error = FriendlyError::message($e);
         }
         unset($this->lines, $this->remaining);
     }
@@ -145,7 +147,7 @@ class StockTakeScreen extends Component
             $counted = $take->lines()->whereNotNull('counted')->count();
             app(StockTakeService::class)->complete($take, $manager);
         } catch (InventoryException $e) {
-            $this->error = $e->getMessage();
+            $this->error = FriendlyError::message($e);
 
             return;
         }

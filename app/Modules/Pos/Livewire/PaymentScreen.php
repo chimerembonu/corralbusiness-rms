@@ -10,6 +10,8 @@ use App\Modules\Payments\Enums\PaymentMethod;
 use App\Modules\Payments\Services\CashService;
 use App\Modules\Payments\Services\PaymentService;
 use App\Modules\Staff\Enums\Permission;
+use App\Support\Errors\FriendlyError;
+use App\Support\Livewire\ShowsFriendlyErrors;
 use App\Support\Money\Money;
 use App\Support\Tenancy\Tenancy;
 use Livewire\Attributes\Computed;
@@ -26,6 +28,8 @@ use RuntimeException;
 #[Layout('pos::layouts.app', ['title' => 'Payment'])]
 class PaymentScreen extends Component
 {
+    use ShowsFriendlyErrors;
+
     #[Locked]
     public string $orderId;
 
@@ -158,7 +162,7 @@ class PaymentScreen extends Component
 
             return;
         } catch (RuntimeException $e) {
-            $this->error = $e->getMessage();
+            $this->error = FriendlyError::message($e);
 
             return;
         }

@@ -8,6 +8,8 @@ use App\Modules\Staff\Enums\Permission;
 use App\Modules\Staff\Exceptions\InvalidPinException;
 use App\Modules\Staff\Exceptions\PinLockedException;
 use App\Modules\Staff\Services\PinAuthenticator;
+use App\Support\Errors\FriendlyError;
+use App\Support\Livewire\ShowsFriendlyErrors;
 use App\Support\Tenancy\StoreTenantResolver;
 use App\Support\Tenancy\Tenancy;
 use Illuminate\Support\Facades\Auth;
@@ -18,6 +20,8 @@ use Livewire\Component;
 #[Layout('pos::layouts.app', ['title' => 'Sign in', 'chrome' => false])]
 class PinLogin extends Component
 {
+    use ShowsFriendlyErrors;
+
     public ?string $error = null;
 
     public int $lockedFor = 0;
@@ -76,11 +80,11 @@ class PinLogin extends Component
             $user = $auth->attempt($pin, $this->throttleKey(), $tenant);
         } catch (PinLockedException $e) {
             $this->lockedFor = $e->retryAfterSeconds;
-            $this->error = $e->getMessage();
+            $this->error = FriendlyError::message($e);
 
             return;
         } catch (InvalidPinException $e) {
-            $this->error = $e->getMessage();
+            $this->error = FriendlyError::message($e);
 
             return;
         }

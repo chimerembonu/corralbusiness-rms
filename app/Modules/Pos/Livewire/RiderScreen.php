@@ -5,6 +5,8 @@ namespace App\Modules\Pos\Livewire;
 use App\Modules\Orders\Models\Order;
 use App\Modules\Orders\Services\DeliveryService;
 use App\Modules\Staff\Enums\Permission;
+use App\Support\Errors\FriendlyError;
+use App\Support\Livewire\ShowsFriendlyErrors;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use RuntimeException;
@@ -13,6 +15,8 @@ use RuntimeException;
 #[Layout('pos::layouts.app', ['title' => 'My deliveries'])]
 class RiderScreen extends Component
 {
+    use ShowsFriendlyErrors;
+
     public ?string $problemFor = null;
 
     public string $problemReason = '';
@@ -59,7 +63,7 @@ class RiderScreen extends Component
         try {
             $callback();
         } catch (RuntimeException $e) {
-            $this->error = $e->getMessage();
+            $this->error = FriendlyError::message($e);
         }
     }
 

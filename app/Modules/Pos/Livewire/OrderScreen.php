@@ -22,6 +22,8 @@ use App\Modules\Pos\Concerns\AsksForManagerPin;
 use App\Modules\Staff\Enums\Permission;
 use App\Modules\Staff\Exceptions\ManagerPinRequiredException;
 use App\Modules\Staff\Models\User;
+use App\Support\Errors\FriendlyError;
+use App\Support\Livewire\ShowsFriendlyErrors;
 use App\Support\Money\Money;
 use App\Support\Tenancy\Tenancy;
 use Illuminate\Support\Arr;
@@ -35,7 +37,7 @@ use RuntimeException;
 #[Layout('pos::layouts.app', ['title' => 'Order'])]
 class OrderScreen extends Component
 {
-    use AsksForManagerPin;
+    use AsksForManagerPin, ShowsFriendlyErrors;
 
     #[Locked]
     public string $orderId;
@@ -240,9 +242,9 @@ class OrderScreen extends Component
             return true;
         } catch (RuntimeException $e) {
             if ($this->picker) {
-                $this->picker['errors'] = [$e->getMessage()];
+                $this->picker['errors'] = [FriendlyError::message($e)];
             } else {
-                $this->error = $e->getMessage();
+                $this->error = FriendlyError::message($e);
             }
 
             return false;
@@ -284,7 +286,7 @@ class OrderScreen extends Component
         } catch (ManagerPinRequiredException $e) {
             throw $e;
         } catch (RuntimeException $e) {
-            $this->error = $e->getMessage();
+            $this->error = FriendlyError::message($e);
         }
     }
 
@@ -436,7 +438,7 @@ class OrderScreen extends Component
         try {
             $customer = app(CustomerService::class)->create(Arr::only($this->newCustomer, ['name', 'phone', 'address']), auth()->user()); // never account settings from the till
         } catch (RuntimeException $e) {
-            $this->error = $e->getMessage();
+            $this->error = FriendlyError::message($e);
 
             return;
         }
@@ -490,7 +492,7 @@ class OrderScreen extends Component
     public function saveDelivery(): void
     {
         $raw = trim((string) ($this->delivery['fee'] ?? ''));
-        $fee = Money::fromDecimal($raw === '' ? '0' : $raw);
+        $fee = Money::fromTyped($raw);
 
         $this->withManagerFallback(
             fn () => $this->deliveryApproved(null, $this->delivery),
@@ -507,14 +509,14 @@ class OrderScreen extends Component
         $raw = trim((string) ($delivery['fee'] ?? ''));
 
         try {
-            app(DeliveryService::class)->setDetails($this->order, $delivery['name'], $delivery['phone'], $delivery['address'], $delivery['notes'], Money::fromDecimal($raw === '' ? '0' : $raw), auth()->user(), $manager);
+            app(DeliveryService::class)->setDetails($this->order, $delivery['name'], $delivery['phone'], $delivery['address'], $delivery['notes'], Money::fromTyped($raw), auth()->user(), $manager);
             $this->modal = null;
             $this->delivery = null;
             unset($this->order);
         } catch (ManagerPinRequiredException $e) {
             throw $e;
         } catch (RuntimeException $e) {
-            $this->error = $e->getMessage();
+            $this->error = FriendlyError::message($e);
             $this->modal = 'delivery';
         }
     }
@@ -598,7 +600,7 @@ class OrderScreen extends Component
             app(OrderService::class)->void($this->order, $reason, $manager);
             $this->redirectRoute('pos.home');
         } catch (RuntimeException $e) {
-            $this->error = $e->getMessage();
+            $this->error = FriendlyError::message($e);
         }
     }
 
@@ -666,7 +668,7 @@ class OrderScreen extends Component
         } catch (ManagerPinRequiredException $e) {
             throw $e;
         } catch (RuntimeException $e) {
-            $this->error = $e->getMessage();
+            $this->error = FriendlyError::message($e);
             if ($manager) {
                 $this->modal = 'discount';
             }
@@ -760,6 +762,13 @@ class OrderScreen extends Component
     /** Pay in N equal shares: handled on the payment screen. */
     public function splitEvenly(): void
     {
+        if (! auth()->user()->can(Permission::PaymentsTake->value)) { // the payment screen is for cashiers, like Pay
+            $this->error = __('pos::pos.cash.pay_needs_cashier');
+            $this->modal = null;
+
+            return;
+        }
+
         $this->redirectRoute('pos.pay', [$this->order, 'ways' => $this->split['ways']]);
     }
 
@@ -807,7 +816,7 @@ class OrderScreen extends Component
             app(OrderService::class)->hold($this->order, trim($this->holdName) ?: null, auth()->user());
             $this->redirectRoute('pos.home');
         } catch (RuntimeException $e) {
-            $this->error = $e->getMessage();
+            $this->error = FriendlyError::message($e);
         }
     }
 
@@ -826,7 +835,7 @@ class OrderScreen extends Component
         } catch (ManagerPinRequiredException $e) {
             $this->startVoid(null);
         } catch (RuntimeException $e) {
-            $this->error = $e->getMessage();
+            $this->error = FriendlyError::message($e);
         }
     }
 
@@ -864,7 +873,7 @@ class OrderScreen extends Component
         try {
             app()->call($callback);
         } catch (RuntimeException $e) {
-            $this->error = $e->getMessage();
+            $this->error = FriendlyError::message($e);
         }
 
         unset($this->order);

@@ -31,6 +31,11 @@ class HqPanelProvider extends PanelProvider
             ->id('hq')
             ->path(config('rms.hq_path', 'hq'))
             ->login()
+            // Button presses that fail show these instead of a technical error box (same words as the till).
+            ->registerErrorNotification(fn () => __('errors.pages.500.title'), fn () => __('errors.action.failed'))
+            ->registerErrorNotification(fn () => __('errors.pages.403.title'), fn () => __('errors.action.forbidden'), 403)
+            ->registerErrorNotification(fn () => __('errors.pages.404.title'), fn () => __('errors.action.gone'), 404)
+            ->registerErrorNotification(fn () => __('errors.pages.419.title'), fn () => __('errors.pages.419.body'), 419)
             ->brandLogo(fn () => asset(config('rms.brand.logo')))
             ->darkModeBrandLogo(fn () => asset(config('rms.brand.logo_dark')))
             ->brandLogoHeight('2.25rem')

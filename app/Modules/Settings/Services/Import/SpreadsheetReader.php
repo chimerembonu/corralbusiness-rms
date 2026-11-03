@@ -2,12 +2,12 @@
 
 namespace App\Modules\Settings\Services\Import;
 
+use App\Support\Errors\UserFacingException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Facades\Excel;
-use RuntimeException;
 
 /** Reads the first sheet of an .xlsx / .csv into rows keyed by snake_case headings. */
 final class SpreadsheetReader implements ToCollection, WithHeadingRow
@@ -23,7 +23,7 @@ final class SpreadsheetReader implements ToCollection, WithHeadingRow
     public static function read(string $path): Collection
     {
         if (! is_file($path)) {
-            throw new RuntimeException(__('settings::settings.import.errors.file_missing'));
+            throw new UserFacingException(__('settings::settings.import.errors.file_missing'));
         }
         $reader = new self;
         Excel::import($reader, $path);

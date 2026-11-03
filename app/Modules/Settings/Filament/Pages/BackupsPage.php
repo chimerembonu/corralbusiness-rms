@@ -5,6 +5,7 @@ namespace App\Modules\Settings\Filament\Pages;
 use App\Modules\Settings\Services\BackupService;
 use App\Modules\Staff\Enums\Permission;
 use App\Modules\Staff\Enums\Role;
+use App\Support\Errors\FriendlyError;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
@@ -63,7 +64,7 @@ class BackupsPage extends Page
                     $path = app(BackupService::class)->create(__('settings::settings.backups.manual_note', ['name' => auth()->user()->name]));
                     Notification::make()->success()->title(__('settings::settings.backups.done', ['file' => basename($path)]))->send();
                 } catch (RuntimeException $e) {
-                    Notification::make()->danger()->title($e->getMessage())->send();
+                    Notification::make()->danger()->title(FriendlyError::message($e))->send();
                 }
             });
     }
@@ -81,7 +82,7 @@ class BackupsPage extends Page
                     $safety = $service->restore($service->resolve($arguments['file']));
                     Notification::make()->success()->title(__('settings::settings.backups.restored', ['file' => $arguments['file'], 'safety' => basename($safety)]))->persistent()->send();
                 } catch (RuntimeException $e) {
-                    Notification::make()->danger()->title($e->getMessage())->persistent()->send();
+                    Notification::make()->danger()->title(FriendlyError::message($e))->persistent()->send();
                 }
             });
     }
@@ -105,7 +106,7 @@ class BackupsPage extends Page
                     @unlink($path);
                     Notification::make()->success()->title(__('settings::settings.backups.restored', ['file' => basename($data['file']), 'safety' => basename($safety)]))->persistent()->send();
                 } catch (RuntimeException $e) {
-                    Notification::make()->danger()->title($e->getMessage())->persistent()->send();
+                    Notification::make()->danger()->title(FriendlyError::message($e))->persistent()->send();
                 }
             });
     }

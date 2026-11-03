@@ -2,6 +2,7 @@
 
 namespace App\Support\Money;
 
+use App\Support\Errors\UserFacingException;
 use InvalidArgumentException;
 use JsonSerializable;
 use Stringable;
@@ -34,6 +35,24 @@ final class Money implements JsonSerializable, Stringable
     public static function zero(?string $currency = null): self
     {
         return self::of(0, $currency);
+    }
+
+    /**
+     * From what a person typed in a money box: "10", "12.50", "GH₵ 10", "GHS10", "₵1,200.00".
+     * The currency sign and spaces are ignored; anything that is still not a number is refused with a
+     * message staff can read (a domain error, so screens show it as it is).
+     */
+    public static function fromTyped(?string $typed, ?string $currency = null): self
+    {
+        $clean = trim(str_ireplace(['GH₵', 'GH¢', 'GHS', 'GHC', '₵', '¢', 'cedis', 'cedi'], '', (string) $typed));
+        if ($clean === '') {
+            return self::zero($currency);
+        }
+        if (! preg_match('/^\d[\d,]*(\.\d+)?$/', str_replace(' ', '', $clean))) {
+            throw new UserFacingException(__('errors.action.amount'));
+        }
+
+        return self::fromDecimal($clean, $currency);
     }
 
     /** From a decimal string or number of cedis, e.g. "12.50" or 12.5 → 1250 pesewas. */

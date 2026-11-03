@@ -11,6 +11,8 @@ use App\Modules\Pos\Concerns\AsksForManagerPin;
 use App\Modules\Printing\Services\PrintService;
 use App\Modules\Staff\Enums\Permission;
 use App\Modules\Staff\Models\User;
+use App\Support\Errors\FriendlyError;
+use App\Support\Livewire\ShowsFriendlyErrors;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -20,7 +22,7 @@ use RuntimeException;
 #[Layout('pos::layouts.app', ['title' => 'Orders'])]
 class OrdersList extends Component
 {
-    use AsksForManagerPin;
+    use AsksForManagerPin, ShowsFriendlyErrors;
 
     #[Url]
     public string $search = '';
@@ -99,7 +101,7 @@ class OrdersList extends Component
             app(PaymentService::class)->refund(Payment::query()->forBranch()->findOrFail($paymentId), $reason, $manager, auth()->user());
             $this->notice = __('pos::pos.orders.refunded');
         } catch (RuntimeException $e) {
-            $this->error = $e->getMessage();
+            $this->error = FriendlyError::message($e);
         }
     }
 

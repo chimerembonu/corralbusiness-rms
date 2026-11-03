@@ -16,6 +16,8 @@ use App\Modules\Printing\Services\PrintService;
 use App\Modules\Staff\Enums\Permission;
 use App\Modules\Staff\Exceptions\ManagerPinRequiredException;
 use App\Modules\Staff\Models\User;
+use App\Support\Errors\FriendlyError;
+use App\Support\Livewire\ShowsFriendlyErrors;
 use App\Support\Money\Money;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -32,7 +34,7 @@ use RuntimeException;
 #[Layout('pos::layouts.app', ['title' => 'Cash'])]
 class CashScreen extends Component
 {
-    use AsksForManagerPin;
+    use AsksForManagerPin, ShowsFriendlyErrors;
 
     /** Order to go back to once the till is open (the payment screen sent us here). */
     #[Url]
@@ -165,7 +167,7 @@ class CashScreen extends Component
         try {
             $cash->open($till, auth()->user(), Money::fromDecimal($this->amount === '' ? '0' : $this->amount), $this->date);
         } catch (RuntimeException $e) {
-            $this->error = $e->getMessage();
+            $this->error = FriendlyError::message($e);
 
             return;
         }
@@ -222,7 +224,7 @@ class CashScreen extends Component
         } catch (ManagerPinRequiredException $e) {
             throw $e;
         } catch (RuntimeException $e) {
-            $this->error = $e->getMessage();
+            $this->error = FriendlyError::message($e);
             if ($reopenOnError) {
                 $this->modal = 'pay_out';
             }
@@ -277,7 +279,7 @@ class CashScreen extends Component
             if ($e instanceof ManagerPinRequiredException) {
                 throw $e;
             }
-            $this->error = $e->getMessage();
+            $this->error = FriendlyError::message($e);
 
             return;
         }
@@ -320,7 +322,7 @@ class CashScreen extends Component
         try {
             $close = app(DayCloseService::class)->close($this->date, auth()->user(), $manager, $notes);
         } catch (RuntimeException $e) {
-            $this->error = $e->getMessage();
+            $this->error = FriendlyError::message($e);
 
             return;
         }
@@ -352,7 +354,7 @@ class CashScreen extends Component
         try {
             app(DayCloseService::class)->reopen($this->dayClose, $manager, $reason);
         } catch (RuntimeException $e) {
-            $this->error = $e->getMessage();
+            $this->error = FriendlyError::message($e);
 
             return;
         }

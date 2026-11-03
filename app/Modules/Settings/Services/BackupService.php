@@ -5,11 +5,11 @@ namespace App\Modules\Settings\Services;
 use App\Modules\Settings\Services\Backup\DatabaseDumper;
 use App\Modules\Settings\Services\Backup\MysqlDumper;
 use App\Modules\Settings\Services\Backup\SqliteDumper;
+use App\Support\Errors\UserFacingException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
-use RuntimeException;
 use ZipArchive;
 
 /**
@@ -47,7 +47,7 @@ class BackupService
 
         $zip = new ZipArchive;
         if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
-            throw new RuntimeException("Could not create {$zipPath}");
+            throw new UserFacingException("Could not create {$zipPath}");
         }
         $zip->addFile($sqlPath, 'database.sql');
         $zip->addFromString('manifest.json', json_encode([
@@ -80,16 +80,16 @@ class BackupService
     public function restore(string $zipPath): string
     {
         if (! is_file($zipPath)) {
-            throw new RuntimeException("Backup not found: {$zipPath}");
+            throw new UserFacingException("Backup not found: {$zipPath}");
         }
         $zip = new ZipArchive;
         if ($zip->open($zipPath) !== true || $zip->locateName('database.sql') === false) {
-            throw new RuntimeException('This file is not a CorralBusiness backup (database.sql missing).');
+            throw new UserFacingException('This file is not a CorralBusiness backup (database.sql missing).');
         }
         $manifest = json_decode((string) $zip->getFromName('manifest.json'), true) ?: [];
         $driver = DB::connection()->getDriverName();
         if (($manifest['driver'] ?? $driver) !== $driver) {
-            throw new RuntimeException("This backup was made on {$manifest['driver']}; this server uses {$driver}.");
+            throw new UserFacingException("This backup was made on {$manifest['driver']}; this server uses {$driver}.");
         }
 
         $entries = $this->safeEntries($zip);
@@ -153,11 +153,11 @@ class BackupService
     public function copyTo(string $zipPath, string $folder): string
     {
         if (! is_dir($folder) || ! is_writable($folder)) {
-            throw new RuntimeException("Cannot write to {$folder}. Is the USB stick plugged in?");
+            throw new UserFacingException("Cannot write to {$folder}. Is the USB stick plugged in?");
         }
         $target = rtrim($folder, '/').'/'.basename($zipPath);
         if (! copy($zipPath, $target)) {
-            throw new RuntimeException("Copy to {$target} failed.");
+            throw new UserFacingException("Copy to {$target} failed.");
         }
 
         return $target;
@@ -173,13 +173,13 @@ class BackupService
         $name = basename(trim($name));
         $pattern = '/^'.preg_quote(self::PREFIX, '/').'[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{6}(-[0-9]+)?\.zip$/';
         if (! preg_match($pattern, $name)) {
-            throw new RuntimeException("Backup not found: {$name}");
+            throw new UserFacingException("Backup not found: {$name}");
         }
 
         $dir = realpath($this->directory());
         $path = realpath($dir.DIRECTORY_SEPARATOR.$name);
         if ($dir === false || $path === false || ! str_starts_with($path, $dir.DIRECTORY_SEPARATOR) || ! is_file($path)) {
-            throw new RuntimeException("Backup not found: {$name}");
+            throw new UserFacingException("Backup not found: {$name}");
         }
 
         return $path;
@@ -201,7 +201,7 @@ class BackupService
         for ($i = 0; $i < $zip->numFiles; $i++) {
             $name = (string) $zip->getNameIndex($i);
             if (! $this->isSafeEntry($name)) {
-                throw new RuntimeException("This backup contains a file that does not belong in a backup ({$name}); it was not restored.");
+                throw new UserFacingException("This backup contains a file that does not belong in a backup ({$name}); it was not restored.");
             }
             $names[] = $name;
         }

@@ -8,6 +8,7 @@ use App\Modules\Payments\Filament\Resources\DayCloses\Pages\ViewDayClose;
 use App\Modules\Payments\Models\DayClose;
 use App\Modules\Payments\Services\DayCloseService;
 use App\Modules\Staff\Enums\Permission;
+use App\Support\Errors\FriendlyError;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
@@ -74,7 +75,7 @@ class DayCloseResource extends Resource
                     app(DayCloseService::class)->reopen($record, auth()->user(), $data['reason']);
                     Notification::make()->success()->title(__('payments::payments.day.reopened'))->send();
                 } catch (RuntimeException $e) {
-                    Notification::make()->danger()->title($e->getMessage())->send();
+                    Notification::make()->danger()->title(FriendlyError::message($e))->send();
                 }
             });
     }

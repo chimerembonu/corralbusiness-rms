@@ -10,6 +10,7 @@
 
     {{-- Polling: slow keep-alive always; fast polling only while the live socket is down --}}
     <div wire:poll.30s="refresh"></div>
+    @if ($error)<p class="mx-4 mt-2 rounded-xl bg-rose-500/15 px-4 py-3 text-sm font-semibold text-rose-300" role="alert">{{ $error }}</p>@endif
     <template x-if="!live"><div wire:poll.4s="refresh"></div></template>
 
     <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 px-4 py-2 text-sm">

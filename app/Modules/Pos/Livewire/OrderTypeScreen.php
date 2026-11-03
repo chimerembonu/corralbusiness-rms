@@ -14,6 +14,8 @@ use App\Modules\Pos\Concerns\AsksForManagerPin;
 use App\Modules\Pos\Services\TrainingMode;
 use App\Modules\Staff\Enums\Permission;
 use App\Modules\Staff\Models\User;
+use App\Support\Errors\FriendlyError;
+use App\Support\Livewire\ShowsFriendlyErrors;
 use App\Support\Money\Money;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -23,7 +25,7 @@ use RuntimeException;
 #[Layout('pos::layouts.app', ['title' => 'New order'])]
 class OrderTypeScreen extends Component
 {
-    use AsksForManagerPin;
+    use AsksForManagerPin, ShowsFriendlyErrors;
 
     public string $mode = 'home'; // home | tables
 
@@ -130,7 +132,7 @@ class OrderTypeScreen extends Component
         try {
             $delivery->validateDetails($this->delivery['phone'] ?? '', $this->delivery['address'] ?? '');
         } catch (RuntimeException $e) {
-            $this->error = $e->getMessage();
+            $this->error = FriendlyError::message($e);
 
             return;
         }
@@ -159,7 +161,7 @@ class OrderTypeScreen extends Component
             if (isset($order)) {
                 $orders->void($order, 'Delivery details missing', auth()->user());
             }
-            $this->error = $e->getMessage();
+            $this->error = FriendlyError::message($e);
 
             return;
         }
@@ -171,7 +173,7 @@ class OrderTypeScreen extends Component
     {
         $raw = trim((string) ($this->delivery['fee'] ?? ''));
 
-        return Money::fromDecimal($raw === '' ? '0' : $raw);
+        return Money::fromTyped($raw);
     }
 
     /** Switch this device in or out of training mode (manager PIN). */
@@ -203,7 +205,7 @@ class OrderTypeScreen extends Component
         try {
             $order = $orders->open(OrderType::Takeaway, auth()->user());
         } catch (RuntimeException $e) {
-            $this->error = $e->getMessage();
+            $this->error = FriendlyError::message($e);
 
             return;
         }
@@ -255,7 +257,7 @@ class OrderTypeScreen extends Component
         try {
             $order = $orders->open(OrderType::DineIn, auth()->user(), $table, $this->covers);
         } catch (RuntimeException $e) {
-            $this->error = $e->getMessage();
+            $this->error = FriendlyError::message($e);
             $this->coversFor = null;
 
             return;

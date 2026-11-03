@@ -4,38 +4,43 @@
     @endif
 
     @if ($mode === 'home')
-        <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <button type="button" wire:click="showTables" class="flex min-h-40 flex-col items-center justify-center rounded-3xl bg-emerald-500 p-6 text-slate-950 hover:bg-emerald-400">
-                <span class="text-3xl font-black">{{ __('pos::pos.home.dine_in') }}</span>
-                <span class="mt-1 text-base font-medium opacity-80">{{ __('pos::pos.home.dine_in_hint') }}</span>
-            </button>
-            <button type="button" wire:click="startTakeaway" class="flex min-h-40 flex-col items-center justify-center rounded-3xl bg-amber-400 p-6 text-slate-950 hover:bg-amber-300">
-                <span class="text-3xl font-black">{{ __('pos::pos.home.takeaway') }}</span>
-                <span class="mt-1 text-base font-medium opacity-80">{{ __('pos::pos.home.takeaway_hint') }}</span>
-            </button>
-            <button type="button" wire:click="startDelivery" class="flex min-h-40 flex-col items-center justify-center rounded-3xl bg-sky-500 p-6 text-slate-950 hover:bg-sky-400">
-                <span class="text-3xl font-black">{{ __('pos::pos.home.delivery') }}</span>
-                <span class="mt-1 text-base font-medium opacity-80">{{ __('pos::pos.home.delivery_hint') }}</span>
-            </button>
-        </div>
+        @can(\App\Modules\Staff\Enums\Permission::OrdersCreate->value)
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <button type="button" wire:click="showTables" class="flex min-h-40 flex-col items-center justify-center rounded-3xl bg-emerald-500 p-6 text-slate-950 hover:bg-emerald-400">
+                    <span class="text-3xl font-black">{{ __('pos::pos.home.dine_in') }}</span>
+                    <span class="mt-1 text-base font-medium opacity-80">{{ __('pos::pos.home.dine_in_hint') }}</span>
+                </button>
+                <button type="button" wire:click="startTakeaway" class="flex min-h-40 flex-col items-center justify-center rounded-3xl bg-amber-400 p-6 text-slate-950 hover:bg-amber-300">
+                    <span class="text-3xl font-black">{{ __('pos::pos.home.takeaway') }}</span>
+                    <span class="mt-1 text-base font-medium opacity-80">{{ __('pos::pos.home.takeaway_hint') }}</span>
+                </button>
+                <button type="button" wire:click="startDelivery" class="flex min-h-40 flex-col items-center justify-center rounded-3xl bg-sky-500 p-6 text-slate-950 hover:bg-sky-400">
+                    <span class="text-3xl font-black">{{ __('pos::pos.home.delivery') }}</span>
+                    <span class="mt-1 text-base font-medium opacity-80">{{ __('pos::pos.home.delivery_hint') }}</span>
+                </button>
+            </div>
 
-        <section>
-            <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-400">{{ __('pos::pos.home.open_orders') }}</h2>
-            @if ($openOrders->isEmpty())
-                <p class="rounded-2xl border border-slate-800 p-4 text-slate-500">{{ __('pos::pos.home.none_open') }}</p>
-            @else
-                <div class="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-6">
-                    @foreach ($openOrders as $order)
-                        <button type="button" wire:click="resume('{{ $order->id }}')" class="flex min-h-24 flex-col justify-between rounded-2xl bg-slate-900 p-3 text-left ring-1 ring-slate-800 hover:ring-emerald-500">
-                            <span class="text-lg font-bold">#{{ $order->displayNumber() }} <span class="text-sm font-medium text-slate-400">{{ $order->table?->name ?? $order->type->label() }}</span>@if ($order->isDelivery() && $order->delivery_status) <span class="rounded-full bg-sky-500/20 px-2 text-[10px] font-bold uppercase text-sky-300">{{ $order->delivery_status->label() }}</span>@endif</span>
-                            @if ($order->customer_name)<span class="truncate text-sm font-semibold text-amber-300">{{ $order->customer_name }}</span>@endif
-                            <span class="text-sm text-slate-400">{{ $order->opened_at->format('H:i') }} · {{ $order->isHeld() ? __('pos::pos.home.held') : $order->status->label() }}</span>
-                            <span class="text-base font-semibold text-emerald-400">{{ money($order->total) }}</span>
-                        </button>
-                    @endforeach
-                </div>
-            @endif
-        </section>
+            <section>
+                <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-400">{{ __('pos::pos.home.open_orders') }}</h2>
+                @if ($openOrders->isEmpty())
+                    <p class="rounded-2xl border border-slate-800 p-4 text-slate-500">{{ __('pos::pos.home.none_open') }}</p>
+                @else
+                    <div class="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-6">
+                        @foreach ($openOrders as $order)
+                            <button type="button" wire:click="resume('{{ $order->id }}')" class="flex min-h-24 flex-col justify-between rounded-2xl bg-slate-900 p-3 text-left ring-1 ring-slate-800 hover:ring-emerald-500">
+                                <span class="text-lg font-bold">#{{ $order->displayNumber() }} <span class="text-sm font-medium text-slate-400">{{ $order->table?->name ?? $order->type->label() }}</span>@if ($order->isDelivery() && $order->delivery_status) <span class="rounded-full bg-sky-500/20 px-2 text-[10px] font-bold uppercase text-sky-300">{{ $order->delivery_status->label() }}</span>@endif</span>
+                                @if ($order->customer_name)<span class="truncate text-sm font-semibold text-amber-300">{{ $order->customer_name }}</span>@endif
+                                <span class="text-sm text-slate-400">{{ $order->opened_at->format('H:i') }} · {{ $order->isHeld() ? __('pos::pos.home.held') : $order->status->label() }}</span>
+                                <span class="text-base font-semibold text-emerald-400">{{ money($order->total) }}</span>
+                            </button>
+                        @endforeach
+                    </div>
+                @endif
+            </section>
+        @else
+            {{-- Stock counters and other roles that do not take orders: point them at their own buttons above. --}}
+            <p class="rounded-2xl border border-slate-800 p-6 text-lg text-slate-300">{{ __('pos::pos.home.no_orders_for_role') }}</p>
+        @endcan
     @else
         <div class="flex flex-wrap items-center gap-3">
             <button type="button" wire:click="showHome" class="h-12 rounded-xl bg-slate-800 px-4 font-semibold hover:bg-slate-700">← {{ __('pos::pos.nav.back') }}</button>

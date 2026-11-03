@@ -1,4 +1,5 @@
 <div wire:poll.30s>
+    @if ($error)<p class="bg-rose-700 px-4 py-2 text-sm font-semibold text-white" role="alert">{{ $error }}</p>@endif
     @if ($failures->isNotEmpty())
         @php($last = $failures->first())
         <div class="flex items-center justify-between gap-3 bg-rose-600 px-4 py-2 text-sm text-white" role="alert">
