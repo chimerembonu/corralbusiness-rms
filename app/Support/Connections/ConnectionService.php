@@ -20,7 +20,19 @@ class ConnectionService
     /** @return array<string, array<string, mixed>> */
     public function definitions(): array
     {
-        return config('connections.connections', []);
+        // Payment providers bring their own fields and act as their own tester (config/payments.php).
+        $gateways = [];
+        foreach (config('payments.gateways', []) as $key => $gateway) {
+            $gateways[$gateway['connection']] = [
+                'stage' => 'E2',
+                'group' => 'payments',
+                'gateway' => $key,
+                'fields' => $gateway['fields'] ?? [],
+                'tester' => $gateway['tester'] ?? $gateway['class'],
+            ];
+        }
+
+        return $gateways + config('connections.connections', []);
     }
 
     public function definition(string $name): array
@@ -143,7 +155,11 @@ class ConnectionService
     /** A feature "need" (e.g. payment_provider) is met when any connection that can serve it is ready. */
     public function needMet(string $need): bool
     {
-        foreach (config("features.needs.{$need}", []) as $name) {
+        $names = config("features.needs.{$need}", []);
+        if ($names === '@gateways') {
+            $names = array_column(config('payments.gateways', []), 'connection');
+        }
+        foreach ((array) $names as $name) {
             if ($this->isReady($name)) {
                 return true;
             }

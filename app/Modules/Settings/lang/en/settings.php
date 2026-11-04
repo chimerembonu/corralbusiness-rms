@@ -111,12 +111,13 @@ return [
         'test_crashed' => 'The test could not be completed. Check the internet connection and try again.',
         'owner_only' => 'Only the owner can see and change connections.',
         'names' => [
-            'paystack' => 'Paystack', 'payswitch' => 'PaySwitch (theteller)', 'corral_cloud' => 'Corral Cloud', 'own_server' => 'Your own online server',
+            'paystack' => 'Paystack', 'payswitch' => 'PaySwitch (theteller)', 'demo_payments' => 'Demo payments (training only)', 'corral_cloud' => 'Corral Cloud', 'own_server' => 'Your own online server',
             'sms' => 'SMS sender', 'whatsapp' => 'WhatsApp', 'evat' => 'GRA e-VAT',
         ],
         'about' => [
             'paystack' => 'Mobile Money and card payments through Paystack. Keys are in your Paystack dashboard → Settings → API Keys.',
             'payswitch' => 'Mobile Money and card payments through PaySwitch (theteller). Merchant ID, API user and API key are in your theteller merchant account.',
+            'demo_payments' => 'Practise Mobile Money prompts without a merchant account. Works only on tills in training mode and never moves real money.',
             'corral_cloud' => 'Online ordering, the owner\'s dashboard and off-site backups, hosted by Corral Systems. Type the activation code you were given.',
             'own_server' => 'Run the online part on your own internet server instead of Corral Cloud.',
             'sms' => 'Any SMS gateway with a web address and key (e.g. your MTech A2P account). Sender ID up to 11 characters.',
@@ -129,7 +130,7 @@ return [
             'token' => 'Access token', 'sender_id' => 'Sender ID', 'api_url' => 'Gateway web address', 'phone_number_id' => 'Phone number ID',
             'access_token' => 'Access token', 'tin' => 'Restaurant TIN',
         ],
-        'modes' => ['test' => 'Test (no real money)', 'live' => 'Live'],
+        'modes' => ['test' => 'Test (no real money)', 'live' => 'Live', 'demo' => 'Demo (training only)'],
         'errors' => [
             'required' => ':field is needed.',
             'option' => 'Choose a value for :field.',

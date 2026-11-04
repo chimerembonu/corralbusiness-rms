@@ -28,5 +28,9 @@ class PaymentsServiceProvider extends ServiceProvider
     public function boot(): void
     {
         parent::boot();
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([Console\CheckGatewayPayments::class]);
+        }
     }
 }

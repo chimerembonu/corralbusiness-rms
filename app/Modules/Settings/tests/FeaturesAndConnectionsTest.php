@@ -27,7 +27,7 @@ beforeEach(function () {
     $this->manager->assignRole(Role::Manager->value);
     $this->connections = app(ConnectionService::class);
     $this->features = app(FeatureService::class);
-    config(['connections.connections.paystack.tester' => FakeConnectionTester::class]);
+    config(['payments.gateways.paystack.tester' => FakeConnectionTester::class]);
 });
 
 it('stores secrets locked, shows only their last 4 characters and keeps them when left blank', function () {
@@ -64,19 +64,18 @@ it('is ready only after a passing test, and saving again needs a new test', func
 });
 
 it('says when a connection is not built yet instead of pretending it works', function () {
-    $this->connections->save('payswitch', ['mode' => 'test', 'merchant_id' => 'TTM-1', 'api_user' => 'u', 'api_key' => 'k'], $this->owner);
-    $result = $this->connections->test('payswitch', $this->owner);
-    expect($result->ok)->toBeFalse()->and($result->message)->toContain('stage E2');
+    $this->connections->save('sms', ['sender_id' => 'CorralRMS', 'api_url' => 'https://sms.example.com', 'api_key' => 'k'], $this->owner);
+    $result = $this->connections->test('sms', $this->owner);
+    expect($result->ok)->toBeFalse()->and($result->message)->toContain('stage E4');
 });
 
 it('keeps every feature off until it is built, licensed and its connections are tested', function () {
     foreach (array_keys($this->features->definitions()) as $key) {
         expect($this->features->isOn($key))->toBeFalse();
     }
-    expect(fn () => $this->features->set('momo_prompt', true, $this->owner))->toThrow(FeatureException::class, 'Not available yet');
+    expect(fn () => $this->features->set('reservations', true, $this->owner))->toThrow(FeatureException::class, 'Not available yet');
 
-    // Pretend the stage is built: now only the missing payment provider stops it.
-    config(['features.features.momo_prompt.available' => true]);
+    // MoMo prompts are built (stage E2): only the missing payment provider stops them.
     expect($this->features->blockers('momo_prompt'))->toHaveCount(1)
         ->and(fn () => $this->features->set('momo_prompt', true, $this->owner))->toThrow(FeatureException::class, 'payment provider');
 

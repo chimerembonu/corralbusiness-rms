@@ -255,6 +255,13 @@ return [
         'in_shares' => 'in :ways equal shares',
         'share' => 'Share',
         'momo_reference' => 'Transaction ID from the customer’s phone',
+        'prompt_phone' => 'Customer\'s Mobile Money number, e.g. 024 123 4567',
+        'prompt_send' => 'Send payment prompt to phone',
+        'prompt_manual' => 'Customer already paid another way? Type the MoMo reference instead',
+        'prompt_otp' => 'Code from the customer\'s phone',
+        'prompt_otp_send' => 'Send code',
+        'prompt_stop' => 'Stop waiting',
+        'prompt_again' => 'Try again or take another payment',
         'card_reference' => 'Slip number or last 4 digits only — never the full card number (optional)',
     ],
     'receipt' => [

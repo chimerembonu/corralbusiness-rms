@@ -14,7 +14,7 @@
 
 return [
     'features' => [
-        'momo_prompt' => ['group' => 'payments', 'needs' => ['payment_provider'], 'tier' => 'pro', 'stage' => 'E2', 'available' => false],
+        'momo_prompt' => ['group' => 'payments', 'needs' => ['payment_provider'], 'tier' => 'pro', 'stage' => 'E2', 'available' => true],
         'online_payments' => ['group' => 'payments', 'needs' => ['payment_provider', 'online_service'], 'tier' => 'pro', 'stage' => 'E2', 'available' => false],
         'online_ordering' => ['group' => 'online', 'needs' => ['online_service', 'payment_provider'], 'tier' => 'business', 'stage' => 'E4', 'available' => false],
         'remote_dashboard' => ['group' => 'online', 'needs' => ['online_service'], 'tier' => 'pro', 'stage' => 'E3', 'available' => false],
@@ -35,7 +35,7 @@ return [
 
     // A "need" is met by any one of these connections being set up and tested.
     'needs' => [
-        'payment_provider' => ['paystack', 'payswitch'],
+        'payment_provider' => '@gateways', // any provider in config/payments.php
         'online_service' => ['corral_cloud', 'own_server'],
         'sms' => ['sms'],
         'whatsapp' => ['whatsapp'],

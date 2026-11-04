@@ -7,10 +7,15 @@ use App\Modules\Orders\Models\Order;
 use App\Modules\Orders\Support\TillSettings;
 use App\Modules\Payments\Enums\MomoProvider;
 use App\Modules\Payments\Enums\PaymentMethod;
+use App\Modules\Payments\Gateways\Data\GatewayStatus;
+use App\Modules\Payments\Gateways\GatewayManager;
+use App\Modules\Payments\Gateways\GatewayPaymentService;
+use App\Modules\Payments\Models\GatewayTransaction;
 use App\Modules\Payments\Services\CashService;
 use App\Modules\Payments\Services\PaymentService;
 use App\Modules\Staff\Enums\Permission;
 use App\Support\Errors\FriendlyError;
+use App\Support\Features\FeatureService;
 use App\Support\Livewire\ShowsFriendlyErrors;
 use App\Support\Money\Money;
 use App\Support\Tenancy\Tenancy;
@@ -43,6 +48,14 @@ class PaymentScreen extends Component
     public ?string $provider = null;
 
     public string $reference = '';
+
+    /** MoMo prompt (Complete Edition E2): the customer's number, the prompt being watched, a voucher code if the network asks. */
+    public string $phone = '';
+
+    #[Locked]
+    public ?string $promptId = null;
+
+    public string $otp = '';
 
     /** Pay in N equal shares (from the split-bill sheet). 0 = off. */
     #[Url]
@@ -175,6 +188,102 @@ class PaymentScreen extends Component
             $this->amount = $this->method === 'cash' ? '' : $this->suggested->toDecimal();
             $this->tip = '';
             $this->reference = '';
+        }
+    }
+
+    /** Prompts can be sent when the feature is on and a provider is ready for this order (Demo for training orders). */
+    #[Computed]
+    public function promptsAvailable(): bool
+    {
+        return app(FeatureService::class)->isOn('momo_prompt')
+            && app(GatewayManager::class)->forPurpose('till_momo', (bool) $this->order->is_training) !== null;
+    }
+
+    #[Computed]
+    public function prompt(): ?GatewayTransaction
+    {
+        return $this->promptId ? GatewayTransaction::query()->forBranch()->where('order_id', $this->orderId)->find($this->promptId) : null;
+    }
+
+    public function sendPrompt(GatewayPaymentService $gateways, CashService $cash, TillSettings $settings): void
+    {
+        $this->error = null;
+        if ($settings->requireSession($this->order->branch_id) && ! $cash->current(auth()->user(), $this->order->branch_id)) {
+            session()->flash('error', __('payments::payments.cash.errors.no_session'));
+            $this->redirectRoute('pos.cash', ['then' => $this->order->id]);
+
+            return;
+        }
+        try {
+            $amount = Money::fromDecimal($this->amount === '' ? '0' : $this->amount);
+            $tip = $this->tipsEnabled && $this->tip !== '' ? Money::fromDecimal($this->tip) : Money::zero();
+            $transaction = $gateways->startMomoPrompt($this->order, MomoProvider::from($this->provider ?? ''), $this->phone, $amount, auth()->user(), $tip);
+        } catch (\ValueError) {
+            $this->error = __('payments::payments.errors.provider_required');
+
+            return;
+        } catch (RuntimeException $e) {
+            $this->error = FriendlyError::message($e);
+
+            return;
+        }
+        $this->promptId = $transaction->id;
+        $this->otp = '';
+        unset($this->prompt);
+        $this->afterPrompt($transaction);
+    }
+
+    /** Called every few seconds while a prompt is waiting (wire:poll). */
+    public function checkPrompt(GatewayPaymentService $gateways): void
+    {
+        if (! $this->prompt) {
+            return;
+        }
+        $transaction = $gateways->refresh($this->prompt);
+        unset($this->prompt);
+        $this->afterPrompt($transaction);
+    }
+
+    public function sendOtp(GatewayPaymentService $gateways): void
+    {
+        if (! $this->prompt || trim($this->otp) === '') {
+            return;
+        }
+        $transaction = $gateways->submitOtp($this->prompt, $this->otp);
+        $this->otp = '';
+        unset($this->prompt);
+        $this->afterPrompt($transaction);
+    }
+
+    /** The cashier stops waiting; if the customer still pays, it is recorded (or flagged) automatically. */
+    public function stopWaiting(GatewayPaymentService $gateways): void
+    {
+        if ($this->prompt) {
+            $gateways->cancel($this->prompt, auth()->user());
+        }
+        $this->promptId = null;
+        unset($this->prompt);
+    }
+
+    public function dismissPrompt(): void
+    {
+        $this->promptId = null;
+        unset($this->prompt);
+    }
+
+    private function afterPrompt(GatewayTransaction $transaction): void
+    {
+        if ($transaction->status !== GatewayStatus::Succeeded) {
+            return;
+        }
+        unset($this->order, $this->suggested, $this->quickAmounts);
+        $this->promptId = null;
+        $this->phone = '';
+        if ($this->order->isPaid()) {
+            $this->redirectRoute('pos.receipt', [$this->order, 'print' => 1]);
+        } else {
+            $this->amount = $this->suggested->toDecimal();
+            $this->tip = '';
         }
     }
 

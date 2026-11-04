@@ -11,25 +11,7 @@
 
 return [
     'connections' => [
-        'paystack' => [
-            'stage' => 'E2',
-            'fields' => [
-                'mode' => ['type' => 'select', 'options' => ['test', 'live'], 'required' => true],
-                'public_key' => ['type' => 'text', 'required' => true],
-                'secret_key' => ['type' => 'text', 'secret' => true, 'required' => true],
-            ],
-            'tester' => null,
-        ],
-        'payswitch' => [
-            'stage' => 'E2',
-            'fields' => [
-                'mode' => ['type' => 'select', 'options' => ['test', 'live'], 'required' => true],
-                'merchant_id' => ['type' => 'text', 'required' => true],
-                'api_user' => ['type' => 'text', 'required' => true],
-                'api_key' => ['type' => 'text', 'secret' => true, 'required' => true],
-            ],
-            'tester' => null,
-        ],
+        // Payment providers are declared in config/payments.php ('fields') and added here automatically.
         'corral_cloud' => [
             'stage' => 'E3',
             'fields' => [
