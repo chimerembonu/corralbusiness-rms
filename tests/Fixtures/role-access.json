@@ -118,6 +118,10 @@
         "owner",
         "manager"
     ],
+    "admin/licence": [
+        "owner",
+        "manager"
+    ],
     "admin/modifier-groups": [
         "owner",
         "manager"

@@ -3,6 +3,7 @@
 namespace App\Providers\Filament;
 
 use App\Modules\Staff\Filament\Auth\Login;
+use App\Support\Licence\EnforceLicence;
 use App\Support\Tenancy\SetTenantFromUser;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -12,6 +13,7 @@ use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\View\PanelsRenderHook;
 use Filament\Widgets\AccountWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -66,6 +68,9 @@ class HqPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
                 SetTenantFromUser::class,
-            ]);
+                EnforceLicence::class, // reports-only once a licence has ended (E1.2)
+            ])
+            // Licence warning (ending soon, grace period, reports-only) for owner and managers.
+            ->renderHook(PanelsRenderHook::CONTENT_START, fn () => view('settings::filament.licence-banner'));
     }
 }

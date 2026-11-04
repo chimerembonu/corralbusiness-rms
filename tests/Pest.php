@@ -5,6 +5,9 @@ use App\Modules\Menu\Models\Item;
 use App\Modules\Menu\Models\ModifierGroup;
 use App\Modules\Settings\Models\Branch;
 use App\Modules\Settings\Services\TenantProvisioner;
+use App\Support\Licence\Licence;
+use App\Support\Licence\LicenceCodec;
+use App\Support\Licence\LicenceService;
 use App\Support\Tenancy\Tenancy;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Database\Eloquent\Model;
@@ -41,6 +44,34 @@ function provisionTenant(string $name = 'Test Chop Bar'): Branch
     Tenancy::set($branch->tenant, $branch);
 
     return $branch;
+}
+
+/**
+ * A licence code signed with a throw-away test key (the real Corral Systems key is never used in tests).
+ * The test key is trusted for this test only.
+ *
+ * @param  array<string, mixed>  $details  overrides: plan, branches, issued, expires, tenant, extras…
+ */
+function testLicenceCode(array $details = []): string
+{
+    static $pair;
+    $pair ??= sodium_crypto_sign_keypair();
+    config(['licence.public_keys' => ['test' => base64_encode(sodium_crypto_sign_publickey($pair))]]);
+
+    return LicenceCodec::issue(array_merge([
+        'id' => 'L-TEST-0001',
+        'restaurant' => 'Test Chop Bar',
+        'plan' => 'pro',
+        'branches' => 1,
+        'issued' => now()->toDateString(),
+        'expires' => now()->addYear()->toDateString(),
+    ], $details), base64_encode(sodium_crypto_sign_secretkey($pair)), 'test');
+}
+
+/** Installs a test licence for the current restaurant. */
+function installTestLicence(string $plan = 'pro', array $details = []): Licence
+{
+    return app(LicenceService::class)->install(testLicenceCode(['plan' => $plan] + $details));
 }
 
 function seedRoles(): void

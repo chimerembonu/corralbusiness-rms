@@ -42,6 +42,7 @@ beforeEach(function () {
     $this->due = $this->order->fresh()->balanceDue();
 
     config(['features.features.momo_prompt.available' => true]);
+    installTestLicence('business'); // features need a licence that covers them (E1.2)
     $this->connections = app(ConnectionService::class);
     $this->service = app(GatewayPaymentService::class);
     $this->verify = 'pending';

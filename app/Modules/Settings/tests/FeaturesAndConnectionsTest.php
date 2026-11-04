@@ -27,6 +27,7 @@ beforeEach(function () {
     $this->manager->assignRole(Role::Manager->value);
     $this->connections = app(ConnectionService::class);
     $this->features = app(FeatureService::class);
+    installTestLicence('business'); // features need a licence that covers them (E1.2)
     config(['payments.gateways.paystack.tester' => FakeConnectionTester::class]);
 });
 

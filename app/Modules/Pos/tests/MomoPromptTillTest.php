@@ -34,6 +34,7 @@ beforeEach(function () {
     $this->order = $orders->open(OrderType::Takeaway, $this->cashier);
     $orders->addItem($this->order, $this->menu['coke'], null, 2, [], null, $this->cashier);
     $this->order->forceFill(['is_training' => true])->save(); // practise with the Demo provider
+    installTestLicence('business'); // features need a licence that covers them (E1.2)
 
     $connections = app(ConnectionService::class);
     $connections->save('demo_payments', ['mode' => 'demo']);

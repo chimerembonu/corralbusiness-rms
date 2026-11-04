@@ -5,6 +5,8 @@ namespace App\Support\Features;
 use App\Modules\Settings\Models\ModuleSetting;
 use App\Modules\Staff\Models\User;
 use App\Support\Connections\ConnectionService;
+use App\Support\Licence\LicenceService;
+use App\Support\Licence\LicenceStatus;
 use App\Support\Tenancy\TenantContext;
 
 /**
@@ -15,7 +17,7 @@ use App\Support\Tenancy\TenantContext;
  */
 class FeatureService
 {
-    public function __construct(private readonly ConnectionService $connections, private readonly TenantContext $context) {}
+    public function __construct(private readonly ConnectionService $connections, private readonly TenantContext $context, private readonly LicenceService $licence) {}
 
     /** @return array<string, array<string, mixed>> */
     public function definitions(): array
@@ -55,8 +57,13 @@ class FeatureService
         if (! ($definition['available'] ?? false)) {
             $reasons[] = __('settings::settings.features.blockers.not_built', ['stage' => $definition['stage'] ?? '']);
         }
-        if (! $this->licensed($definition['tier'] ?? 'starter')) {
-            $reasons[] = __('settings::settings.features.blockers.licence', ['tier' => __('settings::settings.features.tiers.'.($definition['tier'] ?? 'starter'))]);
+        if (! $this->licensed($key)) {
+            $tier = __('settings::settings.features.tiers.'.($definition['tier'] ?? 'starter'));
+            $reasons[] = match ($this->licence->status()) {
+                LicenceStatus::None => __('settings::settings.features.blockers.no_licence', ['tier' => $tier]),
+                LicenceStatus::ReadOnly => __('settings::settings.features.blockers.licence_ended'),
+                default => __('settings::settings.features.blockers.licence', ['tier' => $tier]),
+            };
         }
         foreach ($definition['needs'] ?? [] as $need) {
             if (! $this->connections->needMet($need)) {
@@ -78,10 +85,10 @@ class FeatureService
         activity('settings')->event($on ? 'feature_on' : 'feature_off')->causedBy($by)->withProperties(['feature' => $key])->log($on ? 'feature_on' : 'feature_off');
     }
 
-    /** Licence tiers arrive in E1's licence step; until then every tier is allowed. */
-    public function licensed(string $tier): bool
+    /** Covered by the restaurant's licence (plan high enough, or sold on top) and the licence is not read-only. */
+    public function licensed(string $key): bool
     {
-        return true;
+        return $this->licence->allowsFeature($key, $this->definition($key)['tier'] ?? 'starter');
     }
 
     public static function storageKey(string $key): string

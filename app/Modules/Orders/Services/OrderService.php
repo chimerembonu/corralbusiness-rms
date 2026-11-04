@@ -46,6 +46,7 @@ use App\Modules\Settings\Services\TaxService;
 use App\Modules\Staff\Enums\Permission;
 use App\Modules\Staff\Exceptions\ManagerPinRequiredException;
 use App\Modules\Staff\Models\User;
+use App\Support\Licence\LicenceService;
 use App\Support\Money\Money;
 use App\Support\Tax\TaxIdentificationNumber;
 use App\Support\Tenancy\TenantContext;
@@ -69,6 +70,9 @@ class OrderService
         if ($type === OrderType::DineIn && $table) {
             app(TableService::class)->assertFree($table);
         }
+
+        // A licence that ended (after its grace period) stops NEW orders only; open ones can always be finished.
+        app(LicenceService::class)->assertCanStartOrders();
 
         $businessDate = $this->businessDate();
         app(DayCloseService::class)->assertOpen($businessDate, $table?->branch_id ?? $this->context->branchId());
