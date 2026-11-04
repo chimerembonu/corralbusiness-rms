@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Modules\Staff\Filament\Auth\Login;
 use App\Support\Modules;
 use App\Support\Tenancy\SetTenantFromUser;
 use Filament\Http\Middleware\Authenticate;
@@ -33,7 +34,7 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path(config('rms.admin_path', 'admin'))
-            ->login()
+            ->login(Login::class) // logs throttled sign-ins (compliance assessment)
             // Button presses that fail show these instead of a technical error box (same words as the till).
             ->registerErrorNotification(fn () => __('errors.pages.500.title'), fn () => __('errors.action.failed'))
             ->registerErrorNotification(fn () => __('errors.pages.403.title'), fn () => __('errors.action.forbidden'), 403)

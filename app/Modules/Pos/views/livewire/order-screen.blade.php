@@ -318,6 +318,7 @@
                     <button type="button" wire:click="openModal('promo')" class="flex min-h-24 flex-col items-center justify-center rounded-2xl bg-slate-800 p-3 text-base font-bold hover:bg-slate-700">{{ __('pos::pos.order.promo') }}</button>
                     <button type="button" wire:click="openModal('customer')" class="flex min-h-24 flex-col items-center justify-center rounded-2xl bg-slate-800 p-3 text-base font-bold hover:bg-slate-700">{{ __('customers::customers.pos.button') }}@if ($order->customer)<span class="line-clamp-1 text-xs font-medium text-emerald-300">{{ $order->customer->name }}</span>@endif</button>
                     <button type="button" wire:click="openModal('note')" class="flex min-h-24 flex-col items-center justify-center rounded-2xl bg-slate-800 p-3 text-base font-bold hover:bg-slate-700">{{ __('pos::pos.order.order_note') }}@if ($order->notes)<span class="line-clamp-1 text-xs font-medium text-amber-300">{{ $order->notes }}</span>@endif</button>
+                    <button type="button" wire:click="openModal('tin')" class="flex min-h-24 flex-col items-center justify-center rounded-2xl bg-slate-800 p-3 text-base font-bold hover:bg-slate-700">{{ __('pos::pos.order.customer_tin') }}@if ($order->customer_tin)<span class="line-clamp-1 text-xs font-medium text-amber-300">{{ $order->customer_tin }}</span>@endif</button>
                     @if ($order->service_charge_bp > 0)
                         <button type="button" wire:click="toggleServiceCharge" class="flex min-h-24 flex-col items-center justify-center rounded-2xl bg-slate-800 p-3 text-base font-bold hover:bg-slate-700">{{ $order->service_charge_waived ? __('pos::pos.order.restore_service') : __('pos::pos.order.waive_service') }}<span class="text-xs font-medium text-slate-400">{{ __('pos::pos.order.needs_manager') }}</span></button>
                     @endif
@@ -428,6 +429,22 @@
                 </div>
                 <textarea wire:model="orderNote" rows="3" placeholder="{{ __('pos::pos.order.order_note_placeholder') }}" class="mt-3 w-full rounded-xl border-0 bg-slate-800 px-4 py-3 text-base text-slate-100 placeholder:text-slate-500"></textarea>
                 <button type="button" wire:click="saveOrderNote" class="mt-4 h-14 w-full rounded-2xl bg-emerald-500 text-lg font-bold text-slate-950 hover:bg-emerald-400">{{ __('pos::pos.order.save') }}</button>
+            </div>
+        </div>
+    @endif
+
+    {{-- Customer TIN for the receipt (compliance assessment) --}}
+    @if ($modal === 'tin')
+        <div class="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/80 p-4" wire:key="modal-tin">
+            <div class="w-full max-w-md rounded-3xl bg-slate-900 p-5 ring-1 ring-slate-700">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xl font-bold">{{ __('pos::pos.order.customer_tin') }}</h2>
+                    <button type="button" wire:click="closeModal" class="h-11 w-11 rounded-xl bg-slate-800 text-xl hover:bg-slate-700" aria-label="{{ __('pos::pos.order.close') }}">✕</button>
+                </div>
+                <p class="mt-2 text-sm text-slate-400">{{ __('pos::pos.order.customer_tin_help') }}</p>
+                <input type="text" wire:model="customerTin" autocapitalize="characters" autocomplete="off" placeholder="C0012345678" class="mt-3 h-14 w-full rounded-xl border-0 bg-slate-800 px-4 text-lg uppercase tracking-wide text-slate-100 placeholder:text-slate-600">
+                @if ($error)<p class="mt-2 text-sm font-semibold text-rose-400">{{ $error }}</p>@endif
+                <button type="button" wire:click="saveCustomerTin" class="mt-4 h-14 w-full rounded-2xl bg-emerald-500 text-lg font-bold text-slate-950 hover:bg-emerald-400">{{ __('pos::pos.order.save') }}</button>
             </div>
         </div>
     @endif

@@ -115,7 +115,9 @@ If the computer restarts (power cut), everything comes back by itself.
 
 ## 6. Backups and restore
 
-A backup is one zip file with the whole database plus uploaded logos and pictures. One is taken every night at 02:30 into `storage/backups` on the server; old ones are removed after 14 days. The nightly backup only protects you if a copy also leaves the server, so once a week do one of these:
+A backup is one zip file with the whole database plus uploaded logos and pictures. One is taken every night at 02:30 into `storage/backups` on the server; old ones are removed after 14 days.
+
+**Backups are locked with a password** (AES-256), so a lost USB stick or downloaded file does not expose customers, staff or sales. The installer creates the password and shows it once at the end: **write it down and keep it away from the server.** You need it only to restore a backup on a *different* computer (for example after replacing the server). See it again any time with `./scripts/rms rms:backup --show-password`. Servers installed before 4 November 2026 use a password tied to the server's own key; run the same command to see it and write it down too. The nightly backup only protects you if a copy also leaves the server, so once a week do one of these:
 
 - **USB stick:** plug a stick into the server and run `sudo ./scripts/backup-to-usb.sh`. Wait for "Done", then remove the stick.
 - **Download:** in the back office open Settings → Backups and tap **Download** next to the newest backup; save it on your laptop or in cloud storage.
@@ -127,14 +129,17 @@ A backup is one zip file with the whole database plus uploaded logos and picture
 | See the backups on the server | `./scripts/rms rms:backups` |
 | Restore the newest backup | `./scripts/rms rms:restore` |
 | Restore a particular file | `./scripts/rms rms:restore rms-backup-2026-11-13-023000.zip` |
+| Show the backup password | `./scripts/rms rms:backup --show-password` |
 
 **Restoring after a disaster (new computer), in under 10 minutes:**
 1. Install the app on the new computer (section 2) and answer the setup questions with anything; the restore replaces them.
 2. Copy the backup zip to `/opt/corralbusiness-rms/storage/backups/` (from the USB stick: `sudo cp /media/*/*/rms-backup-*.zip /opt/corralbusiness-rms/storage/backups/`). If the folder does not exist yet, the Docker volume holds it: use `sudo docker compose cp /media/<user>/<stick>/rms-backup-2026-11-13-023000.zip app:/var/www/html/storage/backups/`.
-3. Run `./scripts/rms rms:restore rms-backup-2026-11-13-023000.zip` and answer **yes**.
+3. Run `./scripts/rms rms:restore rms-backup-2026-11-13-023000.zip --password="the old server's backup password"` and answer **yes**. (The new server has its own password, so type the one you wrote down for the old server.)
 4. Open the till; everything is back as at the time of the backup. The state from just before the restore is kept as another backup in case you chose the wrong file.
 
-The back office can restore too (Settings → Backups → Restore, owner only, type RESTORE), and can take an uploaded backup file.
+The back office can restore too (Settings → Backups → Restore, owner only, type RESTORE), and can take an uploaded backup file; for a file from another server, type that server's backup password in the box provided.
+
+**Updates always back up first.** `scripts/update.sh` takes a backup before changing anything and **stops without updating** if the backup fails, so the restaurant keeps running on the old version. Only if the app cannot start at all (so no backup is possible) run `SKIP_BACKUP=1 sudo -E ./scripts/update.sh`.
 
 ## 7. Checking speed (load test)
 

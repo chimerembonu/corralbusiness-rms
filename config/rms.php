@@ -59,6 +59,12 @@ return [
         'late_after_minutes' => 10,
     ],
 
+    // Backups are locked (AES-256) with this password. Set by the installer; if empty, a password derived
+    // from APP_KEY is used, so every backup is always locked. Show it with: php artisan rms:backup --show-password
+    'backup' => [
+        'password' => env('RMS_BACKUP_PASSWORD'),
+    ],
+
     // PIN security (CLAUDE.md §3.14).
     'pin' => [
         'min_length' => 4,

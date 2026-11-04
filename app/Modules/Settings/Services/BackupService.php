@@ -65,6 +65,11 @@ class BackupService
                 $zip->addFile($file->getPathname(), 'uploads/'.str_replace(DIRECTORY_SEPARATOR, '/', $file->getRelativePathname()));
             }
         }
+        // Lock every file in the zip: a lost USB stick must not expose customers, staff or sales (compliance assessment).
+        $password = $this->password();
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $zip->setEncryptionIndex($i, ZipArchive::EM_AES_256, $password);
+        }
         $zip->close();
         @unlink($sqlPath);
 
@@ -77,7 +82,7 @@ class BackupService
      * Put a backup back. A safety backup of the current state is taken first.
      * Returns the path of that safety backup.
      */
-    public function restore(string $zipPath): string
+    public function restore(string $zipPath, ?string $password = null): string
     {
         if (! is_file($zipPath)) {
             throw new UserFacingException("Backup not found: {$zipPath}");
@@ -85,6 +90,12 @@ class BackupService
         $zip = new ZipArchive;
         if ($zip->open($zipPath) !== true || $zip->locateName('database.sql') === false) {
             throw new UserFacingException('This file is not a CorralBusiness backup (database.sql missing).');
+        }
+        // Locked backups need this server's backup password, or the one typed in for a backup from another server.
+        // Older, unlocked backups open without one.
+        $zip->setPassword(filled($password) ? $password : $this->password());
+        if ($zip->getStream('database.sql') === false || $zip->getFromName('manifest.json') === false) {
+            throw new UserFacingException('This backup is locked with a different backup password. Type the backup password of the server it came from.');
         }
         $manifest = json_decode((string) $zip->getFromName('manifest.json'), true) ?: [];
         $driver = DB::connection()->getDriverName();
@@ -112,6 +123,26 @@ class BackupService
         Artisan::call('optimize:clear');
 
         return $safety;
+    }
+
+    /** The password backups are locked with: RMS_BACKUP_PASSWORD, or one derived from APP_KEY when that isn't set. */
+    public function password(): string
+    {
+        $configured = (string) config('rms.backup.password');
+
+        return $configured !== '' ? $configured : substr(hash_hmac('sha256', 'rms-backup-password', (string) config('app.key')), 0, 32);
+    }
+
+    public function isLocked(string $zipPath): bool
+    {
+        $zip = new ZipArchive;
+        if ($zip->open($zipPath) !== true) {
+            return false;
+        }
+        $stat = $zip->statName('database.sql');
+        $zip->close();
+
+        return ($stat['encryption_method'] ?? ZipArchive::EM_NONE) !== ZipArchive::EM_NONE;
     }
 
     /** @return array<int, array{name: string, path: string, size: int, created_at: Carbon}> newest first */

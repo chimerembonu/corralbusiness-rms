@@ -94,6 +94,7 @@ class BackupsPage extends Page
             ->modalDescription(__('settings::settings.backups.restore_help'))
             ->schema([
                 FileUpload::make('file')->label(__('settings::settings.backups.file'))->disk('local')->directory('backup-uploads')->acceptedFileTypes(['application/zip', 'application/x-zip-compressed'])->required(),
+                TextInput::make('password')->label(__('settings::settings.backups.password'))->password()->revealable()->helperText(__('settings::settings.backups.password_help')),
                 TextInput::make('confirm')->label(__('settings::settings.backups.type_restore'))->required()->rule('in:RESTORE'),
             ])
             ->action(function (array $data) {
@@ -102,7 +103,7 @@ class BackupsPage extends Page
                     if (! is_file($path)) {
                         $path = storage_path('app/'.$data['file']);
                     }
-                    $safety = app(BackupService::class)->restore($path);
+                    $safety = app(BackupService::class)->restore($path, $data['password'] ?? null);
                     @unlink($path);
                     Notification::make()->success()->title(__('settings::settings.backups.restored', ['file' => basename($data['file']), 'safety' => basename($safety)]))->persistent()->send();
                 } catch (RuntimeException $e) {

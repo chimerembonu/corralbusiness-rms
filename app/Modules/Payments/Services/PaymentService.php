@@ -18,6 +18,7 @@ use App\Modules\Staff\Enums\Permission;
 use App\Modules\Staff\Exceptions\ManagerPinRequiredException;
 use App\Modules\Staff\Models\User;
 use App\Support\Money\Money;
+use App\Support\Security\CardNumberGuard;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -63,6 +64,20 @@ class PaymentService
         return $this->record($order, PaymentMethod::MobileMoney, $amount, $by, reference: trim($reference), provider: $provider, tip: $tip);
     }
 
+    /** Never store a full card number: card references hold the slip number or last 4 digits only; notes may not contain a card number (PCI DSS, compliance assessment). */
+    public static function assertNoCardNumber(PaymentMethod $method, ?string $reference, ?string $notes = null): void
+    {
+        // Mobile Money transaction ids can be long numbers, so only card and other references are checked.
+        $referenceUnsafe = match ($method) {
+            PaymentMethod::Card => ! CardNumberGuard::isSafeCardReference($reference),
+            PaymentMethod::MobileMoney => false,
+            default => CardNumberGuard::containsCardNumber($reference),
+        };
+        if ($referenceUnsafe || CardNumberGuard::containsCardNumber($notes)) {
+            throw new PaymentException(__('payments::payments.errors.card_number'));
+        }
+    }
+
     /** Card paid on a standalone terminal: optional slip / last-4 reference. */
     public function payCard(Order $order, Money $amount, ?string $reference = null, ?User $by = null, ?Money $tip = null): Payment
     {
@@ -84,6 +99,7 @@ class PaymentService
         if ($method === PaymentMethod::MobileMoney && $provider === null) {
             throw new PaymentException(__('payments::payments.errors.provider_required'));
         }
+        self::assertNoCardNumber($method, $reference, $notes);
 
         $this->days->assertOpen($order->business_date->toDateString(), $order->branch_id);
         $session = $this->cash->current($by, $order->branch_id);

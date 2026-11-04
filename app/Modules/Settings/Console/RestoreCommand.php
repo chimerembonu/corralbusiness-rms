@@ -9,7 +9,7 @@ use RuntimeException;
 /** `php artisan rms:restore <file>` — put a backup back (a safety backup is taken first). */
 class RestoreCommand extends Command
 {
-    protected $signature = 'rms:restore {file? : Backup file name or path (default: the newest)} {--force : Do not ask for confirmation}';
+    protected $signature = 'rms:restore {file? : Backup file name or path (default: the newest)} {--force : Do not ask for confirmation} {--password= : Backup password, only for a backup made on another server}';
 
     protected $description = 'Restore the database and uploaded files from a backup';
 
@@ -36,7 +36,7 @@ class RestoreCommand extends Command
                 return self::SUCCESS;
             }
 
-            $safety = $backups->restore($path);
+            $safety = $backups->restore($path, $this->option('password') ?: null);
             $this->components->info('Restored from '.basename($path).'.');
             $this->components->info('The state from just before the restore was saved as '.basename($safety).' in case you need it.');
         } catch (RuntimeException $e) {

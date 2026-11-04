@@ -7,7 +7,7 @@ return [
     'unnamed' => 'Customer :phone',
     'unnamed_prefix' => 'Customer ',
     'fields' => [
-        'name' => 'Name', 'phone' => 'Phone', 'email' => 'Email', 'notes' => 'Notes', 'tags' => 'Tags',
+        'name' => 'Name', 'phone' => 'Phone', 'email' => 'Email', 'tin' => 'TIN (for VAT receipts)', 'tin_help' => 'Business customers: printed on their receipts so they can claim VAT. GRA TIN or Ghana Card number.', 'notes' => 'Notes', 'tags' => 'Tags',
         'allow_account' => 'May buy on account (credit)', 'credit_limit' => 'Credit limit (GH₵)', 'credit_limit_short' => 'Credit limit', 'credit_limit_help' => 'Leave empty for no limit.',
         'account_balance' => 'Owes', 'points_balance' => 'Points', 'orders_count' => 'Orders', 'total_spent' => 'Total spent', 'last_order_at' => 'Last order',
         'is_active' => 'Active', 'addresses' => 'Addresses', 'address' => 'Address', 'label' => 'Label (Home, Office…)', 'directions' => 'Directions', 'is_default' => 'Usual address',

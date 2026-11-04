@@ -9,6 +9,7 @@ use App\Modules\Staff\Exceptions\ManagerPinRequiredException;
 use App\Modules\Staff\Exceptions\PinLockedException;
 use App\Modules\Staff\Models\User;
 use App\Modules\Staff\Support\PinHasher;
+use App\Support\Audit\SecurityLog;
 use App\Support\Tenancy\TenantContext;
 use App\Support\Tenancy\TenantScope;
 use Illuminate\Support\Facades\RateLimiter;
@@ -41,8 +42,13 @@ class PinAuthenticator
         if ($user === null || ! $user->is_active || ! $user->verifyPin($pin)) {
             RateLimiter::hit($limiterKey, (int) config('rms.pin.lockout_seconds', 60));
             $left = max(0, $maxAttempts - RateLimiter::attempts($limiterKey));
+            // Record the failure (never the PIN). A deactivated person's correct PIN is flagged separately.
+            $inactive = $user !== null && ! $user->is_active && $user->verifyPin($pin) ? $user : null;
+            SecurityLog::pinFailed($throttleKey, $tenantId, $left, $inactive);
 
             if ($left === 0) {
+                SecurityLog::pinLockedOut($throttleKey, $tenantId);
+
                 throw new PinLockedException(RateLimiter::availableIn($limiterKey));
             }
 
@@ -68,6 +74,8 @@ class PinAuthenticator
         $user = $this->attempt($pin, $throttleKey, $tenant);
 
         if (! $user->can($permission)) {
+            SecurityLog::approvalRefused($user, $permission, $throttleKey);
+
             throw new ManagerPinRequiredException($permission);
         }
 

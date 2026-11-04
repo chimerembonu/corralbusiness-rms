@@ -6,6 +6,7 @@ return [
     'status' => ['completed' => 'Completed', 'refunded' => 'Refunded'],
     'errors' => [
         'reference_required' => 'Enter the transaction reference.',
+        'card_number' => 'Never type a card number. Enter only the slip number or the last 4 digits of the card.',
         'provider_required' => 'Choose the Mobile Money network.',
         'already_refunded' => 'This payment was already refunded.',
         'refund_needs_manager' => 'Refunds need a manager PIN.',

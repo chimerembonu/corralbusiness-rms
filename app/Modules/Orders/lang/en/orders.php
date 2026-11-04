@@ -54,6 +54,7 @@ return [
         'choose_size' => 'Please choose a size for :item.',
         'modifier_sold_out' => ':name is sold out.',
         'order_closed' => 'This order is :status and can no longer be changed.',
+        'bad_tin' => 'That is not a valid TIN. Use the GRA TIN (one letter and 10 digits, e.g. C0012345678) or the Ghana Card number (GHA-123456789-0).',
         'table_merged' => 'Table :table is joined onto another table.',
         'table_inactive' => 'Table :table is switched off.',
         'same_table' => 'Choose a different table.',

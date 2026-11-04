@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Modules\Staff\Filament\Auth\Login;
 use App\Support\Tenancy\SetTenantFromUser;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -30,7 +31,7 @@ class HqPanelProvider extends PanelProvider
         return $panel
             ->id('hq')
             ->path(config('rms.hq_path', 'hq'))
-            ->login()
+            ->login(Login::class) // logs throttled sign-ins (compliance assessment)
             // Button presses that fail show these instead of a technical error box (same words as the till).
             ->registerErrorNotification(fn () => __('errors.pages.500.title'), fn () => __('errors.action.failed'))
             ->registerErrorNotification(fn () => __('errors.pages.403.title'), fn () => __('errors.action.forbidden'), 403)

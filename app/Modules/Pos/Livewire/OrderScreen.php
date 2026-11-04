@@ -76,6 +76,8 @@ class OrderScreen extends Component
 
     public string $orderNote = '';
 
+    public string $customerTin = '';
+
     /** Split modal: ['mode' => items|seats|even, 'lines' => [id…], 'seats' => [n…], 'ways' => 2]. */
     public array $split = ['mode' => 'items', 'lines' => [], 'seats' => [], 'ways' => 2];
 
@@ -394,6 +396,9 @@ class OrderScreen extends Component
 
         if ($name === 'note') {
             $this->orderNote = (string) $this->order->notes;
+        }
+        if ($name === 'tin') {
+            $this->customerTin = (string) $this->order->customer_tin;
         }
         if ($name === 'hold') {
             $this->holdName = (string) $this->order->customer_name;
@@ -714,6 +719,20 @@ class OrderScreen extends Component
             $this->modal = 'promo';
         }
         unset($this->order);
+    }
+
+    /** Optional buyer TIN on the receipt (compliance assessment). Allowed after payment too, for a reprint with the TIN. */
+    public function saveCustomerTin(): void
+    {
+        $this->run(function (OrderService $orders) {
+            $order = $orders->setCustomerTin($this->order, $this->customerTin, auth()->user());
+            $this->customerTin = (string) $order->customer_tin;
+            $this->modal = null;
+            $this->notice = $order->customer_tin ? __('pos::pos.order.customer_tin_saved', ['tin' => $order->customer_tin]) : null;
+        });
+        if ($this->error) {
+            $this->modal = 'tin';
+        }
     }
 
     public function saveOrderNote(): void

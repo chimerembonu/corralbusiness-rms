@@ -4,7 +4,17 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 echo "==> Backing up the database first…"
-docker compose exec -T app php artisan rms:backup || echo "    (backup command not available yet – continuing)"
+# Never update without a fresh backup (compliance assessment). For an emergency only – e.g. the app will not
+# start, so no backup can be taken – run:  SKIP_BACKUP=1 sudo -E ./scripts/update.sh
+if [ "${SKIP_BACKUP:-0}" = "1" ]; then
+    echo "    !! SKIP_BACKUP=1 – updating WITHOUT a backup. Only do this if the app cannot start."
+elif ! docker compose exec -T app php artisan rms:backup --note="before update"; then
+    echo
+    echo "    The backup failed, so NOTHING has been updated and the restaurant keeps running as before."
+    echo "    Check the server has free disk space and the app is running (docker compose ps), then try again."
+    echo "    If it still fails, contact Corral Systems support before updating."
+    exit 1
+fi
 echo "==> Getting the latest code…"
 git pull --ff-only
 echo "==> Rebuilding and restarting…"

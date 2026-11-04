@@ -16,7 +16,7 @@ Method: current rules checked against public sources (listed at the end); code e
 | **SOX** (US Sarbanes-Oxley) | **No** — only applies to companies listed on US stock exchanges | Its "internal controls" ideas are still useful and the app already has many of them | None now; strengthen the controls in §6 anyway |
 | **SOC 2** | **Not a law.** A voluntary audit report that larger customers ask a *software supplier* for. Relevant to Corral Systems once you host customer data in the cloud (Phase 6) | **Early.** The app has solid building blocks, but SOC 2 also audits company policies, HR, vendor and incident processes that Corral Systems doesn't have yet | Plan a SOC 2 readiness project alongside the cloud version, not before go-live |
 
-**In one sentence:** nothing here blocks the 13 November go-live, but the restaurant needs to do two business tasks (register with the Data Protection Commission, check its e-VAT/fiscal-device status with GRA), and five small software fixes should go in first (§8, "Before go-live").
+**In one sentence:** nothing here blocks the 13 November go-live, but the restaurant needs to do two business tasks (register with the Data Protection Commission, check its e-VAT/fiscal-device status with GRA). The five software fixes that should go in first are **done** (§8, "Before go-live").
 
 ## 2. Ghana Data Protection Act 2012 (Act 843)
 
@@ -111,12 +111,12 @@ SOC 2 is an audit report, produced by an independent CPA firm, on how a **servic
 
 ## 8. Action plan
 
-**Before go-live (software — about one Claude Code session)**
-1. Block card numbers in the card reference and note fields (PCI).
-2. Password-protect backup files (Act 843).
-3. Stop `update.sh` if the pre-update backup fails (controls).
-4. Log failed back-office sign-ins and PIN attempts (Act 843 / controls).
-5. Add an optional customer TIN to receipts (VAT).
+**Before go-live (software) — ✅ all done 4 November 2026, 455 tests pass**
+1. ✅ Block card numbers in the card reference and note fields (PCI). A card reference may hold at most 12 digits (slip number or last 4); notes and other references refuse any valid card number; Mobile Money ids are untouched. `app/Support/Security/CardNumberGuard.php`, tests in `Payments/tests/CardNumberGuardTest.php`.
+2. ✅ Password-protect backup files (Act 843). Every file in a backup is AES-256 locked; the installer creates the password and shows it once; `rms:backup --show-password` shows it again; restore accepts another server's password; older unlocked backups still restore. Tests in `Settings/tests/BackupEncryptionTest.php`.
+3. ✅ Stop `update.sh` if the pre-update backup fails (controls). Emergency override `SKIP_BACKUP=1`. Test in `tests/Feature/UpdateScriptTest.php`.
+4. ✅ Log failed back-office sign-ins, sign-in lock-outs, wrong till PINs, PIN lock-outs, a switched-off staff member's PIN, and refused manager approvals — never the PIN or password — and show them on **Back office → Settings → Security log** (Owner and Manager). Tests in `Settings/tests/SecurityLogTest.php`.
+5. ✅ Optional customer TIN on receipts (VAT): GRA TIN or Ghana Card number, checked for format, typed at the till (**Actions → Customer TIN**) or taken from the customer record, printed as "Customer TIN". Tests in `Orders/tests/CustomerTinTest.php`.
 
 **Before go-live (business — the restaurant and you)**
 6. Restaurant registers with the Data Protection Commission (dataprotection.org.gh).

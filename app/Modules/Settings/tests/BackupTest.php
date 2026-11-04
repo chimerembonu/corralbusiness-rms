@@ -32,6 +32,7 @@ it('backs up the database and uploads, and restores them after data is lost', fu
     expect($zip)->toStartWith(storage_path('backups/rms-backup-'))->and(is_file($zip))->toBeTrue();
     $archive = new ZipArchive;
     $archive->open($zip);
+    $archive->setPassword($this->backups->password()); // backups are locked (compliance assessment)
     $manifest = json_decode($archive->getFromName('manifest.json'), true);
     expect($archive->locateName('database.sql'))->not->toBeFalse()
         ->and($archive->locateName('uploads/receipts/test-logo.png'))->not->toBeFalse()

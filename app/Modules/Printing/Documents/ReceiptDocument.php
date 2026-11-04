@@ -55,6 +55,9 @@ final class ReceiptDocument
         if ($order->customer_name) {
             $doc->row(__('pos::pos.orders.who'), $order->customer_name);
         }
+        if ($order->customer_tin) {
+            $doc->row(__('pos::pos.receipt.customer_tin'), $order->customer_tin);
+        }
         if ($order->isDelivery()) {
             $doc->row(__('pos::pos.delivery.phone'), (string) $order->customer_phone)->text((string) $order->delivery_address);
             if ($order->rider) {

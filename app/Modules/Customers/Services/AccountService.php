@@ -81,6 +81,7 @@ class AccountService
         if ($method === PaymentMethod::MobileMoney && ($provider === null || blank($reference))) {
             throw new PaymentException(__('payments::payments.errors.reference_required'));
         }
+        PaymentService::assertNoCardNumber($method, $reference, $notes);
 
         return DB::transaction(function () use ($customer, $method, $amount, $by, $reference, $provider, $notes) {
             $session = $this->cash->current($by, $this->context->branchId());

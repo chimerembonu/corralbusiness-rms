@@ -47,6 +47,7 @@ use App\Modules\Staff\Enums\Permission;
 use App\Modules\Staff\Exceptions\ManagerPinRequiredException;
 use App\Modules\Staff\Models\User;
 use App\Support\Money\Money;
+use App\Support\Tax\TaxIdentificationNumber;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -245,6 +246,26 @@ class OrderService
     {
         $this->assertEditable($order);
         $order->notes = $notes;
+        $order->save();
+        OrderNotesChanged::dispatch($order, $by?->id);
+
+        return $order;
+    }
+
+    /**
+     * The buyer's TIN for the receipt (optional). May still be added after payment, so a business customer
+     * can ask for a receipt with their TIN; the change is in the order's history. Not on a voided order.
+     */
+    public function setCustomerTin(Order $order, ?string $tin, ?User $by = null): Order
+    {
+        if ($order->status === OrderStatus::Void) {
+            throw new OrderLockedException(__('orders::orders.errors.order_closed', ['status' => $order->status->label()]));
+        }
+        $normalised = TaxIdentificationNumber::normalise($tin);
+        if ($normalised === false) {
+            throw new DiscountException(__('orders::orders.errors.bad_tin'));
+        }
+        $order->customer_tin = $normalised;
         $order->save();
         OrderNotesChanged::dispatch($order, $by?->id);
 

@@ -186,6 +186,10 @@
         "owner",
         "manager"
     ],
+    "admin/security-log": [
+        "owner",
+        "manager"
+    ],
     "admin/staff": [
         "owner",
         "manager"

@@ -16,6 +16,7 @@ use App\Modules\Staff\Enums\Permission;
 use App\Support\Errors\FriendlyError;
 use App\Support\Filament\MoneyInput;
 use App\Support\Money\Money;
+use App\Support\Tax\TaxIdentificationNumber;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
@@ -82,6 +83,13 @@ class CustomerResource extends Resource
                         }
                     }),
                 TextInput::make('email')->label($f('email'))->email()->maxLength(120),
+                TextInput::make('tin')->label($f('tin'))->maxLength(20)->helperText($f('tin_help'))
+                    ->dehydrateStateUsing(fn (?string $state) => TaxIdentificationNumber::normalise($state) ?: null)
+                    ->rule(fn () => function (string $attribute, $value, \Closure $fail) {
+                        if (TaxIdentificationNumber::normalise($value) === false) {
+                            $fail(__('orders::orders.errors.bad_tin'));
+                        }
+                    }),
                 TagsInput::make('tags')->label($f('tags')),
                 TextInput::make('notes')->label($f('notes'))->maxLength(255)->columnSpanFull(),
                 Toggle::make('is_active')->label($f('is_active'))->default(true)->inline(false),

@@ -75,6 +75,7 @@ if [ ! -f .env ]; then
     sed -i "s|^REVERB_APP_ID=.*|REVERB_APP_ID=$(rand 8)|" .env
     sed -i "s|^REVERB_APP_KEY=.*|REVERB_APP_KEY=$(rand 20)|" .env
     sed -i "s|^REVERB_APP_SECRET=.*|REVERB_APP_SECRET=$(rand 32)|" .env
+    sed -i "s|^RMS_BACKUP_PASSWORD=.*|RMS_BACKUP_PASSWORD=$(rand 24)|" .env
     chmod 600 .env
 else
     say "Keeping the existing .env."
@@ -109,3 +110,8 @@ echo "    Till:         http://$LAN_IP/pos"
 echo "    Kitchen:      http://$LAN_IP/kitchen"
 echo "    Clock in:     http://$LAN_IP/clock"
 echo "Give this computer a fixed address on the router (see docs/STORE-SERVER.md) so the links never change."
+echo
+echo "IMPORTANT – your backup password (backups are locked with it):"
+echo "    $(grep '^RMS_BACKUP_PASSWORD=' .env | cut -d= -f2-)"
+echo "Write it down and keep it somewhere safe, away from this computer. You need it to restore a backup"
+echo "on a replacement computer. Show it again any time with: docker compose exec app php artisan rms:backup --show-password"

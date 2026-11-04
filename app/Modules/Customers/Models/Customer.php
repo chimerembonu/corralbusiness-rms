@@ -17,7 +17,7 @@ class Customer extends BusinessModel
 
     protected bool $hasBranch = false;
 
-    protected $fillable = ['name', 'phone', 'email', 'notes', 'tags', 'allow_account', 'credit_limit', 'is_active'];
+    protected $fillable = ['name', 'phone', 'email', 'tin', 'notes', 'tags', 'allow_account', 'credit_limit', 'is_active'];
 
     protected $attributes = ['allow_account' => false, 'account_balance' => 0, 'points_balance' => 0, 'orders_count' => 0, 'total_spent' => 0, 'is_active' => true];
 

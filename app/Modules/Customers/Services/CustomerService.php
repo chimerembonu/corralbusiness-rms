@@ -88,6 +88,7 @@ class CustomerService
         $order->customer_id = $customer->id;
         $order->customer_name = $customer->name;
         $order->customer_phone = $customer->phone ?? $order->customer_phone;
+        $order->customer_tin = $order->customer_tin ?: $customer->tin; // business customers: TIN on the receipt
         if ($order->isDelivery() && blank($order->delivery_address) && ($address = $customer->defaultAddress())) {
             $order->delivery_address = $address->address;
             $order->delivery_notes = $order->delivery_notes ?: $address->notes;

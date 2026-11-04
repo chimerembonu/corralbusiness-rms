@@ -31,6 +31,7 @@ Method: an automated test signed in as each of the 8 roles and (1) opened every 
 | Export reports to Excel/PDF | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ |
 | Backups: download | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
 | Backups: restore/delete | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| Security log (failed sign-ins and PINs) | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
 | **Head office (`/hq`)** | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
 
 "PIN" = the till asks for a manager's PIN before it happens.
