@@ -10,9 +10,11 @@ use App\Modules\Staff\Enums\Role;
 use App\Modules\Staff\Models\User;
 
 beforeEach(function () {
+    seedRoles();
     $this->branch = provisionTenant();
     $this->menu = demoMenu();
     $this->cashier = User::factory()->forBranch($this->branch)->create();
+    $this->cashier->assignRole(Role::Cashier->value);
     $this->orders = app(OrderService::class);
     $this->order = $this->orders->open(OrderType::Takeaway, $this->cashier);
 });

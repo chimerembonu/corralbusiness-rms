@@ -18,60 +18,60 @@ beforeEach(function () {
     seedRoles();
     $this->branch = provisionTenant();
     $this->menu = demoMenu();
-    $this->waiter = User::factory()->forBranch($this->branch)->create();
-    $this->waiter->assignRole(Role::Waiter->value);
+    $this->cashier = User::factory()->forBranch($this->branch)->create();
+    $this->cashier->assignRole(Role::Cashier->value);
     $this->manager = User::factory()->forBranch($this->branch)->create();
     $this->manager->assignRole(Role::Manager->value);
     $this->orders = app(OrderService::class);
     // 10 × Coca-Cola = 100.00 net; threshold 10 %.
-    $this->order = $this->orders->open(OrderType::Takeaway, $this->waiter);
+    $this->order = $this->orders->open(OrderType::Takeaway, $this->cashier);
     $this->coke = $this->orders->addItem($this->order, $this->menu['coke'], quantity: 10);
 });
 
 it('drops an unapproved fixed line discount when the line shrinks past the threshold', function () {
-    $this->orders->applyItemDiscount($this->order, $this->coke, DiscountType::Fixed, 1000, 'Complaint', $this->waiter); // 10 % of 100.00: fine
-    $this->orders->changeQuantity($this->order, $this->coke->fresh(), 5, $this->waiter);                              // 10.00 off 50.00 = 20 %
+    $this->orders->applyItemDiscount($this->order, $this->coke, DiscountType::Fixed, 1000, 'Complaint', $this->cashier); // 10 % of 100.00: fine
+    $this->orders->changeQuantity($this->order, $this->coke->fresh(), 5, $this->cashier);                              // 10.00 off 50.00 = 20 %
     $line = $this->coke->fresh();
     expect($line->hasItemDiscount())->toBeFalse()
         ->and($this->order->fresh()->discount_total)->toBePesewas(0)
         ->and(Activity::query()->where('description', 'discount_dropped_over_threshold')->count())->toBe(1);
 
     // The same discount approved by a manager survives the shrink.
-    $this->orders->applyItemDiscount($this->order, $line, DiscountType::Fixed, 1000, 'Complaint', $this->waiter, $this->manager);
-    $this->orders->changeQuantity($this->order, $line->fresh(), 1, $this->waiter);
+    $this->orders->applyItemDiscount($this->order, $line, DiscountType::Fixed, 1000, 'Complaint', $this->cashier, $this->manager);
+    $this->orders->changeQuantity($this->order, $line->fresh(), 1, $this->cashier);
     expect($this->coke->fresh()->itemDiscount())->toBePesewas(1000)->and($this->coke->fresh()->line_total)->toBePesewas(0);
 });
 
 it('drops an unapproved fixed order discount when lines are removed, but not a percentage', function () {
     $water = $this->orders->addItem($this->order, $this->menu['water'], quantity: 2); // subtotal 110.00
-    $this->orders->applyDiscount($this->order, DiscountType::Fixed, 1000, 'Loyal customer', $this->waiter); // 9 %: fine
-    $this->orders->removeItem($this->order, $this->coke, $this->waiter); // 10.00 off 10.00
+    $this->orders->applyDiscount($this->order, DiscountType::Fixed, 1000, 'Loyal customer', $this->cashier); // 9 %: fine
+    $this->orders->removeItem($this->order, $this->coke, $this->cashier); // 10.00 off 10.00
     expect($this->order->fresh()->discount_type)->toBeNull()->and($this->order->fresh()->total)->toBePesewas(1000);
 
-    $this->orders->applyDiscount($this->order, DiscountType::Percent, 1000, 'Loyal customer', $this->waiter);
-    $this->orders->changeQuantity($this->order, $water->fresh(), 1, $this->waiter);
+    $this->orders->applyDiscount($this->order, DiscountType::Percent, 1000, 'Loyal customer', $this->cashier);
+    $this->orders->changeQuantity($this->order, $water->fresh(), 1, $this->cashier);
     expect($this->order->fresh()->discount_type)->toBe(DiscountType::Percent)->and($this->order->fresh()->discount_total)->toBePesewas(50);
 });
 
 it('refuses a promo code stacked on line discounts past the threshold', function () {
     PromoCode::create(['code' => 'TEN', 'name' => 'Ten off', 'type' => 'percent', 'value' => 1000]);
-    $this->orders->applyItemDiscount($this->order, $this->coke, DiscountType::Percent, 900, 'Complaint', $this->waiter); // 9.00
+    $this->orders->applyItemDiscount($this->order, $this->coke, DiscountType::Percent, 900, 'Complaint', $this->cashier); // 9.00
 
-    expect(fn () => $this->orders->applyPromoCode($this->order, 'TEN', $this->waiter))->toThrow(DiscountException::class, 'line discounts');
+    expect(fn () => $this->orders->applyPromoCode($this->order, 'TEN', $this->cashier))->toThrow(DiscountException::class, 'line discounts');
     expect($this->order->fresh()->promo_code)->toBeNull();
 
-    $this->orders->applyItemDiscount($this->order, $this->coke->fresh(), null, 0, null, $this->waiter);
-    $this->orders->applyPromoCode($this->order, 'TEN', $this->waiter);
+    $this->orders->applyItemDiscount($this->order, $this->coke->fresh(), null, 0, null, $this->cashier);
+    $this->orders->applyPromoCode($this->order, 'TEN', $this->cashier);
     expect($this->order->fresh()->promo_code)->toBe('TEN')->and($this->order->fresh()->discount_total)->toBePesewas(1000);
 });
 
 it('never hands out more uses of a promo code than it has', function () {
     $promo = PromoCode::create(['code' => 'ONE', 'name' => 'One use', 'type' => 'percent', 'value' => 500, 'max_uses' => 1]);
-    $this->orders->applyPromoCode($this->order, 'ONE', $this->waiter);
+    $this->orders->applyPromoCode($this->order, 'ONE', $this->cashier);
 
-    $second = $this->orders->open(OrderType::Takeaway, $this->waiter);
+    $second = $this->orders->open(OrderType::Takeaway, $this->cashier);
     $this->orders->addItem($second, $this->menu['coke']);
-    expect(fn () => $this->orders->applyPromoCode($second, 'ONE', $this->waiter))->toThrow(DiscountException::class, 'used up');
+    expect(fn () => $this->orders->applyPromoCode($second, 'ONE', $this->cashier))->toThrow(DiscountException::class, 'used up');
 
     // Even if a stale check let it through, the claim itself refuses: nothing can push uses past the maximum.
     $promo->forceFill(['uses_count' => 1])->save();

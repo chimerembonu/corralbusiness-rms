@@ -196,11 +196,11 @@ it('lists today\'s orders with their table names', function () {
 });
 
 it('applies discounts and promo codes from the order screen, asking a manager above the threshold', function () {
-    $this->actingAs($this->waiter);
+    $this->actingAs($this->cashier);
     $this->manager = User::factory()->forBranch($this->branch)->withPin('2468')->create(['name' => 'Akosua']);
     $this->manager->assignRole(Role::Manager->value);
     PromoCode::create(['code' => 'WELCOME10', 'name' => 'Welcome', 'type' => 'percent', 'value' => 1000]);
-    $order = app(OrderService::class)->open(OrderType::Takeaway, $this->waiter);
+    $order = app(OrderService::class)->open(OrderType::Takeaway, $this->cashier);
     app(OrderService::class)->addItem($order, $this->menu['coke'], quantity: 5); // 50.00 + tax 10.00
 
     $screen = Livewire::test(OrderScreen::class, ['order' => $order])

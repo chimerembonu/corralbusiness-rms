@@ -80,7 +80,10 @@ class StaffSalesPage extends Page
     protected function getHeaderActions(): array
     {
         return [
+            // Like every report: downloading needs reports.export, not just reports.view (role review L-R1).
             Action::make('export')->label(__('staff::staff.sales.export'))->icon(Heroicon::ArrowDownTray)->color('gray')
+                ->visible(fn () => auth()->user()?->can(Permission::ReportsExport->value) ?? false)
+                ->authorize(fn () => auth()->user()?->can(Permission::ReportsExport->value) ?? false)
                 ->action(fn () => Excel::download(new StaffSalesExport($this->from, $this->to), "staff-sales-{$this->from}-to-{$this->to}.xlsx")),
         ];
     }

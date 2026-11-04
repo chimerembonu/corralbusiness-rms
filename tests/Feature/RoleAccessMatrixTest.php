@@ -77,7 +77,10 @@ it('lets each role open exactly the pages it should', function () {
     foreach (['admin', 'hq'] as $panel) {
         foreach (Filament::getPanel($panel)->getResources() as $resource) {
             $slug = $resource::getSlug();
-            $recordFor[$panel.'/'.$slug] = $resource::getModel()::query()->first()?->getRouteKey();
+            // The staff page opens an ordinary (non-owner) staff member: only owners may edit owner accounts.
+            $recordFor[$panel.'/'.$slug] = $resource::getModel() === User::class
+                ? $users['cashier']->getRouteKey()
+                : $resource::getModel()::query()->orderBy($resource::getModel()::make()->getKeyName())->first()?->getRouteKey();
         }
     }
 

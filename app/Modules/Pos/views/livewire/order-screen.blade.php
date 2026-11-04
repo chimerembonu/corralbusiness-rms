@@ -386,7 +386,11 @@
                         <button type="button" wire:click="chooseDiscountReason(@js($reason))" class="h-12 rounded-xl px-3 text-sm font-semibold {{ $discount['reason'] === $reason ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 hover:bg-slate-700' }}">{{ $reason }}</button>
                     @endforeach
                 </div>
-                <p class="mt-3 text-xs text-slate-500">{{ __('pos::pos.order.discount_threshold_hint', ['threshold' => rtrim(rtrim(number_format($this->settings->discountThresholdBp($order->branch_id) / 100, 2), '0'), '.')]) }}</p>
+                @can(\App\Modules\Staff\Enums\Permission::DiscountSmall->value)
+                    <p class="mt-3 text-xs text-slate-500">{{ __('pos::pos.order.discount_threshold_hint', ['threshold' => rtrim(rtrim(number_format($this->settings->discountThresholdBp($order->branch_id) / 100, 2), '0'), '.')]) }}</p>
+                @else
+                    <p class="mt-3 text-xs text-slate-500">{{ __('pos::pos.order.discount_always_manager_hint') }}</p>
+                @endcan
                 <div class="mt-4 grid grid-cols-3 gap-2">
                     <button type="button" wire:click="removeDiscount({{ $target ? "'".$target->id."'" : 'null' }})" class="h-14 rounded-2xl bg-slate-800 font-semibold hover:bg-slate-700">{{ __('pos::pos.order.remove_discount') }}</button>
                     <button type="button" wire:click="applyDiscount" class="col-span-2 h-14 rounded-2xl bg-emerald-500 text-lg font-bold text-slate-950 hover:bg-emerald-400">{{ __('pos::pos.order.apply') }}</button>

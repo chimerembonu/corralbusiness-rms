@@ -281,7 +281,7 @@ class OrderService
 
         $lineDiscounts = $this->itemDiscountTotal($order);
         $base = $order->subtotal->subtract($lineDiscounts);
-        $this->assertDiscountAllowed($type, $value, $base, $order->branch_id, $approvedBy, $lineDiscounts, $order->subtotal);
+        $this->assertDiscountAllowed($type, $value, $base, $order->branch_id, $approvedBy, $lineDiscounts, $order->subtotal, $by);
 
         $this->releasePromoCode($order);
         $order->discount_type = $type;
@@ -305,7 +305,7 @@ class OrderService
             }
             // Everything already off the order except this line's own discount (which is being replaced).
             $alreadyOff = $order->discount_total->subtract($line->itemDiscount());
-            $this->assertDiscountAllowed($type, $value, $line->unitTotal()->multiply($line->quantity), $order->branch_id, $approvedBy, $alreadyOff, $order->subtotal);
+            $this->assertDiscountAllowed($type, $value, $line->unitTotal()->multiply($line->quantity), $order->branch_id, $approvedBy, $alreadyOff, $order->subtotal, $by);
         }
 
         $line->item_discount_type = $value > 0 ? $type : null;
@@ -321,9 +321,10 @@ class OrderService
     }
 
     /** Type a promo code at the till. Replaces any manual order discount. */
-    public function applyPromoCode(Order $order, string $code, ?User $by = null): Order
+    public function applyPromoCode(Order $order, string $code, ?User $by = null, ?User $approvedBy = null): Order
     {
         $this->assertEditable($order);
+        $this->assertMayDiscountWithoutManager($by, $approvedBy);
 
         $promo = PromoCode::query()->forBranchOrTenant($order->branch_id)->where('code', strtoupper(trim($code)))->first();
         if (! $promo) {
@@ -350,7 +351,7 @@ class OrderService
         $order->discount_type = $promo->type;
         $order->discount_value = $promo->value;
         $order->discount_reason = $promo->name;
-        $order->discount_approved_by_id = null;
+        $order->discount_approved_by_id = $approvedBy?->id;
         $order->promo_code_id = $promo->id;
         $order->promo_code = $promo->code;
         $order->setRelation('promoCode', $promo);
@@ -731,7 +732,7 @@ class OrderService
         return $alreadyOff->add($proposed)->greaterThan($subtotal->basisPoints($threshold));
     }
 
-    private function assertDiscountAllowed(DiscountType $type, int $value, Money $base, ?string $branchId, ?User $approvedBy, ?Money $alreadyOff = null, ?Money $subtotal = null): void
+    private function assertDiscountAllowed(DiscountType $type, int $value, Money $base, ?string $branchId, ?User $approvedBy, ?Money $alreadyOff = null, ?Money $subtotal = null, ?User $by = null): void
     {
         if ($type === DiscountType::Fixed && Money::of($value)->greaterThan($base)) {
             throw new DiscountException(__('orders::orders.errors.discount_too_big'));
@@ -740,6 +741,15 @@ class OrderService
             throw new DiscountException(__('orders::orders.errors.discount_too_big'));
         }
         if ($this->discountNeedsManager($type, $value, $base, $branchId, $alreadyOff, $subtotal) && ! $approvedBy?->can(Permission::OrdersDiscount->value)) {
+            throw new ManagerPinRequiredException(Permission::OrdersDiscount->value);
+        }
+        $this->assertMayDiscountWithoutManager($by, $approvedBy);
+    }
+
+    /** Staff without orders.discount_small (waiters) need a manager for every discount, however small (owner's decision, 4 Nov 2026). */
+    private function assertMayDiscountWithoutManager(?User $by, ?User $approvedBy): void
+    {
+        if ($by && ! $by->can(Permission::DiscountSmall->value) && ! $approvedBy?->can(Permission::OrdersDiscount->value)) {
             throw new ManagerPinRequiredException(Permission::OrdersDiscount->value);
         }
     }

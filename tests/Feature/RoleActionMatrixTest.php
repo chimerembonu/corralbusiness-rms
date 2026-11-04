@@ -4,8 +4,10 @@ use App\Modules\Customers\Livewire\CustomersScreen;
 use App\Modules\Inventory\Livewire\StockTakeScreen;
 use App\Modules\Kitchen\Livewire\KitchenDisplay;
 use App\Modules\Kitchen\Models\Ticket;
+use App\Modules\Orders\Enums\DiscountType;
 use App\Modules\Orders\Enums\OrderType;
 use App\Modules\Orders\Models\Order;
+use App\Modules\Orders\Models\PromoCode;
 use App\Modules\Orders\Services\OrderService;
 use App\Modules\Payments\Models\CashierSession;
 use App\Modules\Payments\Models\CashMovement;
@@ -20,6 +22,7 @@ use App\Modules\Pos\Models\Till;
 use App\Modules\Pos\Services\CurrentTill;
 use App\Modules\Printing\Services\PrintService;
 use App\Modules\Staff\Enums\Role;
+use App\Modules\Staff\Exceptions\ManagerPinRequiredException;
 use App\Modules\Staff\Filament\Pages\StaffSalesPage;
 use App\Modules\Staff\Models\User;
 use App\Support\Money\Money;
@@ -36,7 +39,8 @@ function roleActionApproved(): array
 {
     return [
         'create order' => ['owner', 'manager', 'cashier', 'waiter'],
-        'small discount 5%' => ['owner', 'manager', 'cashier', 'waiter'],  // under the till's discount threshold; above it needs a manager PIN
+        'small discount 5%' => ['owner', 'manager', 'cashier'],  // under the threshold; waiters always need a manager PIN (owner, 4 Nov)
+        'promo code' => ['owner', 'manager', 'cashier'],         // waiters need a manager PIN (owner, 4 Nov)
         'open payment screen' => ['owner', 'manager', 'cashier'],
         'open a till' => ['owner', 'manager', 'cashier'],
         'cash pay-in' => ['owner', 'manager', 'cashier'],
@@ -45,7 +49,7 @@ function roleActionApproved(): array
         'open rider screen' => ['owner', 'rider'],
         'customer accounts' => ['owner', 'manager', 'cashier'],
         'open stock-take screen' => ['owner', 'manager', 'inventory'],
-        'print X report' => ['owner', 'manager', 'inventory'],
+        'print X report' => ['owner', 'manager'],                // storekeeper sees no sales or cash (owner, 4 Nov)
     ];
 }
 function probeOutcome(callable $fn): string
@@ -94,7 +98,13 @@ it('lets only approved roles press', function (string $action, string $role) {
             Livewire::test(OrderScreen::class, ['order' => $order])->call('startDiscount', null)->call('setDiscountType', 'percent')
                 ->call('setDiscountValue', '5')->call('chooseDiscountReason', 'Regular customer')->call('applyDiscount');
 
-            return $order->fresh()->discount_total->isPositive() ? true : 'NO EFFECT';
+            return $order->fresh()->discount_total->isPositive() ? true : false;
+        },
+        'promo code' => function () use ($order) {
+            PromoCode::create(['code' => 'WELCOME5', 'name' => 'Welcome', 'type' => 'percent', 'value' => 500]);
+            Livewire::test(OrderScreen::class, ['order' => $order])->set('promoCode', 'WELCOME5')->call('applyPromoCode');
+
+            return $order->fresh()->promo_code_id !== null ? true : false;
         },
         'open payment screen' => function () use ($order, $cash, $till, $user) {
             if ($user->can('payments.take')) {
@@ -158,5 +168,62 @@ it('lets only roles with the export permission download staff sales', function (
     }) === 'ALLOWED';
 
     expect($downloaded)->toBe(in_array($role, ['owner', 'manager', 'accountant'], true), "{$role} staff-sales export");
-})->with(['owner', 'manager', 'inventory', 'accountant'])
-    ->skip('Known gap (role review 4 Nov): the Staff sales Export button ignores reports.export, so Inventory can download it. Remove this skip once fixed.');
+})->with(['owner', 'manager', 'inventory', 'accountant']);
+
+it('lets a waiter give a discount or promo code once a manager types their PIN', function () {
+    seedRoles();
+    $branch = provisionTenant();
+    $menu = demoMenu();
+    $waiter = User::factory()->forBranch($branch)->withPin('5151')->create(['name' => 'Waiter']);
+    $waiter->assignRole(Role::Waiter->value);
+    $manager = User::factory()->forBranch($branch)->withPin('2468')->create(['name' => 'Manager']);
+    $manager->assignRole(Role::Manager->value);
+    $orders = app(OrderService::class);
+    $order = $orders->open(OrderType::Takeaway, $waiter);
+    $orders->addItem($order, $menu['coke'], null, 2, [], null, $waiter);
+    $this->actingAs($waiter);
+
+    // A 5 % discount (under the threshold) opens the manager keypad instead of applying.
+    $screen = Livewire::test(OrderScreen::class, ['order' => $order])->call('startDiscount', null)->call('setDiscountType', 'percent')
+        ->call('setDiscountValue', '5')->call('chooseDiscountReason', 'Regular customer')->call('applyDiscount');
+    expect($order->fresh()->discount_total->isZero())->toBeTrue()
+        ->and($screen->get('approval.method'))->toBe('discountApproved');
+
+    // The waiter's own PIN does not approve it; the manager's does, and is recorded.
+    $screen->call('approve', '5151');
+    expect($order->fresh()->discount_total->isZero())->toBeTrue();
+    $screen->call('approve', '2468');
+    expect($order->fresh()->discount_total->isPositive())->toBeTrue()
+        ->and($order->fresh()->discount_approved_by_id)->toBe($manager->id);
+
+    // Promo code: same.
+    PromoCode::create(['code' => 'WELCOME5', 'name' => 'Welcome', 'type' => 'percent', 'value' => 500]);
+    $other = $orders->open(OrderType::Takeaway, $waiter);
+    $orders->addItem($other, $menu['coke'], null, 2, [], null, $waiter);
+    $screen = Livewire::test(OrderScreen::class, ['order' => $other])->set('promoCode', 'welcome5')->call('applyPromoCode');
+    expect($other->fresh()->promo_code_id)->toBeNull()->and($screen->get('approval.method'))->toBe('promoApproved');
+    $screen->call('approve', '2468');
+    expect($other->fresh()->promo_code_id)->not->toBeNull()->and($other->fresh()->discount_approved_by_id)->toBe($manager->id);
+});
+
+it('still lets a cashier give a small discount without a manager', function () {
+    seedRoles();
+    $branch = provisionTenant();
+    $menu = demoMenu();
+    $cashier = User::factory()->forBranch($branch)->create();
+    $cashier->assignRole(Role::Cashier->value);
+    $orders = app(OrderService::class);
+    $order = $orders->open(OrderType::Takeaway, $cashier);
+    $orders->addItem($order, $menu['coke'], null, 2, [], null, $cashier);
+
+    $orders->applyDiscount($order, DiscountType::Percent, 500, 'Regular customer', $cashier);
+    expect($order->fresh()->discount_total->isPositive())->toBeTrue();
+
+    // Service level too: a waiter calling the service directly is refused.
+    $waiter = User::factory()->forBranch($branch)->create();
+    $waiter->assignRole(Role::Waiter->value);
+    $o2 = $orders->open(OrderType::Takeaway, $waiter);
+    $orders->addItem($o2, $menu['coke'], null, 1, [], null, $waiter);
+    expect(fn () => $orders->applyDiscount($o2, DiscountType::Percent, 100, 'x', $waiter))
+        ->toThrow(ManagerPinRequiredException::class);
+});

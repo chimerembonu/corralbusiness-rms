@@ -12,13 +12,11 @@
     "admin/cashier-sessions": [
         "owner",
         "manager",
-        "inventory",
         "accountant"
     ],
     "admin/cashier-sessions/{record}": [
         "owner",
         "manager",
-        "inventory",
         "accountant"
     ],
     "admin/categories": [
@@ -48,7 +46,6 @@
     "admin/day-closes": [
         "owner",
         "manager",
-        "inventory",
         "accountant"
     ],
     "admin/dining-tables": [
@@ -168,25 +165,21 @@
     "admin/reports/items": [
         "owner",
         "manager",
-        "inventory",
         "accountant"
     ],
     "admin/reports/sales": [
         "owner",
         "manager",
-        "inventory",
         "accountant"
     ],
     "admin/reports/tax": [
         "owner",
         "manager",
-        "inventory",
         "accountant"
     ],
     "admin/reports/voids": [
         "owner",
         "manager",
-        "inventory",
         "accountant"
     ],
     "admin/roster": [
@@ -200,7 +193,6 @@
     "admin/staff-sales": [
         "owner",
         "manager",
-        "inventory",
         "accountant"
     ],
     "admin/staff/create": [
@@ -290,15 +282,11 @@
     "kitchen": [
         "owner",
         "manager",
-        "cashier",
-        "waiter",
         "kitchen"
     ],
     "kitchen/expo": [
         "owner",
         "manager",
-        "cashier",
-        "waiter",
         "kitchen"
     ],
     "pos": [
@@ -311,18 +299,15 @@
     "pos/cash": [
         "owner",
         "manager",
-        "cashier",
-        "inventory"
+        "cashier"
     ],
     "pos/cash/report": [
         "owner",
-        "manager",
-        "inventory"
+        "manager"
     ],
     "pos/cash/sessions/{session}": [
         "owner",
-        "manager",
-        "inventory"
+        "manager"
     ],
     "pos/customers": [
         "owner",
@@ -372,8 +357,7 @@
     ],
     "pos/today": [
         "owner",
-        "manager",
-        "inventory"
+        "manager"
     ],
     "print/jobs/{job}": [],
     "print/next": [

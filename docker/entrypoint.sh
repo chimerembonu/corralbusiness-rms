@@ -16,6 +16,8 @@ fi
 if [ "${RMS_ROLE:-app}" = "app" ]; then
     php artisan storage:link --force >/dev/null 2>&1 || true
     php artisan migrate --force --no-interaction
+    # Re-apply who-can-do-what from RoleDefinitions.php on every start, so role changes reach the store with each update.
+    php artisan db:seed --class='Database\Seeders\RolesAndPermissionsSeeder' --force --no-interaction
     php artisan config:cache
     php artisan route:cache
     php artisan view:cache

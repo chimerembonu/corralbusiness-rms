@@ -26,6 +26,8 @@ beforeEach(function () {
     $this->menu = demoMenu();
     $this->waiter = User::factory()->forBranch($this->branch)->create();
     $this->waiter->assignRole(Role::Waiter->value);
+    $this->cashier = User::factory()->forBranch($this->branch)->create();
+    $this->cashier->assignRole(Role::Cashier->value); // gives small discounts; waiters need a manager for every discount
     $this->manager = User::factory()->forBranch($this->branch)->create();
     $this->manager->assignRole(Role::Manager->value);
     $this->orders = app(OrderService::class);
@@ -38,34 +40,34 @@ beforeEach(function () {
 });
 
 it('applies a small order discount, needs a manager above the threshold, and requires a reason', function () {
-    $this->orders->applyDiscount($this->order, DiscountType::Percent, 1000, 'Loyal customer', $this->waiter);
+    $this->orders->applyDiscount($this->order, DiscountType::Percent, 1000, 'Loyal customer', $this->cashier);
     $order = $this->order->fresh();
     expect($order->discount_total)->toBePesewas(250)        // 10 % of 25.00
         ->and($order->tax_total)->toBePesewas(360)          // 20 % of (20.00 − 2.00)
         ->and($order->total)->toBePesewas(2610)
         ->and($order->discountLabel())->toBe('10%');
 
-    expect(fn () => $this->orders->applyDiscount($this->order, DiscountType::Percent, 2500, 'Complaint', $this->waiter))
+    expect(fn () => $this->orders->applyDiscount($this->order, DiscountType::Percent, 2500, 'Complaint', $this->cashier))
         ->toThrow(ManagerPinRequiredException::class);
-    expect(fn () => $this->orders->applyDiscount($this->order, DiscountType::Fixed, 500, '', $this->waiter))
+    expect(fn () => $this->orders->applyDiscount($this->order, DiscountType::Fixed, 500, '', $this->cashier))
         ->toThrow(DiscountException::class);
-    expect(fn () => $this->orders->applyDiscount($this->order, DiscountType::Fixed, 99900, 'Complaint', $this->waiter, $this->manager))
+    expect(fn () => $this->orders->applyDiscount($this->order, DiscountType::Fixed, 99900, 'Complaint', $this->cashier, $this->manager))
         ->toThrow(DiscountException::class);
 
-    $this->orders->applyDiscount($this->order, DiscountType::Fixed, 1000, 'Complaint', $this->waiter, $this->manager);
+    $this->orders->applyDiscount($this->order, DiscountType::Fixed, 1000, 'Complaint', $this->cashier, $this->manager);
     $order = $this->order->fresh();
     expect($order->discount_total)->toBePesewas(1000)
         ->and($order->discount_approved_by_id)->toBe($this->manager->id)
         ->and($order->discountLabel())->toBe('GH₵ 10.00');
 
-    $this->orders->removeDiscount($this->order, $this->waiter);
+    $this->orders->removeDiscount($this->order, $this->cashier);
     expect($this->order->fresh()->discount_total)->toBePesewas(0)->and($this->order->fresh()->total)->toBePesewas(2900);
 });
 
 it('discounts a single line and spreads the order discount over the rest', function () {
-    $this->orders->applyItemDiscount($this->order, $this->coke, DiscountType::Percent, 1000, 'Staff meal', $this->waiter);
+    $this->orders->applyItemDiscount($this->order, $this->coke, DiscountType::Percent, 1000, 'Staff meal', $this->cashier);
     // 4.60 is 20 % of the remaining 23.00 → above the 10 % threshold, so a manager approves.
-    $this->orders->applyDiscount($this->order, DiscountType::Fixed, 460, 'Promotion', $this->waiter, $this->manager);
+    $this->orders->applyDiscount($this->order, DiscountType::Fixed, 460, 'Promotion', $this->cashier, $this->manager);
 
     $order = $this->order->fresh();
     $coke = $this->coke->fresh();
@@ -77,7 +79,7 @@ it('discounts a single line and spreads the order discount over the rest', funct
         ->and($water->discount_amount)->toBePesewas(100)
         ->and($order->total)->toBePesewas(2500 - 660 + 288);          // tax 20 % of the coke net 14.40 = 2.88; water is tax free
 
-    expect(fn () => $this->orders->applyItemDiscount($this->order, $this->coke, DiscountType::Percent, 5000, 'Complaint', $this->waiter))
+    expect(fn () => $this->orders->applyItemDiscount($this->order, $this->coke, DiscountType::Percent, 5000, 'Complaint', $this->cashier))
         ->toThrow(ManagerPinRequiredException::class);
 });
 
@@ -86,22 +88,22 @@ it('applies, rejects and releases promo codes', function () {
     $expired = PromoCode::create(['code' => 'OLD', 'name' => 'Old', 'type' => 'fixed', 'value' => 500, 'ends_at' => now()->subDay()]);
     $big = PromoCode::create(['code' => 'BIG', 'name' => 'Big spender', 'type' => 'fixed', 'value' => 500, 'min_order' => 100000]);
 
-    expect(fn () => $this->orders->applyPromoCode($this->order, 'NOPE', $this->waiter))->toThrow(DiscountException::class, 'Unknown promo code.')
-        ->and(fn () => $this->orders->applyPromoCode($this->order, 'OLD', $this->waiter))->toThrow(DiscountException::class, 'expired')
-        ->and(fn () => $this->orders->applyPromoCode($this->order, 'BIG', $this->waiter))->toThrow(DiscountException::class, 'at least');
+    expect(fn () => $this->orders->applyPromoCode($this->order, 'NOPE', $this->cashier))->toThrow(DiscountException::class, 'Unknown promo code.')
+        ->and(fn () => $this->orders->applyPromoCode($this->order, 'OLD', $this->cashier))->toThrow(DiscountException::class, 'expired')
+        ->and(fn () => $this->orders->applyPromoCode($this->order, 'BIG', $this->cashier))->toThrow(DiscountException::class, 'at least');
 
-    $this->orders->applyPromoCode($this->order, ' welcome10 ', $this->waiter);
+    $this->orders->applyPromoCode($this->order, ' welcome10 ', $this->cashier);
     $order = $this->order->fresh();
     expect($order->promo_code)->toBe('WELCOME10')
         ->and($order->discount_total)->toBePesewas(200)              // 10 % = 2.50, capped at 2.00
         ->and($order->discountLabel())->toBe('WELCOME10 (10%)')
         ->and($promo->fresh()->uses_count)->toBe(1);
 
-    $other = $this->orders->open(OrderType::Takeaway, $this->waiter);
+    $other = $this->orders->open(OrderType::Takeaway, $this->cashier);
     $this->orders->addItem($other, $this->menu['coke']);
-    expect(fn () => $this->orders->applyPromoCode($other, 'WELCOME10', $this->waiter))->toThrow(DiscountException::class, 'used up');
+    expect(fn () => $this->orders->applyPromoCode($other, 'WELCOME10', $this->cashier))->toThrow(DiscountException::class, 'used up');
 
-    $this->orders->applyDiscount($this->order, DiscountType::Percent, 500, 'Owner / manager', $this->waiter);
+    $this->orders->applyDiscount($this->order, DiscountType::Percent, 500, 'Owner / manager', $this->cashier);
     expect($this->order->fresh()->promo_code)->toBeNull()->and($promo->fresh()->uses_count)->toBe(0);
 });
 

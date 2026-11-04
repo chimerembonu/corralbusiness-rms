@@ -124,8 +124,7 @@ it('shows the kitchen screen to kitchen staff with live tickets and keyboard bum
 
 it('keeps guests and waiters off the kitchen screen', function () {
     $this->get('/kitchen')->assertRedirect('/pos/login');
-    $this->actingAs($this->waiter)->get('/kitchen')->assertOk(); // waiters may view…
-    Livewire::actingAs($this->waiter)->test(KitchenDisplay::class)->assertDontSee('Done'); // …but not bump
+    $this->actingAs($this->waiter)->get('/kitchen')->assertForbidden(); // waiters and cashiers don't use the kitchen screen (owner, 4 Nov 2026)
     $nobody = User::factory()->forBranch($this->branch)->create();
     $this->actingAs($nobody)->get('/kitchen')->assertForbidden();
 });

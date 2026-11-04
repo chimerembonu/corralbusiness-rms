@@ -689,15 +689,31 @@ class OrderScreen extends Component
 
     public function applyPromoCode(): void
     {
-        $this->run(function (OrderService $orders) {
-            $orders->applyPromoCode($this->order, $this->promoCode, auth()->user());
+        $code = $this->promoCode;
+        // Waiters need a manager for promo codes too (owner's decision, 4 Nov 2026).
+        $this->withManagerFallback(
+            fn () => $this->promoApproved(null, $code),
+            Permission::OrdersDiscount, 'promoApproved', [$code],
+            __('pos::pos.approval.promo', ['code' => strtoupper(trim($code))]),
+        );
+    }
+
+    protected function promoApproved(?User $manager, string $code): void
+    {
+        $this->error = null;
+        $this->notice = null;
+        try {
+            app(OrderService::class)->applyPromoCode($this->order, $code, auth()->user(), $manager);
             $this->promoCode = '';
             $this->modal = null;
             $this->notice = __('pos::pos.order.promo_applied');
-        });
-        if ($this->error) {
+        } catch (ManagerPinRequiredException $e) {
+            throw $e;
+        } catch (RuntimeException $e) {
+            $this->error = FriendlyError::message($e);
             $this->modal = 'promo';
         }
+        unset($this->order);
     }
 
     public function saveOrderNote(): void

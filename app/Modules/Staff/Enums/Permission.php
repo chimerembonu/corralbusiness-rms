@@ -11,6 +11,7 @@ enum Permission: string
     case OrdersCreate = 'orders.create';
     case OrdersVoid = 'orders.void';            // manager PIN override
     case OrdersDiscount = 'orders.discount';    // manager PIN override above threshold
+    case DiscountSmall = 'orders.discount_small'; // may give a discount up to the Till-settings threshold without a manager PIN (not waiters)
     case OrdersRefund = 'orders.refund';        // manager PIN override
     case OrdersPriceEdit = 'orders.price_edit'; // manager PIN override
     case DayReopen = 'day.reopen';              // manager PIN override

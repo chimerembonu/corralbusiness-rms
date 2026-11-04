@@ -90,7 +90,8 @@ it('still lets owners and managers open every one of those screens', function ()
 it('keeps what those roles are for: stock for Inventory, reports and cash-ups for the Accountant', function () {
     openAdminAs($this->users[Role::Inventory->value]);
     $this->get(IngredientResource::getUrl())->assertOk();
-    $this->get(SalesReport::getUrl())->assertOk();
+    $this->get(SalesReport::getUrl())->assertForbidden(); // no sales or cash figures for the storekeeper (owner, 4 Nov 2026)
+    $this->get(CashierSessionResource::getUrl())->assertForbidden();
 
     openAdminAs($this->users[Role::Accountant->value]);
     $this->get(SalesReport::getUrl())->assertOk();
