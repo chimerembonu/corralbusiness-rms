@@ -1,0 +1,406 @@
+{
+    "admin": [
+        "owner",
+        "manager",
+        "inventory",
+        "accountant"
+    ],
+    "admin/backups": [
+        "owner",
+        "manager"
+    ],
+    "admin/cashier-sessions": [
+        "owner",
+        "manager",
+        "inventory",
+        "accountant"
+    ],
+    "admin/cashier-sessions/{record}": [
+        "owner",
+        "manager",
+        "inventory",
+        "accountant"
+    ],
+    "admin/categories": [
+        "owner",
+        "manager"
+    ],
+    "admin/categories/create": [
+        "owner",
+        "manager"
+    ],
+    "admin/categories/{record}/edit": [
+        "owner",
+        "manager"
+    ],
+    "admin/customers": [
+        "owner",
+        "manager"
+    ],
+    "admin/customers/create": [
+        "owner",
+        "manager"
+    ],
+    "admin/customers/{record}/edit": [
+        "owner",
+        "manager"
+    ],
+    "admin/day-closes": [
+        "owner",
+        "manager",
+        "inventory",
+        "accountant"
+    ],
+    "admin/dining-tables": [
+        "owner",
+        "manager"
+    ],
+    "admin/dining-tables/create": [
+        "owner",
+        "manager"
+    ],
+    "admin/dining-tables/{record}/edit": [
+        "owner",
+        "manager"
+    ],
+    "admin/floor-plan": [
+        "owner",
+        "manager"
+    ],
+    "admin/floor-sections": [
+        "owner",
+        "manager"
+    ],
+    "admin/floor-sections/create": [
+        "owner",
+        "manager"
+    ],
+    "admin/floor-sections/{record}/edit": [
+        "owner",
+        "manager"
+    ],
+    "admin/import": [
+        "owner",
+        "manager"
+    ],
+    "admin/ingredients": [
+        "owner",
+        "manager",
+        "inventory"
+    ],
+    "admin/ingredients/create": [
+        "owner",
+        "manager",
+        "inventory"
+    ],
+    "admin/ingredients/{record}/edit": [
+        "owner",
+        "manager",
+        "inventory"
+    ],
+    "admin/items": [
+        "owner",
+        "manager"
+    ],
+    "admin/items/create": [
+        "owner",
+        "manager"
+    ],
+    "admin/items/{record}/edit": [
+        "owner",
+        "manager"
+    ],
+    "admin/kitchen-routing": [
+        "owner",
+        "manager"
+    ],
+    "admin/modifier-groups": [
+        "owner",
+        "manager"
+    ],
+    "admin/modifier-groups/create": [
+        "owner",
+        "manager"
+    ],
+    "admin/modifier-groups/{record}/edit": [
+        "owner",
+        "manager"
+    ],
+    "admin/print-jobs": [
+        "owner",
+        "manager"
+    ],
+    "admin/printers": [
+        "owner",
+        "manager"
+    ],
+    "admin/printers/create": [
+        "owner",
+        "manager"
+    ],
+    "admin/promo-codes": [
+        "owner",
+        "manager"
+    ],
+    "admin/promo-codes/create": [
+        "owner",
+        "manager"
+    ],
+    "admin/promo-codes/{record}/edit": [
+        "owner",
+        "manager"
+    ],
+    "admin/purchases": [
+        "owner",
+        "manager",
+        "inventory"
+    ],
+    "admin/purchases/create": [
+        "owner",
+        "manager",
+        "inventory"
+    ],
+    "admin/purchases/{record}/edit": [],
+    "admin/receipt-settings-page": [
+        "owner",
+        "manager"
+    ],
+    "admin/reports/items": [
+        "owner",
+        "manager",
+        "inventory",
+        "accountant"
+    ],
+    "admin/reports/sales": [
+        "owner",
+        "manager",
+        "inventory",
+        "accountant"
+    ],
+    "admin/reports/tax": [
+        "owner",
+        "manager",
+        "inventory",
+        "accountant"
+    ],
+    "admin/reports/voids": [
+        "owner",
+        "manager",
+        "inventory",
+        "accountant"
+    ],
+    "admin/roster": [
+        "owner",
+        "manager"
+    ],
+    "admin/staff": [
+        "owner",
+        "manager"
+    ],
+    "admin/staff-sales": [
+        "owner",
+        "manager",
+        "inventory",
+        "accountant"
+    ],
+    "admin/staff/create": [
+        "owner",
+        "manager"
+    ],
+    "admin/staff/{record}/edit": [
+        "owner",
+        "manager"
+    ],
+    "admin/stations": [
+        "owner",
+        "manager"
+    ],
+    "admin/stations/create": [
+        "owner",
+        "manager"
+    ],
+    "admin/stations/{record}/edit": [
+        "owner",
+        "manager"
+    ],
+    "admin/stock-movements": [
+        "owner",
+        "manager",
+        "inventory"
+    ],
+    "admin/stock-takes": [
+        "owner",
+        "manager",
+        "inventory"
+    ],
+    "admin/stock-takes/{record}": [
+        "owner",
+        "manager",
+        "inventory"
+    ],
+    "admin/suppliers": [
+        "owner",
+        "manager",
+        "inventory"
+    ],
+    "admin/suppliers/create": [
+        "owner",
+        "manager",
+        "inventory"
+    ],
+    "admin/suppliers/{record}/edit": [
+        "owner",
+        "manager",
+        "inventory"
+    ],
+    "admin/till-settings-page": [
+        "owner",
+        "manager"
+    ],
+    "admin/tills": [
+        "owner",
+        "manager"
+    ],
+    "admin/tills/create": [
+        "owner",
+        "manager"
+    ],
+    "admin/tills/{record}/edit": [
+        "owner",
+        "manager"
+    ],
+    "admin/timesheets": [
+        "owner",
+        "manager"
+    ],
+    "backups/download": [],
+    "customers/{customer}/statement": [
+        "owner",
+        "manager",
+        "cashier"
+    ],
+    "hq": [
+        "owner"
+    ],
+    "inventory/stock-takes/{stockTake}/print": [
+        "owner",
+        "manager",
+        "inventory"
+    ],
+    "kitchen": [
+        "owner",
+        "manager",
+        "cashier",
+        "waiter",
+        "kitchen"
+    ],
+    "kitchen/expo": [
+        "owner",
+        "manager",
+        "cashier",
+        "waiter",
+        "kitchen"
+    ],
+    "pos": [
+        "owner",
+        "manager",
+        "cashier",
+        "waiter",
+        "inventory"
+    ],
+    "pos/cash": [
+        "owner",
+        "manager",
+        "cashier",
+        "inventory"
+    ],
+    "pos/cash/report": [
+        "owner",
+        "manager",
+        "inventory"
+    ],
+    "pos/cash/sessions/{session}": [
+        "owner",
+        "manager",
+        "inventory"
+    ],
+    "pos/customers": [
+        "owner",
+        "manager",
+        "cashier"
+    ],
+    "pos/deliveries": [
+        "owner",
+        "manager",
+        "cashier",
+        "waiter"
+    ],
+    "pos/orders": [
+        "owner",
+        "manager",
+        "cashier",
+        "waiter"
+    ],
+    "pos/orders/{order}": [
+        "owner",
+        "manager",
+        "cashier",
+        "waiter"
+    ],
+    "pos/orders/{order}/pay": [
+        "owner",
+        "manager",
+        "cashier"
+    ],
+    "pos/orders/{order}/receipt": [
+        "owner",
+        "manager",
+        "cashier",
+        "waiter",
+        "kitchen",
+        "rider",
+        "inventory"
+    ],
+    "pos/rider": [
+        "owner",
+        "rider"
+    ],
+    "pos/stock-take": [
+        "owner",
+        "manager",
+        "inventory"
+    ],
+    "pos/today": [
+        "owner",
+        "manager",
+        "inventory"
+    ],
+    "print/jobs/{job}": [],
+    "print/next": [
+        "owner",
+        "manager",
+        "cashier",
+        "waiter",
+        "kitchen",
+        "rider",
+        "inventory"
+    ],
+    "receipt-preview": [
+        "owner",
+        "manager",
+        "cashier",
+        "waiter",
+        "kitchen",
+        "rider",
+        "inventory",
+        "accountant"
+    ],
+    "staff/cheat-sheet": [
+        "owner",
+        "manager"
+    ],
+    "staff/roster/print": [
+        "owner",
+        "manager"
+    ]
+}
