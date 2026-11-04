@@ -66,34 +66,72 @@ DoD
 
 ---
 
-## Post-go-live phases (sequence may change based on the pilot's pain points)
+## Two tracks from 4 November 2026 (owner's decisions)
 
-## Post-go-live week 1 — security follow-ups (week of 16 Nov, before Phase 4 work starts)
-From the two security review passes (SECURITY-REVIEW.md, SECURITY-REVIEW-2.md). None blocks the pilot; all are small.
+**Track A — the pilot** goes live on **13 November** on the current version (Phases 0–3). `main` is the pilot's code: until two weeks after go-live it only takes fixes the pilot needs.
 
-- [ ] **N3** Login lockout: add a per-network-address ceiling in `PinAuthenticator::attempt` so a browser cannot get 5 tries per till across every till (`Pos/Livewire/PinLogin.php`).
-- [ ] **N4** Log every quantity decrease on a sent line (before the bill is printed too) and show it in the voids & discounts report, like reductions after the bill already are.
-- [ ] **N6** Kitchen bump/recall and rider assignment: look up tickets and riders with `->forBranch()` (`Kitchen/Livewire/KitchenDisplay.php`, `ExpoDisplay.php`, `Pos/Livewire/DeliveriesBoard.php`).
-- [ ] **N7** Backup restore/delete: add `->authorize()` next to `->visible()` so Owner-only is explicit (`Settings/Filament/Pages/BackupsPage.php`).
-- [ ] **D1** Idle lock on a shared till: configurable idle timeout in Till settings and auto sign-out in the till layout. Until then the cheat-sheet says "tap Sign out when you leave the till".
-- [ ] **D2** Branch scoping of `/admin` lists (cashier sessions, day closes, stock takes, purchases, stock movements) and the kitchen broadcast channel. Must land before Phase 6 (cloud / HQ).
-- [ ] **D3** On-account receipts taken in the back office land in no drawer: take them at a till only, or add a drawer choice to the back-office form. Until then the restaurant is told to receive account payments at a till.
-- [ ] Re-run the security review after the first week of live trading.
+**Track B — the Complete Edition** is built alongside on the branch **`complete-edition`**: every feature in CLAUDE.md §4 and more, **switched off by default**, so that installing for a new restaurant is "fill in the settings", not "write more code". Each stage is merged into `main` only when its tests pass and it is switched off, so it reaches the pilot through the normal safe update without changing anything the staff see.
 
-## Phase 4 — Recipe-level inventory & food cost (Week of 16 Nov)
-Recipes/BOM per item & variant, auto-deduction, theoretical vs actual usage, COGS and margin reports, inventory valuation, purchase price history, supplier price comparison.
+Owner's decisions that shape Track B:
+1. **Online service — both options:** **Corral Cloud** (hosted by Corral Systems; the restaurant types an activation code) **and self-hosted** (the restaurant's own online server, or a private link to its store server).
+2. **Payment providers: Paystack and PaySwitch (theteller)**, behind one `PaymentGateway` interface so more can be added later.
+3. **Sold two ways:** a **ready-made box** (mini PC pre-loaded; plug in, run the wizard) **and a download** (installer for a computer the restaurant already has).
 
-## Phase 5 — Staffing extras & optional Payroll (Week of 23 Nov)
-Roster-vs-actual, overtime flags, leave requests; Payroll module (off by default): pay rates, allowances/deductions, pay run, payslip PDF, Excel export, SSNIT/PAYE as configurable formulas (owner confirms rates).
+### What "plug and play" means — the install-time checklist
 
-## Phase 6 — Cloud instance & sync (Weeks of 30 Nov – 7 Dec)
-Cloud deployment (Docker on a VPS), tenant onboarding, `/hq` owner panel across branches, store↔cloud sync via outbox/inbox, conflict rules, sync status screen, off-site backups, owner mobile dashboard (responsive `/hq`).
+Everything below is built in advance. At installation the restaurant (or Corral's installer) only does the right-hand column.
 
-## Phase 7 — Online ordering & payment gateways (Weeks of 14 – 21 Dec)
-Customer web app `/order` (pickup/delivery, zones, tracking), `PaymentGateway` interface with first aggregator (owner picks Hubtel / Paystack / Flutterwave), MoMo prompt-to-pay at POS via the same gateway, SMS notifications via MTech's A2P route, WhatsApp order notifications.
+| Feature | Built in Track B | Filled in at installation |
+|---|---|---|
+| Setup wizard | Restaurant, branch, owner, taxes (2026 Ghana defaults), receipt, tills, printers (auto-found), menu/staff import from Excel | Answers to the wizard's questions |
+| Licence & tiers | Signed licence key, checked offline; tiers switch features on; grace period, never a hard lock mid-service | Activation code |
+| Features page | One switch per feature, each with "what it needs" checklist | Switches |
+| Connections page | Encrypted storage of keys, **Test connection** button for each | Paystack keys / PaySwitch merchant ID + API user + key; SMS sender; WhatsApp; e-VAT credentials; Corral Cloud code |
+| MoMo prompt at the till | Customer approves on phone; till checks status itself (works without inbound internet) | Payment provider keys |
+| Online ordering | Customer web shop: menu, cart, pickup/delivery, zones & fees, pay online (provider's hosted page), order tracking, orders arrive on tills & kitchen | Corral Cloud code **or** own server address; delivery zones; opening hours |
+| Owner's remote dashboard | Phone-friendly reports for all branches | Corral Cloud code **or** private link (Tailscale) |
+| Off-site backups | Locked backups copied to the cloud nightly | Corral Cloud code or own storage |
+| SMS / WhatsApp | Order confirmations, "ready", delivery updates, reservation reminders | Sender ID / API keys (MTech A2P route ready) |
+| Recipes & food cost | Recipes per item/size, auto stock deduction, weighted-average cost, theoretical vs actual, margins | Recipes (or import) |
+| Payroll (optional) | Pay rates, allowances/deductions, SSNIT and PAYE as editable tables, pay run, payslips | Rates confirmed by the accountant |
+| Reservations | Bookings, table holds, deposits (via provider), reminders | Opening hours, table rules |
+| Loyalty & gift vouchers | Points, vouchers (recorded as money owed until used), Corral Rewards connector | Programme rules |
+| Accountant export | Daily journal to Excel, mapped to the restaurant's chart of accounts | Account codes |
+| GRA e-VAT | Adapter built to GRA's published spec, tested against GRA's test service | GRA credentials, **after GRA approves the restaurant** |
+| Delivery apps (Bolt Food, Glovo) | Quick "app order" entry on the till with the app's commission; automatic intake only if a partner API is granted | Commission % |
+| Extras | Customer-facing display, barcode scanner, Twi/Ga/French language packs | Switch on |
 
-## Phase 8 — Growth features (2027)
-Reservations, loyalty via Corral Rewards (`LoyaltyProvider`), gift vouchers, third-party aggregator order intake (Bolt Food / Glovo), GRA E-VAT certified invoicing, accounting export (QuickBooks/Xero/Excel journal), multi-language packs (Twi/Ga/French), customer-facing display, barcode scanner support.
+**Cannot be pure configuration** (honest list): GRA e-VAT needs GRA's approval for each restaurant; delivery-app automatic intake needs partner approval from those companies; payment providers need a merchant account per restaurant; online ordering always needs either Corral Cloud or a server reachable from the internet.
+
+### Track B stages (each ends with tests passing and the stage merged, switched off)
+
+**E1 — Platform for plug and play** (wk of 9 Nov): Features page; Connections page (encrypted credentials, Test connection); licence key + tiers; first-run setup wizard; printer auto-discovery in the wizard.
+
+**E2 — Payments** (wk of 16 Nov): `PaymentGateway` interface; **Paystack** adapter (MoMo charge for MTN/Telecel/AT, status polling, hosted checkout for cards); **PaySwitch** adapter (direct MoMo debit with r-switch MTN/VDF/ATL…, status check, hosted checkout for cards — *never* PaySwitch's direct card API, which would put card numbers on our server); MoMo prompt-to-pay at the till; refunds where the provider supports them; reconciliation report (till vs provider). Sandbox tests for both.
+
+**E3 — Online service** (wks of 23 & 30 Nov): cloud deployment package (same app, `RMS_MODE=cloud`); tenant onboarding + activation codes (Corral Cloud); store↔cloud sync over the outbox/inbox (store wins for operations, cloud wins for menu/settings edited in HQ); `/hq` phone-friendly owner dashboard across branches; off-site backups; **self-hosted options**: install the cloud package on the restaurant's own server, or the private-link (Tailscale) remote access for the owner. D2 (branch scoping) lands first.
+
+**E4 — Online ordering & messages** (wks of 7 & 14 Dec): customer web shop on the cloud side (menu, cart, pickup/delivery, zones & fees, opening hours, sold-out sync, pay via E2 hosted pages, tracking page); orders flow to the store's tills and kitchen through sync; SMS via MTech A2P / any HTTP SMS gateway; WhatsApp notifications.
+
+**E5 — Back-of-house depth** (wk of 21 Dec): recipes/BOM per item & variant, auto-deduction, **weighted-average cost** (IAS 2), theoretical vs actual usage, COGS & margin reports, purchase price history; accountant's daily journal export.
+
+**E6 — Payroll (optional)** (wk of 28 Dec): pay rates, overtime, allowances/deductions, SSNIT & PAYE as editable tables (accountant confirms), pay run, payslip PDF, Excel export.
+
+**E7 — Guest features** (wk of 4 Jan): reservations & table holds, deposits via E2, reminders via E4; loyalty points with `LoyaltyProvider` (Corral Rewards connector); gift vouchers as a liability until used.
+
+**E8 — Tax, channels & extras** (wk of 11 Jan): GRA e-VAT adapter to spec (enable after GRA approval); delivery-app order entry; customer-facing display; barcode scanner; language packs (Twi, Ga, French).
+
+**E9 — Compliance & hardening** (runs alongside, finished by wk of 18 Jan): HTTPS on the store network; multi-factor sign-in for Owner/Manager; shorter back-office sessions; idle lock on tills (D1); customer data export & anonymise; retention clean-up; tamper-evident audit log; optional second-person approval; run tests on every GitHub change and protect `main`; D3, N3, N4, N6, N7; re-run security, role and compliance reviews on the finished edition.
+
+**E10 — Packaging** (wk of 25 Jan): **box** — Ubuntu image that installs itself and opens the setup wizard on first boot; **download** — one-step installers for Ubuntu, Windows and Mac (Docker Desktop); install guide with pictures; Corral Cloud admin (activations, licences, support access with the restaurant's consent); independent penetration test before general sale.
+
+**Target:** Complete Edition ready to sell by **end of January 2027**, proven in the pilot restaurant.
+
+### Track A — pilot items (before and after 13 Nov)
+- [ ] Go-live checklist (Phase 3.6) and two days of shadowing (3.7).
+- [ ] Private remote link (Tailscale) for the owner's reports, optional, set up at installation.
+- [ ] Business tasks from COMPLIANCE-ASSESSMENT.md §8 (DPC registration, GRA e-VAT/fiscal device question, PCI SAQ B, privacy notice, accountant confirmations).
+- [ ] After two weeks of live trading: lift the `main` freeze and start merging Track B stages.
 
 ---
 
