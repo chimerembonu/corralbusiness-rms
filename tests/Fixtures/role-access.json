@@ -31,6 +31,9 @@
         "owner",
         "manager"
     ],
+    "admin/connections": [
+        "owner"
+    ],
     "admin/customers": [
         "owner",
         "manager"
@@ -57,6 +60,10 @@
         "manager"
     ],
     "admin/dining-tables/{record}/edit": [
+        "owner",
+        "manager"
+    ],
+    "admin/features": [
         "owner",
         "manager"
     ],
