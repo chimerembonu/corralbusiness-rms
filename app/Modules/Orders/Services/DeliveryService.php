@@ -14,6 +14,7 @@ use App\Modules\Staff\Enums\Permission;
 use App\Modules\Staff\Exceptions\ManagerPinRequiredException;
 use App\Modules\Staff\Models\User;
 use App\Support\Money\Money;
+use App\Support\Tenancy\Tenancy;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -162,9 +163,14 @@ class DeliveryService
     }
 
     /** Staff who can ride, for the assign buttons. */
+    /** Riders of this branch, plus anyone who works for the whole restaurant (security review N6). */
     public function riders(?string $branchId = null): Collection
     {
-        return User::query()->where('is_active', true)->permission(Permission::DeliveryRide->value)->orderBy('name')->get();
+        $branchId ??= Tenancy::branchId();
+
+        return User::query()->where('is_active', true)->permission(Permission::DeliveryRide->value)
+            ->where(fn ($q) => $q->where('branch_id', $branchId)->orWhereNull('branch_id'))
+            ->orderBy('name')->get();
     }
 
     private function transition(Order $order, DeliveryStatus $to, ?User $by): Order

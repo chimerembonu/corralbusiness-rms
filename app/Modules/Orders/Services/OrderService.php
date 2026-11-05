@@ -164,8 +164,8 @@ class OrderService
 
     /**
      * Change how many of a line. Once the bill has been printed, making a line smaller is a void in
-     * disguise: it needs someone with the void permission as $by or $approvedBy (manager PIN) and is
-     * logged for the voids report (re-review of security review H5).
+     * disguise: it needs someone with the void permission as $by or $approvedBy (manager PIN) (re-review of
+     * security review H5). Every reduction, before or after the bill, is logged for the voids report (N4).
      */
     public function changeQuantity(Order $order, OrderItem $line, int $quantity, ?User $by = null, ?User $approvedBy = null): OrderItem
     {
@@ -189,12 +189,15 @@ class OrderService
         $this->dropUnapprovedDiscountsOverThreshold($order, $by);
         $line->refresh();
 
-        if ($reducedAfterBill && ! $order->is_training) {
-            $approver = $approvedBy ?? $by;
+        // Every reduction is logged and reported, before the bill too (security review N4): ring 3, take cash
+        // for 3, tap "−" twice, record 1 must leave a trace.
+        if ($quantity < $from && ! $order->is_training) {
+            $approver = $reducedAfterBill ? ($approvedBy ?? $by) : null;
             activity('order')->performedOn($order)->causedBy($by)->withProperties([
                 'number' => $order->displayNumber(), 'line' => $line->displayName(), 'from' => $from, 'to' => $quantity,
-                'value' => $before->subtract($line->line_total)->amount, 'approved_by' => $approver?->id, 'approved_by_name' => $approver?->name,
-            ])->log('quantity_reduced_after_bill');
+                'value' => $before->subtract($line->line_total)->amount, 'after_bill' => $reducedAfterBill,
+                'approved_by' => $approver?->id, 'approved_by_name' => $approver?->name,
+            ])->log($reducedAfterBill ? 'quantity_reduced_after_bill' : 'quantity_reduced');
         }
         ItemQuantityChanged::dispatch($order, $line, $by?->id);
 

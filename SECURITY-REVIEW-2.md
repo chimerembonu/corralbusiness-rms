@@ -43,15 +43,15 @@ Method: two independent adversarial reviewers, each instructed to attack the fix
 
 ### Low
 
-**N3. Login lockout multiplied by number of tills.** The lockout is now correctly per till, but the browser may choose which till it is, so an attacker gets 5 tries × 6 tills per minute instead of 5. `Pos/Livewire/PinLogin.php:45`. Fix: add a per-IP ceiling in `PinAuthenticator::attempt`.
+**N3. Login lockout multiplied by number of tills.** The lockout is now correctly per till, but the browser may choose which till it is, so an attacker gets 5 tries × 6 tills per minute instead of 5. `Pos/Livewire/PinLogin.php:45`. Fix: add a per-IP ceiling in `PinAuthenticator::attempt`. *Fixed 5 Nov 2026 on `complete-edition` (E9.5).* At most 10 wrong PINs a minute per device (`rms.pin.max_attempts_per_device`), not reset by a correct PIN.
 
-**N4. Quantity reductions *before* the bill is printed leave no audit entry.** Ring 3 × Coke, quote the total verbally, take cash, tap "−" twice: no PIN, no activity-log row, no report line. Only reductions after bill print are reported (H5 fix). Fix: log every quantity decrease on a sent line to the activity log and show them in the voids & discounts report.
+**N4. Quantity reductions *before* the bill is printed leave no audit entry.** Ring 3 × Coke, quote the total verbally, take cash, tap "−" twice: no PIN, no activity-log row, no report line. Only reductions after bill print are reported (H5 fix). Fix: log every quantity decrease on a sent line to the activity log and show them in the voids & discounts report. *Fixed 5 Nov 2026 on `complete-edition` (E9.5).* Every reduction (`quantity_reduced`, or `quantity_reduced_after_bill`) is logged and listed under "Quantities reduced".
 
 **N5. Refund double-submit.** `refund()` checks "already refunded" outside the transaction and does not lock the payment row; a double-tap could refund twice (and credit an account customer twice). `Payments/Services/PaymentService.php:131-152`. Fix: `lockForUpdate()` + re-check inside the transaction, exactly as was done for `record()`.
 
-**N6. Kitchen bump/recall and rider assignment look up by tenant, not branch.** A branch-A kitchen user can bump branch-B tickets by ID; a rider from another branch can be assigned. Harmless with one branch; part of the acknowledged D2 deferral. `Kitchen/Livewire/KitchenDisplay.php:59-86`, `ExpoDisplay.php:43`, `Pos/Livewire/DeliveriesBoard.php:38`. Fix: `->forBranch()` on those lookups.
+**N6. Kitchen bump/recall and rider assignment look up by tenant, not branch.** A branch-A kitchen user can bump branch-B tickets by ID; a rider from another branch can be assigned. Harmless with one branch; part of the acknowledged D2 deferral. `Kitchen/Livewire/KitchenDisplay.php:59-86`, `ExpoDisplay.php:43`, `Pos/Livewire/DeliveriesBoard.php:38`. Fix: `->forBranch()` on those lookups. *Fixed 5 Nov 2026 on `complete-edition` (E9.5).* Ticket and order lookups use the screen's locked branch; riders are listed and assigned only from the order's branch (or restaurant-wide).
 
-**N7. (Informational)** Backup restore/delete are Owner-only via `->visible()`; this is safe in Filament 4, but `->authorize()` would make the intent explicit and survive a future refactor.
+**N7. (Informational)** Backup restore/delete are Owner-only via `->visible()`; this is safe in Filament 4, but `->authorize()` would make the intent explicit and survive a future refactor. *Fixed 5 Nov 2026 on `complete-edition` (E9.5).* Restore, upload-restore and delete now `->authorize()` the owner.
 
 ## On the three items the developer deferred
 

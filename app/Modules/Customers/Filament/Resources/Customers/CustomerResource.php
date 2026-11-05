@@ -12,6 +12,8 @@ use App\Modules\Customers\Models\Customer;
 use App\Modules\Customers\Services\AccountService;
 use App\Modules\Payments\Enums\MomoProvider;
 use App\Modules\Payments\Enums\PaymentMethod;
+use App\Modules\Payments\Models\CashierSession;
+use App\Modules\Payments\Services\CashService;
 use App\Modules\Staff\Enums\Permission;
 use App\Support\Errors\FriendlyError;
 use App\Support\Filament\MoneyInput;
@@ -138,10 +140,17 @@ class CustomerResource extends Resource
                 Select::make('method')->label($a('method'))->options([PaymentMethod::Cash->value => PaymentMethod::Cash->label(), PaymentMethod::MobileMoney->value => PaymentMethod::MobileMoney->label(), PaymentMethod::Card->value => PaymentMethod::Card->label()])->required()->live()->native(false),
                 Select::make('provider')->label(__('payments::payments.errors.provider_required'))->options(array_combine(array_map(fn (MomoProvider $p) => $p->value, MomoProvider::cases()), array_map(fn (MomoProvider $p) => $p->label(), MomoProvider::cases())))->visible(fn (Get $get) => $get('method') === 'momo')->native(false),
                 TextInput::make('reference')->label($a('reference'))->maxLength(100)->visible(fn (Get $get) => $get('method') !== 'cash'),
+                // Cash goes into an open till's drawer, so that till's cash-up counts it (security review D3).
+                Select::make('drawer')->label($a('drawer'))->helperText($a('drawer_help'))->native(false)
+                    ->options(fn () => app(CashService::class)->openSessions()->mapWithKeys(fn (CashierSession $s) => [$s->id => ($s->till?->name ?? __('customers::customers.account.no_till')).' · '.$s->user?->name])->all())
+                    ->default(fn () => app(CashService::class)->current(auth()->user())?->id)
+                    ->required(fn (Get $get) => $get('method') === 'cash')
+                    ->visible(fn (Get $get) => $get('method') === 'cash'),
             ])
             ->action(function (Customer $record, array $data) {
                 try {
-                    app(AccountService::class)->receivePayment($record, PaymentMethod::from($data['method']), Money::of((int) $data['amount']), auth()->user(), $data['reference'] ?? null, isset($data['provider']) ? MomoProvider::from($data['provider']) : null);
+                    $drawer = ($data['method'] === 'cash' && filled($data['drawer'] ?? null)) ? CashierSession::query()->forBranch()->open()->find($data['drawer']) : null;
+                    app(AccountService::class)->receivePayment($record, PaymentMethod::from($data['method']), Money::of((int) $data['amount']), auth()->user(), $data['reference'] ?? null, isset($data['provider']) ? MomoProvider::from($data['provider']) : null, drawer: $drawer);
                     Notification::make()->success()->title(__('customers::customers.account.received', ['amount' => money((int) $data['amount']), 'name' => $record->name, 'balance' => money($record->fresh()->balance())]))->send();
                 } catch (RuntimeException $e) {
                     Notification::make()->danger()->title(FriendlyError::message($e))->send();

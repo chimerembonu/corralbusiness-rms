@@ -104,7 +104,7 @@ Every feature is **off by default**. A restaurant switches it on in **Settings â
 - [ ] **E9.2** Two-step sign-in for Owner and Manager; shorter back-office sessions; tills lock themselves when left idle.
 - [ ] **E9.3** Customer data export and anonymise; automatic clean-up after the agreed retention period.
 - [ ] **E9.4** Tamper-evident audit log; optional second-person approval for big refunds and day close.
-- [ ] **E9.5** Tests run automatically on every GitHub change; `main` protected; the remaining items from the security reviews (D3, N3, N4, N6, N7).
+- [ ] **E9.5** Tests run automatically on every GitHub change; `main` protected; the remaining items from the security reviews (D3, N3, N4, N6, N7). *5 Nov: tests run on GitHub for every push and pull request (`.github/workflows/tests.yml`); D3, N3, N4, N6, N7 fixed. Still open: protecting `main` (a GitHub setting, owner's decision).*
 - [ ] **E9.6** Re-run the security, role and compliance reviews on the finished edition.
 
 ### E10 â€” Packaging and launch

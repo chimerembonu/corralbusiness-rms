@@ -16,7 +16,8 @@ use Illuminate\Support\Facades\RateLimiter;
 
 /**
  * PIN login for POS / KDS / clock-in screens (CLAUDE.md §3.14):
- * 5 wrong PINs from the same till → locked for 60 seconds (configurable in config/rms.php).
+ * 5 wrong PINs from the same till → locked for 60 seconds (configurable in config/rms.php), and at most
+ * 10 wrong PINs a minute from one device whichever till it claims to be (security review N3).
  */
 class PinAuthenticator
 {
@@ -36,12 +37,21 @@ class PinAuthenticator
         if (RateLimiter::tooManyAttempts($limiterKey, $maxAttempts)) {
             throw new PinLockedException(RateLimiter::availableIn($limiterKey));
         }
+        $deviceKey = $this->deviceKey($tenantId);
+        $deviceMax = (int) config('rms.pin.max_attempts_per_device', 10);
+        if ($deviceKey && RateLimiter::tooManyAttempts($deviceKey, $deviceMax)) {
+            throw new PinLockedException(RateLimiter::availableIn($deviceKey));
+        }
 
         $user = $this->findByPin($pin, $tenantId);
 
         if ($user === null || ! $user->is_active || ! $user->verifyPin($pin)) {
             RateLimiter::hit($limiterKey, (int) config('rms.pin.lockout_seconds', 60));
-            $left = max(0, $maxAttempts - RateLimiter::attempts($limiterKey));
+            if ($deviceKey) {
+                // Not cleared by a correct PIN: mixing in your own PIN must not reset the count of guesses.
+                RateLimiter::hit($deviceKey, (int) config('rms.pin.lockout_seconds', 60));
+            }
+            $left = max(0, min($maxAttempts - RateLimiter::attempts($limiterKey), $deviceKey ? $deviceMax - RateLimiter::attempts($deviceKey) : PHP_INT_MAX));
             // Record the failure (never the PIN). A deactivated person's correct PIN is flagged separately.
             $inactive = $user !== null && ! $user->is_active && $user->verifyPin($pin) ? $user : null;
             SecurityLog::pinFailed($throttleKey, $tenantId, $left, $inactive);
@@ -49,7 +59,7 @@ class PinAuthenticator
             if ($left === 0) {
                 SecurityLog::pinLockedOut($throttleKey, $tenantId);
 
-                throw new PinLockedException(RateLimiter::availableIn($limiterKey));
+                throw new PinLockedException(max(RateLimiter::availableIn($limiterKey), $deviceKey ? RateLimiter::availableIn($deviceKey) : 0));
             }
 
             throw new InvalidPinException($left);
@@ -90,14 +100,19 @@ class PinAuthenticator
     {
         $tenantId = $tenant instanceof Tenant ? $tenant->getKey() : ($tenant ?? $this->context->tenantId());
 
-        return RateLimiter::tooManyAttempts($this->limiterKey($tenantId, $throttleKey), (int) config('rms.pin.max_attempts', 5));
+        $deviceKey = $this->deviceKey($tenantId);
+
+        return RateLimiter::tooManyAttempts($this->limiterKey($tenantId, $throttleKey), (int) config('rms.pin.max_attempts', 5))
+            || ($deviceKey && RateLimiter::tooManyAttempts($deviceKey, (int) config('rms.pin.max_attempts_per_device', 10)));
     }
 
     public function secondsUntilUnlocked(string $throttleKey, Tenant|string|null $tenant = null): int
     {
         $tenantId = $tenant instanceof Tenant ? $tenant->getKey() : ($tenant ?? $this->context->tenantId());
 
-        return RateLimiter::availableIn($this->limiterKey($tenantId, $throttleKey));
+        $deviceKey = $this->deviceKey($tenantId);
+
+        return max(RateLimiter::availableIn($this->limiterKey($tenantId, $throttleKey)), $deviceKey ? RateLimiter::availableIn($deviceKey) : 0);
     }
 
     private function findByPin(string $pin, ?string $tenantId): ?User
@@ -107,6 +122,14 @@ class PinAuthenticator
             ->where('tenant_id', $tenantId)
             ->where('pin_lookup', PinHasher::lookup($tenantId, $pin))
             ->first();
+    }
+
+    /** The device's own counter: its network address (none outside a web request, e.g. commands). */
+    private function deviceKey(?string $tenantId): ?string
+    {
+        $ip = app()->runningInConsole() && ! app()->runningUnitTests() ? null : request()->ip();
+
+        return $ip ? 'pin-device:'.($tenantId ?? 'global').':'.$ip : null;
     }
 
     private function limiterKey(?string $tenantId, string $throttleKey): string

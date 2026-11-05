@@ -83,6 +83,8 @@ return [
         'min_length' => 4,
         'max_length' => 6,
         'max_attempts' => 5,
+        // Wrong PINs from one device (its network address), whatever till it says it is (security review N3).
+        'max_attempts_per_device' => 10,
         'lockout_seconds' => 60,
     ],
 ];

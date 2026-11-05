@@ -9,10 +9,12 @@ use App\Modules\Customers\Exceptions\CustomerException;
 use App\Modules\Customers\Models\AccountTransaction;
 use App\Modules\Customers\Models\Customer;
 use App\Modules\Orders\Models\Order;
+use App\Modules\Orders\Support\TillSettings;
 use App\Modules\Payments\Enums\MomoProvider;
 use App\Modules\Payments\Enums\PaymentMethod;
 use App\Modules\Payments\Events\PaymentRecorded;
 use App\Modules\Payments\Exceptions\PaymentException;
+use App\Modules\Payments\Models\CashierSession;
 use App\Modules\Payments\Models\Payment;
 use App\Modules\Payments\Services\CashService;
 use App\Modules\Payments\Services\PaymentService;
@@ -70,7 +72,12 @@ class AccountService
      * Money received against the account (cash, MoMo or card). It is a Payment without an order,
      * so it lands in the cashier's drawer / session like any other takings.
      */
-    public function receivePayment(Customer $customer, PaymentMethod $method, Money $amount, ?User $by = null, ?string $reference = null, ?MomoProvider $provider = null, ?string $notes = null): Payment
+    /**
+     * Money received against a customer's account. Cash always lands in a till's drawer, so the cash-up sees
+     * it (security review D3): the drawer given (the back office chooses one), else the receiver's own open
+     * till; with no open till, cash is refused while the till rules require a till for payments.
+     */
+    public function receivePayment(Customer $customer, PaymentMethod $method, Money $amount, ?User $by = null, ?string $reference = null, ?MomoProvider $provider = null, ?string $notes = null, ?CashierSession $drawer = null): Payment
     {
         if (! $amount->isPositive()) {
             throw new PaymentException(__('payments::payments.errors.amount_required'));
@@ -83,8 +90,16 @@ class AccountService
         }
         PaymentService::assertNoCardNumber($method, $reference, $notes);
 
-        return DB::transaction(function () use ($customer, $method, $amount, $by, $reference, $provider, $notes) {
-            $session = $this->cash->current($by, $this->context->branchId());
+        $branchId = $this->context->branchId();
+        if ($drawer && (! $drawer->isOpen() || $drawer->branch_id !== $branchId)) {
+            throw new PaymentException(__('customers::customers.errors.drawer_closed'));
+        }
+        $session = $drawer ?? $this->cash->current($by, $branchId);
+        if ($method === PaymentMethod::Cash && ! $session && app(TillSettings::class)->requireSession($branchId)) {
+            throw new PaymentException(__('customers::customers.errors.cash_needs_till'));
+        }
+
+        return DB::transaction(function () use ($customer, $method, $amount, $by, $reference, $provider, $notes, $session) {
             $payment = new Payment([
                 'order_id' => null,
                 'customer_id' => $customer->id,

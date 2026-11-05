@@ -2,12 +2,19 @@
 
 use App\Modules\Inventory\Enums\Unit;
 use App\Modules\Inventory\Models\Ingredient;
+use App\Modules\Kitchen\Livewire\ExpoDisplay;
+use App\Modules\Kitchen\Livewire\KitchenDisplay;
 use App\Modules\Kitchen\Models\Station;
+use App\Modules\Kitchen\Models\Ticket;
+use App\Modules\Orders\Enums\OrderType;
 use App\Modules\Orders\Filament\Resources\DiningTables\Pages\CreateDiningTable;
 use App\Modules\Orders\Models\FloorSection;
+use App\Modules\Orders\Services\DeliveryService;
+use App\Modules\Orders\Services\OrderService;
 use App\Modules\Pos\Filament\Resources\Tills\Pages\CreateTill;
 use App\Modules\Pos\Filament\Resources\Tills\Pages\ListTills;
 use App\Modules\Pos\Filament\Resources\Tills\TillResource;
+use App\Modules\Pos\Livewire\DeliveriesBoard;
 use App\Modules\Pos\Models\Till;
 use App\Modules\Printing\Filament\Resources\Printers\Pages\CreatePrinter;
 use App\Modules\Printing\Filament\Resources\Printers\PrinterResource;
@@ -136,4 +143,45 @@ it('lets kitchen screens listen only to their own branch\'s kitchen', function (
 
     $otherRestaurant = provisionTenant('Another Restaurant');
     expect($channel($this->owner, $otherRestaurant->id))->toBeFalse();  // never another restaurant's kitchen
+});
+
+it('keeps kitchen bump/recall, the expo screen and rider assignment inside the branch (security review N6)', function () {
+    $menu = Tenancy::runAs($this->tenant, null, fn () => demoMenu());
+    $orders = app(OrderService::class);
+    // An Airport ticket in its kitchen, and an Airport rider.
+    [$airportOrder, $airportTicket, $airportRider] = Tenancy::runAs($this->tenant, $this->airport, function () use ($orders, $menu) {
+        $order = $orders->open(OrderType::Takeaway, $this->airportManager);
+        $orders->addItem($order, $menu['coke'], null, 1, [], null, $this->airportManager);
+        $orders->sendToKitchen($order, $this->airportManager);
+        $rider = User::factory()->forBranch($this->airport)->create(['name' => 'Kwame (Airport rider)']);
+        $rider->assignRole(Role::Rider->value);
+
+        return [$order, Ticket::query()->where('order_id', $order->id)->firstOrFail(), $rider];
+    });
+
+    $osuCook = User::factory()->forBranch($this->osu)->create();
+    $osuCook->assignRole(Role::Kitchen->value);
+    $this->actingAs($osuCook);
+    Tenancy::set($this->tenant, $this->osu);
+
+    // Each attempt is refused (the screen shows "not found"), and the Airport ticket is never touched.
+    foreach (['bump', 'start', 'done', 'recall'] as $action) {
+        Livewire::test(KitchenDisplay::class)->call($action, $airportTicket->id);
+        expect($airportTicket->fresh()->status->value)->toBe('new', "{$action} reached another branch's ticket");
+    }
+    Livewire::test(ExpoDisplay::class)->call('bumpTicket', $airportTicket->id);
+    Livewire::test(ExpoDisplay::class)->call('serve', $airportOrder->id);
+    expect($airportTicket->fresh()->status->value)->toBe('new')->and($airportTicket->fresh()->served_at)->toBeNull();
+
+    // Riders: only this branch's are offered, and another branch's cannot be assigned.
+    $osuRider = User::factory()->forBranch($this->osu)->create(['name' => 'Ama (Osu rider)']);
+    $osuRider->assignRole(Role::Rider->value);
+    $riders = app(DeliveryService::class)->riders()->pluck('name')->all();
+    expect($riders)->toContain('Ama (Osu rider)')->not->toContain('Kwame (Airport rider)'); // (the owner, restaurant-wide, may ride too)
+
+    $this->actingAs($this->osuManager);
+    $delivery = $orders->open(OrderType::Delivery, $this->osuManager);
+    $orders->addItem($delivery, $menu['coke'], null, 1, [], null, $this->osuManager);
+    Livewire::test(DeliveriesBoard::class)->call('assign', $delivery->id, $airportRider->id);
+    expect($delivery->fresh()->rider_id)->toBeNull();
 });

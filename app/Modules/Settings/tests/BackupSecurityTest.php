@@ -65,3 +65,22 @@ it('lets only the owner delete a backup', function () {
         ->callAction('delete', arguments: ['file' => $name])->assertHasNoErrors();
     expect(is_file(storage_path('backups/'.$name)))->toBeFalse();
 });
+
+it('refuses restore and delete to anyone but the owner even when called directly, not only hidden (security review N7)', function () {
+    $name = basename($this->backups->create());
+
+    foreach (['restore', 'uploadRestore', 'delete'] as $action) {
+        Livewire::actingAs($this->manager)->test(BackupsPage::class)->assertActionHidden($action);
+    }
+    // The raw requests a tampered browser could send: mount the action, then run it.
+    $page = Livewire::actingAs($this->manager)->test(BackupsPage::class);
+    foreach (['delete', 'restore'] as $action) {
+        try {
+            $page->call('mountAction', $action, ['file' => $name])->set('mountedActions.0.data.confirm', 'RESTORE')->call('callMountedAction');
+        } catch (Throwable) {
+            // refused outright is fine too
+        }
+    }
+    expect(is_file(storage_path('backups/'.$name)))->toBeTrue()
+        ->and(BackupsPage::ownerOnly())->toBeFalse();
+});
