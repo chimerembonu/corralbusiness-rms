@@ -16,3 +16,6 @@ Schedule::command('rms:backup --note=nightly')->dailyAt('02:30');
 
 // Payment-provider prompts (MoMo) not settled yet are re-checked every minute, in case the customer approved late (Complete Edition E2).
 Schedule::command('rms:payments:check')->everyMinute()->withoutOverlapping();
+
+// Customers' details are removed after the restaurant's retention period without a visit, when one is set (Complete Edition E9.3).
+Schedule::command('rms:customers:clean-up')->dailyAt('03:15');

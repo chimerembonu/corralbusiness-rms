@@ -80,6 +80,7 @@ class TillSettingsPage extends Page
             'loyalty_points' => (int) $settings->get(TillSettings::LOYALTY_POINTS_PER_CEDI),
             'till_lock_minutes' => $settings->tillLockMinutes(),
             'back_office_idle_minutes' => $settings->backOfficeIdleMinutes(),
+            'customer_retention_months' => $settings->customerRetentionMonths(),
         ]);
     }
 
@@ -117,6 +118,8 @@ class TillSettingsPage extends Page
             ]),
             Section::make(__('customers::customers.navigation_group'))->columns(2)->schema([
                 TextInput::make('loyalty_points')->label(__('customers::customers.loyalty.setting'))->numeric()->minValue(0)->helperText(__('customers::customers.loyalty.setting_help')),
+                TextInput::make('customer_retention_months')->label(__('customers::customers.privacy.retention_setting'))->numeric()->integer()->minValue(0)->maxValue(240)
+                    ->suffix(__('customers::customers.privacy.months'))->helperText(__('customers::customers.privacy.retention_help')),
             ]),
         ])->statePath('data');
     }
@@ -142,6 +145,7 @@ class TillSettingsPage extends Page
         $settings->set(TillSettings::LOYALTY_POINTS_PER_CEDI, (int) ($data['loyalty_points'] ?? 0));
         $settings->set(TillSettings::TILL_LOCK_MINUTES, max(0, (int) ($data['till_lock_minutes'] ?? 0)));
         $settings->set(TillSettings::BACK_OFFICE_IDLE_MINUTES, max(0, (int) ($data['back_office_idle_minutes'] ?? 0)));
+        $settings->set(TillSettings::CUSTOMER_RETENTION_MONTHS, max(0, (int) ($data['customer_retention_months'] ?? 0)), tenantWide: true);
 
         Notification::make()->success()->title(__('settings::settings.till.saved'))->send();
     }

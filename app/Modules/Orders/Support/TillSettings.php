@@ -44,6 +44,8 @@ final class TillSettings
 
     public const BACK_OFFICE_IDLE_MINUTES = 'security.back_office_idle_minutes'; // the back office signs out after this long unused (E9.2); 0 = never
 
+    public const CUSTOMER_RETENTION_MONTHS = 'customers.retention_months'; // restaurant-wide: customers' details are removed after this long without a visit (E9.3); 0 = kept
+
     public function __construct(private readonly SettingsService $settings) {}
 
     /** @return array<string, mixed> */
@@ -67,6 +69,7 @@ final class TillSettings
             self::LOYALTY_POINTS_PER_CEDI => 0,
             self::TILL_LOCK_MINUTES => 5,
             self::BACK_OFFICE_IDLE_MINUTES => 30,
+            self::CUSTOMER_RETENTION_MONTHS => 0,
         ];
     }
 
@@ -78,6 +81,12 @@ final class TillSettings
     public function backOfficeIdleMinutes(?string $branchId = null): int
     {
         return max(0, (int) $this->get(self::BACK_OFFICE_IDLE_MINUTES, $branchId));
+    }
+
+    /** Restaurant-wide (customers belong to the whole restaurant, not one branch). */
+    public function customerRetentionMonths(): int
+    {
+        return max(0, (int) $this->settings->get(self::CUSTOMER_RETENTION_MONTHS, 0, null));
     }
 
     public function get(string $key, ?string $branchId = null): mixed
