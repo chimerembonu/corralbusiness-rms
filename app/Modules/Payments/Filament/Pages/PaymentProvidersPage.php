@@ -111,12 +111,12 @@ class PaymentProvidersPage extends Page
     /** Provider payments that need a manager, newest first. */
     public function attention()
     {
-        return GatewayTransaction::query()->where('status', GatewayStatus::NeedsAttention->value)->with('order')->latest()->limit(50)->get();
+        return GatewayTransaction::query()->forBranch()->where('status', GatewayStatus::NeedsAttention->value)->with('order')->latest()->limit(50)->get();
     }
 
     /** Refunds the provider could not send back, waiting for a manager to give the money back by hand (E2.4). */
     public function refundsByHand()
     {
-        return GatewayRefund::query()->needsHand()->with(['payment.order', 'transaction'])->latest()->limit(50)->get();
+        return GatewayRefund::query()->forBranch()->needsHand()->with(['payment.order', 'transaction'])->latest()->limit(50)->get();
     }
 }

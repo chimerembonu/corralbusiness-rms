@@ -14,6 +14,7 @@ use App\Modules\Inventory\Models\Supplier;
 use App\Modules\Inventory\Services\PurchaseService;
 use App\Modules\Inventory\Services\StockService;
 use App\Modules\Staff\Enums\Permission;
+use App\Support\Filament\BranchResource;
 use App\Support\Filament\MoneyInput;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -23,7 +24,6 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
-use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
@@ -35,7 +35,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
 /** Purchase orders and goods received. */
-class PurchaseResource extends Resource
+class PurchaseResource extends BranchResource
 {
     protected static ?string $model = Purchase::class;
 
@@ -86,11 +86,11 @@ class PurchaseResource extends Resource
             Section::make($f('lines'))->schema([
                 Repeater::make('lines')->label('')->columns(4)->minItems(1)->defaultItems(1)->addActionLabel(__('inventory::inventory.purchase.fields.ingredient'))
                     ->schema([
-                        Select::make('ingredient_id')->label($f('ingredient'))->options(fn () => Ingredient::query()->active()->orderBy('name')->get()->mapWithKeys(fn (Ingredient $i) => [$i->id => $i->name.' ('.$i->unit->short().')'])->all())
+                        Select::make('ingredient_id')->label($f('ingredient'))->options(fn () => Ingredient::query()->forBranch()->active()->orderBy('name')->get()->mapWithKeys(fn (Ingredient $i) => [$i->id => $i->name.' ('.$i->unit->short().')'])->all())
                             ->required()->searchable()->live()->columnSpan(2)
-                            ->afterStateUpdated(fn (Set $set, $state) => $set('unit_cost', $state ? Ingredient::query()->find($state)?->cost_per_unit->toDecimal() : null)),
+                            ->afterStateUpdated(fn (Set $set, $state) => $set('unit_cost', $state ? Ingredient::query()->forBranch()->find($state)?->cost_per_unit->toDecimal() : null)),
                         TextInput::make('quantity')->label($f('quantity'))->numeric()->required()->minValue(0.001)->step('0.001')
-                            ->suffix(fn (Get $get) => $get('ingredient_id') ? Ingredient::query()->find($get('ingredient_id'))?->unit->short() : null),
+                            ->suffix(fn (Get $get) => $get('ingredient_id') ? Ingredient::query()->forBranch()->find($get('ingredient_id'))?->unit->short() : null),
                         MoneyInput::make('unit_cost')->label($f('unit_cost')),
                     ]),
             ]),

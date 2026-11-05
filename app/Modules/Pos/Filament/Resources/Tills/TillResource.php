@@ -8,13 +8,13 @@ use App\Modules\Pos\Filament\Resources\Tills\Pages\ListTills;
 use App\Modules\Pos\Models\Till;
 use App\Modules\Printing\Models\Printer;
 use App\Modules\Staff\Enums\Permission;
+use App\Support\Filament\BranchResource;
 use BackedEnum;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -23,7 +23,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
 /** Back office → Settings → Tills: name each till and link it to its receipt printer / cash drawer. */
-class TillResource extends Resource
+class TillResource extends BranchResource
 {
     protected static ?string $model = Till::class;
 
@@ -63,7 +63,7 @@ class TillResource extends Resource
                 TextInput::make('name')->label($f('name'))->required()->maxLength(50),
                 TextInput::make('code')->label($f('code'))->required()->maxLength(20)->alphaDash()->unique(ignoreRecord: true),
                 Select::make('receipt_printer_id')->label($f('receipt_printer'))->helperText($f('receipt_printer_help'))
-                    ->options(fn () => Printer::query()->active()->orderBy('name')->pluck('name', 'id')->all())
+                    ->options(fn () => Printer::query()->forBranch()->active()->orderBy('name')->pluck('name', 'id')->all())
                     ->searchable()->nullable(),
                 Toggle::make('is_active')->label($f('is_active'))->default(true)->inline(false),
             ]),

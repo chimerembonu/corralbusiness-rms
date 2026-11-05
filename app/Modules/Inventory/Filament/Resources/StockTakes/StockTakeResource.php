@@ -11,18 +11,18 @@ use App\Modules\Inventory\Services\StockTakeService;
 use App\Modules\Printing\Documents\CashReportDocument;
 use App\Modules\Staff\Enums\Permission;
 use App\Modules\Staff\Exceptions\ManagerPinRequiredException;
+use App\Support\Filament\BranchResource;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
-use Filament\Resources\Resource;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
-class StockTakeResource extends Resource
+class StockTakeResource extends BranchResource
 {
     protected static ?string $model = StockTake::class;
 

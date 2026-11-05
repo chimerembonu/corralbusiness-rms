@@ -9,12 +9,12 @@ use App\Modules\Payments\Models\DayClose;
 use App\Modules\Payments\Services\DayCloseService;
 use App\Modules\Staff\Enums\Permission;
 use App\Support\Errors\FriendlyError;
+use App\Support\Filament\BranchResource;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
-use Filament\Resources\Resource;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -22,7 +22,7 @@ use Illuminate\Database\Eloquent\Builder;
 use RuntimeException;
 
 /** Back office → Cash & day close → Day closes (Z reports). */
-class DayCloseResource extends Resource
+class DayCloseResource extends BranchResource
 {
     protected static ?string $model = DayClose::class;
 

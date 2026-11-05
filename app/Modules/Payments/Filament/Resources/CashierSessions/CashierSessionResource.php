@@ -8,9 +8,9 @@ use App\Modules\Payments\Filament\Resources\CashierSessions\Pages\ViewCashierSes
 use App\Modules\Payments\Models\CashierSession;
 use App\Modules\Printing\Documents\CashReportDocument;
 use App\Modules\Staff\Enums\Permission;
+use App\Support\Filament\BranchResource;
 use BackedEnum;
 use Filament\Actions\ViewAction;
-use Filament\Resources\Resource;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -18,7 +18,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
 /** Back office → Cash & day close → Cashier sessions (read-only; the till does the work). */
-class CashierSessionResource extends Resource
+class CashierSessionResource extends BranchResource
 {
     protected static ?string $model = CashierSession::class;
 

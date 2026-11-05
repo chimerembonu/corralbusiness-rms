@@ -8,16 +8,16 @@ use App\Modules\Printing\Filament\Resources\PrintJobs\Pages\ListPrintJobs;
 use App\Modules\Printing\Models\PrintJob;
 use App\Modules\Printing\Services\PrintService;
 use App\Modules\Staff\Enums\Permission;
+use App\Support\Filament\BranchResource;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
-use Filament\Resources\Resource;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 
-class PrintJobResource extends Resource
+class PrintJobResource extends BranchResource
 {
     protected static ?string $model = PrintJob::class;
 

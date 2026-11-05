@@ -9,6 +9,7 @@ use App\Modules\Staff\Filament\Resources\Staff\Pages\EditStaff;
 use App\Modules\Staff\Filament\Resources\Staff\Pages\ListStaff;
 use App\Modules\Staff\Models\User;
 use App\Modules\Staff\Support\PinHasher;
+use App\Support\Filament\BranchResource;
 use App\Support\Tenancy\Tenancy;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -19,7 +20,6 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
-use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -32,8 +32,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Validation\ValidationException;
 
 /** Back office → Staff: profiles, roles, PINs and back-office logins. */
-class StaffResource extends Resource
+class StaffResource extends BranchResource
 {
+    /** Staff of this branch, plus people of the whole restaurant (owner, accountant). */
+    protected static bool $includeRestaurantWide = true;
+
     protected static ?string $model = User::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUsers;

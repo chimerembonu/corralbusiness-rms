@@ -12,6 +12,7 @@ use App\Modules\Inventory\Models\Ingredient;
 use App\Modules\Inventory\Models\Supplier;
 use App\Modules\Inventory\Services\StockService;
 use App\Modules\Staff\Enums\Permission;
+use App\Support\Filament\BranchResource;
 use App\Support\Filament\MoneyInput;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -23,7 +24,6 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
-use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -34,7 +34,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
-class IngredientResource extends Resource
+class IngredientResource extends BranchResource
 {
     protected static ?string $model = Ingredient::class;
 
@@ -66,7 +66,7 @@ class IngredientResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        $low = Ingredient::query()->active()->lowStock()->count();
+        $low = Ingredient::query()->forBranch()->active()->lowStock()->count();
 
         return $low > 0 ? (string) $low : null;
     }
@@ -79,7 +79,7 @@ class IngredientResource extends Resource
     /** @return array<string, string> */
     public static function categoryOptions(): array
     {
-        $used = Ingredient::query()->whereNotNull('category')->distinct()->orderBy('category')->pluck('category')->all();
+        $used = Ingredient::query()->forBranch()->whereNotNull('category')->distinct()->orderBy('category')->pluck('category')->all();
         $defaults = ['Dry goods', 'Meat & fish', 'Vegetables & fruit', 'Drinks', 'Dairy & eggs', 'Oils & spices', 'Packaging', 'Cleaning'];
         $all = array_values(array_unique(array_merge($defaults, $used)));
 
