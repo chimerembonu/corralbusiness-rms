@@ -13,4 +13,6 @@ enum GatewayCapability: string
     case StatusCheck = 'status_check';
     /** Send money back through the provider. */
     case Refund = 'refund';
+    /** List the provider's own record of payments for a period, to match against the tills (E2.5). */
+    case Statement = 'statement';
 }

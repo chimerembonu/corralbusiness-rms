@@ -140,13 +140,8 @@ class GatewayRefundService
                 if (! $branch) {
                     return;
                 }
-                Tenancy::set($branch->tenant, $branch);
-                try {
-                    rescue(fn () => $this->advance($refund), report: true);
-                    $count++;
-                } finally {
-                    Tenancy::forget();
-                }
+                Tenancy::runAs($branch->tenant, $branch, fn () => rescue(fn () => $this->advance($refund), report: true));
+                $count++;
             });
 
         return $count;

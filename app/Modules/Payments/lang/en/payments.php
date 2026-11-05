@@ -65,7 +65,7 @@ return [
 
     'gateway' => [
         'names' => ['paystack' => 'Paystack', 'payswitch' => 'PaySwitch (theteller)', 'demo' => 'Demo provider (training only)'],
-        'capabilities' => ['momo_prompt' => 'Mobile Money prompts', 'hosted_checkout' => 'online payment pages', 'status_check' => 'payment status checks', 'refund' => 'refunds'],
+        'capabilities' => ['momo_prompt' => 'Mobile Money prompts', 'hosted_checkout' => 'online payment pages', 'status_check' => 'payment status checks', 'refund' => 'refunds', 'statement' => 'payment lists for matching'],
         'status' => [
             'pending' => 'Waiting for the customer to approve on their phone',
             'needs_otp' => 'Type the code from the customer\'s phone',
@@ -169,6 +169,59 @@ return [
         'errors' => [
             'manager' => 'Only a manager can confirm a refund given back by hand.',
             'not_by_hand' => 'This refund does not need to be given back by hand.',
+        ],
+    ],
+    'matching' => [
+        'title' => 'Payment matching',
+        'help' => 'Every payment taken through a payment provider, beside what the till recorded. Press "Compare with" to add the provider\'s own list (needs the internet). Look at "Needs a manager" first.',
+        'groups' => [
+            'needs_manager' => 'Needs a manager',
+            'missing' => 'Missing on the till',
+            'matched' => 'Matched',
+            'refunded' => 'Refunded',
+            'waiting' => 'Still waiting',
+            'not_paid' => 'Not paid',
+        ],
+        'columns' => [
+            'when' => 'When', 'order' => 'Order', 'provider' => 'Provider', 'network' => 'Network', 'phone' => 'Phone',
+            'reference' => 'Reference', 'asked' => 'Asked', 'till' => 'On the till', 'provider_says' => 'Provider says', 'note' => 'What it means', 'group' => 'Result',
+        ],
+        'totals' => [
+            'asked' => 'Paid through providers (app)',
+            'till' => 'Recorded on the tills',
+            'provider' => 'Received, says the provider',
+        ],
+        'compare' => 'Compare with :provider',
+        'fetching' => 'Getting :provider\'s list…',
+        'fetched' => ':provider\'s list fetched at :time (:count payment).|:provider\'s list fetched at :time (:count payments).',
+        'not_fetched' => ':provider\'s own list is not included yet. Press "Compare with :provider" to add it.',
+        'unsupported' => ':provider cannot send its list of payments. Compare with the :provider dashboard by hand.',
+        'fetch_failed' => 'Could not get :provider\'s list (no internet, or the provider did not answer). Try again later.',
+        'requested' => 'Asking :provider for its list. This page updates by itself.',
+        'none' => 'No provider payments in this period.',
+        'missing_heading' => 'Paid at the provider, but on no till',
+        'summary' => 'Summary',
+        'payments' => 'Payments',
+        'provider_status' => [
+            'paid' => 'Paid',
+            'reversed' => 'Refunded',
+            'failed' => 'Not paid',
+            'pending' => 'Not finished',
+            'none' => 'Not on its list',
+        ],
+        'notes' => [
+            'matched' => 'Paid and recorded on the till.',
+            'waiting' => 'The customer has not approved yet.',
+            'not_on_order' => 'The customer paid, but it could not be added to the order (for example it was paid another way meanwhile). Refund the customer or add the payment by hand.',
+            'refunded_not_sent' => 'Refunded on the till, but nothing was sent back through :provider. Check the customer got the money.',
+            'refund_by_hand' => 'Refunded on the till. :amount still has to be given back by hand.',
+            'refund_on_way' => 'Refunded; :provider is sending the money back.',
+            'amount_differs' => 'The till recorded a different amount from what was asked.',
+            'paid_not_recorded' => ':provider says the customer paid, but no till recorded it. Add the payment to the order or refund the customer.',
+            'provider_not_paid' => 'Recorded on the till, but :provider says ":status". Check before giving the order away.',
+            'provider_amount_differs' => ':provider received :amount, which is not what was asked.',
+            'not_on_provider_list' => 'Recorded on the till, but not on :provider\'s list for this period. Check the :provider dashboard.',
+            'missing' => ':provider has this payment from this system, but no till knows about it. Find the order, or refund the customer.',
         ],
     ],
 ];

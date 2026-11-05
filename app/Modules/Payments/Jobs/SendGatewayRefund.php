@@ -27,11 +27,8 @@ class SendGatewayRefund implements ShouldQueue
         if (! $refund || ! $branch) {
             return;
         }
-        Tenancy::set($branch->tenant, $branch);
-        try {
-            $refunds->advance($refund);
-        } finally {
-            Tenancy::forget();
-        }
+        // runAs puts back whatever was set before: when the queue runs jobs at once ("sync"), the request that
+        // dispatched this one carries on as the same restaurant afterwards.
+        Tenancy::runAs($branch->tenant, $branch, fn () => $refunds->advance($refund));
     }
 }

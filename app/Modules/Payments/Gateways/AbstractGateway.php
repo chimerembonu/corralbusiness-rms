@@ -8,6 +8,7 @@ use App\Modules\Payments\Gateways\Data\ChargeRequest;
 use App\Modules\Payments\Gateways\Data\GatewayCapability;
 use App\Modules\Payments\Gateways\Data\GatewayResponse;
 use App\Support\Money\Money;
+use Carbon\CarbonInterface;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -61,6 +62,11 @@ abstract class AbstractGateway implements PaymentGateway
     public function refundStatus(string $refundReference, ?string $providerRefundId): GatewayResponse
     {
         throw UnsupportedByGateway::capability($this->key(), GatewayCapability::Refund);
+    }
+
+    public function statement(CarbonInterface $from, CarbonInterface $to): array
+    {
+        throw UnsupportedByGateway::capability($this->key(), GatewayCapability::Statement);
     }
 
     protected function value(string $field): ?string

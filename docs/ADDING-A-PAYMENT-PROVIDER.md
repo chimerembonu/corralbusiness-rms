@@ -19,13 +19,14 @@ Create `app/Modules/Payments/Gateways/Providers/<Name>Gateway.php`, extending `A
 | Method | What it must do |
 |---|---|
 | `key()` | Short id, e.g. `hubtel`. Must match the key in `config/payments.php`. |
-| `capabilities()` | Only what the provider really supports: `MomoPrompt`, `HostedCheckout`, `StatusCheck`, `Refund`. **A provider with `MomoPrompt` must also have `StatusCheck`**, because the store server cannot receive calls from the internet. |
+| `capabilities()` | Only what the provider really supports: `MomoPrompt`, `HostedCheckout`, `StatusCheck`, `Refund`, `Statement`. **A provider with `MomoPrompt` must also have `StatusCheck`**, because the store server cannot receive calls from the internet. |
 | `networks()` | Which `MomoProvider` networks it can prompt (MTN, Telecel, AT). |
 | `test(array $values)` | A harmless call (e.g. "get balance", or "status of an id that cannot exist") that tells good keys from bad ones. Return `TestResult::ok/failed` with a plain-English message. Never charge money. |
 | `requestMomo()` | Send the prompt. Return `Pending` (waiting), `NeedsOtp` (customer must read a code from their phone), `Succeeded` or `Failed`. If the call times out *after* it may have been sent, return `Pending`, not `Failed`. |
 | `status()` | Ask whether it was paid. Map the provider's codes to `Succeeded`, `Failed` or `Pending`. If the provider returns the amount paid, put it in `details['amount']` (pesewas) so mismatches are caught. |
 | `checkout()` | *(if `HostedCheckout`)* Start the provider's own payment page and return its URL in `checkoutUrl`. |
 | `refund()`, `refundStatus()` | *(if `Refund`)* Send money back for a payment, using **our** refund reference (`$refundReference`) so the same refund sent twice is never paid twice. Return `Succeeded` (sent back), `Pending` (accepted, processing), `Failed` (refused, with the reason) or `NeedsAttention` (the provider needs a person). `refundStatus()` answers the same, or `Expired` if the provider has no refund with that reference (it is then sent again). **Throw** if the provider could not be reached: the refund is retried every minute. Without `Refund`, managers are told to give the money back by hand. |
+| `statement()` | *(if `Statement`)* The provider's own list of payments between two moments, for the payment matching report (Reports → Payment matching). Each entry: `reference`, `status` (`paid`, `reversed`, `failed` or `pending`), `amount` in pesewas, `currency`, `paid_at`. Page through the provider's list with a sensible limit. Throw if the provider could not be reached: the report says so. Without `Statement`, the report uses the app's own records and suggests checking the provider's dashboard. |
 | `submitOtp()` | *(if supported)* Otherwise leave the default, which refuses politely. |
 | `newReference()` | Override only if the provider needs a special format (PaySwitch needs 12 digits). |
 

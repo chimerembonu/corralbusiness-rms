@@ -20,6 +20,7 @@ use App\Modules\Staff\Models\User;
 use App\Support\Connections\ConnectionService;
 use App\Support\Features\FeatureService;
 use App\Support\Money\Money;
+use App\Support\Tenancy\Tenancy;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
@@ -82,7 +83,10 @@ function paidByPrompt(object $t, string $gateway = 'paystack'): Payment
 it('sends the refund back through Paystack in the background and follows it until done', function () {
     $payment = paidByPrompt($this);
 
+    $tenantId = Tenancy::tenantId();
     app(PaymentService::class)->refund($payment, 'Wrong order', $this->manager, $this->cashier);
+    // The job ran at once (sync queue) and must hand the request back as the same restaurant.
+    expect(Tenancy::tenantId())->toBe($tenantId)->and(Tenancy::branchId())->toBe($this->branch->id);
 
     $refund = GatewayRefund::query()->sole();
     expect($refund->status)->toBe(RefundStatus::Sent)            // sent straight away by the queued job

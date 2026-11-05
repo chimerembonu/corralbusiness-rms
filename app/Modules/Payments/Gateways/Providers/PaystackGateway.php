@@ -10,6 +10,7 @@ use App\Modules\Payments\Gateways\Data\GatewayResponse;
 use App\Modules\Payments\Gateways\Data\GatewayStatus;
 use App\Support\Connections\TestResult;
 use App\Support\Money\Money;
+use Carbon\CarbonInterface;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Str;
@@ -30,7 +31,7 @@ class PaystackGateway extends AbstractGateway
 
     public function capabilities(): array
     {
-        return [GatewayCapability::MomoPrompt, GatewayCapability::HostedCheckout, GatewayCapability::StatusCheck, GatewayCapability::Refund];
+        return [GatewayCapability::MomoPrompt, GatewayCapability::HostedCheckout, GatewayCapability::StatusCheck, GatewayCapability::Refund, GatewayCapability::Statement];
     }
 
     public function networks(): array
@@ -147,6 +148,46 @@ class PaystackGateway extends AbstractGateway
             ?? collect((array) $response->json('data', []))->first(fn ($r) => $providerRefundId !== null && (string) ($r['id'] ?? '') === $providerRefundId);
 
         return $refund ? $this->refundState((array) $refund) : new GatewayResponse(GatewayStatus::Expired, null, null);
+    }
+
+    /**
+     * List Transactions (paystack.com/docs/api/transaction, checked 5 Nov 2026): GET /transaction with from/to,
+     * 100 per page. Stops after 50 pages (5,000 payments) so a huge account can never hang the report.
+     */
+    public function statement(CarbonInterface $from, CarbonInterface $to): array
+    {
+        $entries = [];
+        for ($page = 1; $page <= 50; $page++) {
+            $response = $this->api()->get('/transaction', [
+                'from' => $from->copy()->utc()->toIso8601ZuluString(),
+                'to' => $to->copy()->utc()->toIso8601ZuluString(),
+                'perPage' => 100,
+                'page' => $page,
+            ]);
+            if (! $response->successful() || ! $response->json('status')) {
+                throw new \RuntimeException('Paystack transaction list: '.($response->json('message') ?? 'HTTP '.$response->status()));
+            }
+            $data = (array) $response->json('data', []);
+            foreach ($data as $t) {
+                $entries[] = [
+                    'reference' => (string) ($t['reference'] ?? ''),
+                    'status' => match ($t['status'] ?? null) {
+                        'success' => 'paid',
+                        'reversed' => 'reversed',
+                        'failed', 'abandoned' => 'failed',
+                        default => 'pending',
+                    },
+                    'amount' => (int) ($t['amount'] ?? 0),
+                    'currency' => (string) ($t['currency'] ?? 'GHS'),
+                    'paid_at' => $t['paid_at'] ?? $t['paidAt'] ?? null,
+                ];
+            }
+            if (count($data) < 100) {
+                break;
+            }
+        }
+
+        return $entries;
     }
 
     /** pending / processing → Pending; processed → Succeeded; failed → Failed; needs-attention → NeedsAttention. */

@@ -8,6 +8,7 @@ use App\Modules\Payments\Gateways\Data\GatewayCapability;
 use App\Modules\Payments\Gateways\Data\GatewayResponse;
 use App\Support\Connections\ConnectionTester;
 use App\Support\Money\Money;
+use Carbon\CarbonInterface;
 
 /**
  * The rulebook every payment provider follows (Complete Edition E2). The rest of the app only ever talks
@@ -62,4 +63,13 @@ interface PaymentGateway extends ConnectionTester
      * this reference (it never arrived): it is then sent again. Throw if the provider could not be reached.
      */
     public function refundStatus(string $refundReference, ?string $providerRefundId): GatewayResponse;
+
+    /**
+     * The provider's own record of payments between two moments (only with the Statement capability), for the
+     * payment matching report. Each entry: reference, status ('paid' | 'reversed' | 'failed' | 'pending'),
+     * amount (pesewas), currency, paid_at (ISO 8601 or null). Throw if the provider could not be reached.
+     *
+     * @return array<int, array{reference: string, status: string, amount: int, currency: string, paid_at: ?string}>
+     */
+    public function statement(CarbonInterface $from, CarbonInterface $to): array;
 }

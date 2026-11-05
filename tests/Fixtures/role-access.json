@@ -181,6 +181,11 @@
         "manager",
         "accountant"
     ],
+    "admin/reports/payment-matching": [
+        "owner",
+        "manager",
+        "accountant"
+    ],
     "admin/reports/sales": [
         "owner",
         "manager",
