@@ -2,11 +2,14 @@
 
 namespace App\Modules\Settings\Services\Import;
 
+use App\Modules\Inventory\Enums\CostChangeSource;
 use App\Modules\Inventory\Enums\Unit;
 use App\Modules\Inventory\Models\Ingredient;
 use App\Modules\Inventory\Models\Supplier;
+use App\Modules\Inventory\Services\CostService;
 use App\Modules\Inventory\Services\StockService;
 use App\Modules\Staff\Models\User;
+use App\Support\Money\Money;
 use Illuminate\Support\Facades\DB;
 
 /** Ingredient rows matched by code, else by name. "In stock" only sets the opening stock of NEW ingredients. */
@@ -70,6 +73,7 @@ class IngredientImporter
             ?? Ingredient::query()->whereRaw('lower(name) = ?', [mb_strtolower($name)])->first();
         $isNew = $ingredient === null;
         $ingredient ??= new Ingredient;
+        $oldCost = $ingredient->cost_per_unit ?? Money::zero();
 
         $supplierName = trim((string) ($row['supplier'] ?? ''));
         $supplier = $supplierName !== '' ? (Supplier::query()->whereRaw('lower(name) = ?', [mb_strtolower($supplierName)])->first() ?? Supplier::create(['name' => $supplierName])) : null;
@@ -92,6 +96,9 @@ class IngredientImporter
         $ingredient->save();
         if ($isNew) {
             $this->stock->recordOpening($ingredient, $by);
+            app(CostService::class)->recordOpening($ingredient, $by, CostChangeSource::Import);
+        } else {
+            app(CostService::class)->recordImport($ingredient, $oldCost, $by); // kept in the price history (E5.2)
         }
 
         $note = $isNew ? money($ingredient->cost_per_unit).' / '.$unit->short() : __('settings::settings.import.stock_unchanged');

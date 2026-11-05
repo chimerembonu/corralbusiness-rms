@@ -11,6 +11,7 @@ use App\Modules\Inventory\Models\Ingredient;
 use App\Modules\Inventory\Models\Purchase;
 use App\Modules\Inventory\Models\PurchaseLine;
 use App\Modules\Inventory\Models\Supplier;
+use App\Modules\Inventory\Services\CostService;
 use App\Modules\Inventory\Services\PurchaseService;
 use App\Modules\Inventory\Services\StockService;
 use App\Modules\Staff\Enums\Permission;
@@ -88,7 +89,11 @@ class PurchaseResource extends BranchResource
                     ->schema([
                         Select::make('ingredient_id')->label($f('ingredient'))->options(fn () => Ingredient::query()->forBranch()->active()->orderBy('name')->get()->mapWithKeys(fn (Ingredient $i) => [$i->id => $i->name.' ('.$i->unit->short().')'])->all())
                             ->required()->searchable()->live()->columnSpan(2)
-                            ->afterStateUpdated(fn (Set $set, $state) => $set('unit_cost', $state ? Ingredient::query()->forBranch()->find($state)?->cost_per_unit->toDecimal() : null)),
+                            // The last price paid is the best guess for a new order; the average cost if never bought (E5.2).
+                            ->afterStateUpdated(function (Set $set, $state) {
+                                $ingredient = $state ? Ingredient::query()->forBranch()->find($state) : null;
+                                $set('unit_cost', $ingredient ? (app(CostService::class)->lastPricePaid($ingredient) ?? $ingredient->cost_per_unit)->toDecimal() : null);
+                            }),
                         TextInput::make('quantity')->label($f('quantity'))->numeric()->required()->minValue(0.001)->step('0.001')
                             ->suffix(fn (Get $get) => $get('ingredient_id') ? Ingredient::query()->forBranch()->find($get('ingredient_id'))?->unit->short() : null),
                         MoneyInput::make('unit_cost')->label($f('unit_cost')),

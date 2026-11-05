@@ -49,7 +49,7 @@ it('goes from draft to ordered to received, posting stock and the last cost', fu
         ->and($received->total)->toBePesewas(45 * 2150 + 20 * 1800)
         ->and((float) $riceLine->fresh()->quantity_received)->toBe(45.0)
         ->and((float) $rice->fresh()->on_hand)->toBe(55.0)
-        ->and($rice->fresh()->cost_per_unit)->toBePesewas(2150)
+        ->and($rice->fresh()->cost_per_unit)->toBePesewas(2159) // average (E5.2): (10 × 22.00 + 45 × 21.50) ÷ 55
         ->and((float) $tomatoes->fresh()->on_hand)->toBe(25.0)
         ->and(app(StockService::class)->movements($rice)->first()->reason)->toBe('Received PO0001');
     Event::assertDispatched(PurchaseReceived::class);

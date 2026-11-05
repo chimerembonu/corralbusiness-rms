@@ -10,12 +10,15 @@ use App\Modules\Inventory\Filament\Resources\Ingredients\Pages\ListIngredients;
 use App\Modules\Inventory\Filament\Resources\StockMovements\StockMovementResource;
 use App\Modules\Inventory\Models\Ingredient;
 use App\Modules\Inventory\Models\Supplier;
+use App\Modules\Inventory\Services\CostService;
 use App\Modules\Inventory\Services\StockService;
 use App\Modules\Staff\Enums\Permission;
 use App\Support\Filament\BranchResource;
 use App\Support\Filament\MoneyInput;
+use App\Support\Money\Money;
 use BackedEnum;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -99,7 +102,8 @@ class IngredientResource extends BranchResource
                 Select::make('supplier_id')->label($f('supplier'))->options(fn () => Supplier::query()->active()->orderBy('name')->pluck('name', 'id')->all())->searchable()->nullable(),
                 TextInput::make('pack_name')->label($f('pack_name'))->maxLength(30),
                 TextInput::make('pack_quantity')->label($f('pack_quantity'))->numeric()->step('0.001'),
-                MoneyInput::make('cost_per_unit')->label($f('cost_per_unit'))->default('0.00'),
+                // After creation the cost changes only through deliveries (averaged) or "Change cost" with a reason (E5.2).
+                MoneyInput::make('cost_per_unit')->label($f('cost_per_unit'))->default('0.00')->disabledOn('edit')->helperText($f('cost_help')),
                 TextInput::make('on_hand')->label($f('on_hand'))->numeric()->default(0)->step('0.001')->helperText($f('on_hand_help'))->disabledOn('edit'),
                 TextInput::make('reorder_level')->label($f('reorder_level'))->numeric()->default(0)->step('0.001'),
                 Toggle::make('is_active')->label($f('is_active'))->default(true)->inline(false),
@@ -131,12 +135,59 @@ class IngredientResource extends BranchResource
             ->recordActions([
                 self::adjustAction(),
                 self::wasteAction(),
-                Action::make('movements')->label(__('inventory::inventory.actions.movements'))->icon(Heroicon::ListBullet)->color('gray')
-                    ->url(fn (Ingredient $r) => StockMovementResource::getUrl('index', ['tableFilters' => ['ingredient_id' => ['value' => $r->id]]])),
-                EditAction::make(),
-                DeleteAction::make(),
+                // Less frequent: one "More" menu keeps the row readable on a till-sized screen.
+                ActionGroup::make([
+                    self::changeCostAction(),
+                    self::priceHistoryAction(),
+                    Action::make('movements')->label(__('inventory::inventory.actions.movements'))->icon(Heroicon::ListBullet)->color('gray')
+                        ->url(fn (Ingredient $r) => StockMovementResource::getUrl('index', ['tableFilters' => ['ingredient_id' => ['value' => $r->id]]])),
+                    EditAction::make(),
+                    DeleteAction::make(),
+                ])->label(__('inventory::inventory.actions.more'))->icon(Heroicon::EllipsisVertical)->color('gray'),
             ])
             ->toolbarActions([BulkActionGroup::make([DeleteBulkAction::make()])]);
+    }
+
+    /** Change the cost by hand (E5.2): the new cost and a reason, both kept in the price history. */
+    public static function changeCostAction(): Action
+    {
+        return Action::make('changeCost')
+            ->label(__('inventory::inventory.costs.change'))
+            ->icon(Heroicon::Banknotes)
+            ->color('gray')
+            ->visible(fn () => auth()->user()->can(Permission::InventoryManage->value))
+            ->modalDescription(fn (Ingredient $record) => __('inventory::inventory.costs.change_help', ['cost' => money($record->cost_per_unit), 'unit' => $record->unit->short()]))
+            ->schema([
+                MoneyInput::make('new_cost')->label(__('inventory::inventory.costs.new_cost'))->required()
+                    ->default(fn (Ingredient $record) => $record->cost_per_unit->toDecimal())->suffix(fn (Ingredient $record) => '/ '.$record->unit->short()),
+                TextInput::make('reason')->label(__('inventory::inventory.costs.reason'))->required()->maxLength(255)
+                    ->placeholder(__('inventory::inventory.costs.reason_placeholder')),
+            ])
+            ->action(function (Ingredient $record, array $data) {
+                try {
+                    app(CostService::class)->change($record, Money::of((int) $data['new_cost']), auth()->user(), $data['reason']);
+                    Notification::make()->success()->title(__('inventory::inventory.costs.changed', ['name' => $record->name, 'cost' => money($record->fresh()->cost_per_unit), 'unit' => $record->unit->short()]))->send();
+                } catch (InventoryException $e) {
+                    Notification::make()->danger()->title($e->getMessage())->send();
+                }
+            });
+    }
+
+    /** Every cost change: deliveries (what was paid, the new average), changes by hand with their reason. */
+    public static function priceHistoryAction(): Action
+    {
+        return Action::make('priceHistory')
+            ->label(__('inventory::inventory.costs.history'))
+            ->icon(Heroicon::Clock)
+            ->color('gray')
+            ->modalHeading(fn (Ingredient $record) => __('inventory::inventory.costs.history_title', ['name' => $record->name]))
+            ->modalContent(fn (Ingredient $record) => view('inventory::filament.price-history', [
+                'ingredient' => $record,
+                'changes' => app(CostService::class)->history($record),
+                'last' => app(CostService::class)->lastPricePaid($record),
+            ]))
+            ->modalSubmitAction(false)
+            ->modalCancelActionLabel(__('inventory::inventory.costs.close'));
     }
 
     public static function adjustAction(): Action

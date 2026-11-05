@@ -6,6 +6,7 @@ use App\Modules\Inventory\Enums\StockMovementType;
 use App\Modules\Inventory\Events\StockMoved;
 use App\Modules\Inventory\Exceptions\InventoryException;
 use App\Modules\Inventory\Models\Ingredient;
+use App\Modules\Inventory\Models\Purchase;
 use App\Modules\Inventory\Models\StockMovement;
 use App\Modules\Menu\Models\Item;
 use App\Modules\Menu\Services\MenuService;
@@ -49,9 +50,11 @@ class StockService
                 throw new InventoryException(__('inventory::inventory.errors.not_enough', ['name' => $subject->name, 'on_hand' => $this->qty((float) $subject->{$column})]));
             }
 
+            $before = (float) $subject->{$column};
             $subject->{$column} = $after;
-            if ($subject instanceof Ingredient && $unitCost && $type === StockMovementType::Purchase) {
-                $subject->cost_per_unit = $unitCost; // last cost
+            if ($subject instanceof Ingredient && $unitCost && $type === StockMovementType::Purchase && $quantity > 0) {
+                // Weighted-average cost (E5.2): the old stock and the delivery averaged, and the change kept.
+                app(CostService::class)->applyPurchase($subject, $before, $quantity, $unitCost, $by, $reference instanceof Purchase ? $reference : null);
             }
             $subject->saveQuietly();
 
@@ -217,7 +220,7 @@ class StockService
         return $ingredients->toBase()->merge($items->toBase());
     }
 
-    /** Total value of ingredient stock at last cost, in pesewas. */
+    /** Total value of ingredient stock at average cost (E5.2), in pesewas. */
     public function valuation(?string $branchId = null): Money
     {
         return Money::of(Ingredient::query()->active()->where('branch_id', $branchId ?? $this->context->branchId())->get()->sum(fn (Ingredient $i) => $i->stockValue()));
