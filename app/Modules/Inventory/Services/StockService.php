@@ -39,7 +39,7 @@ class StockService
 
         return DB::transaction(function () use ($subject, $type, $quantity, $by, $reason, $reference, $unitCost, $line) {
             $subject = $subject->newQuery()->lockForUpdate()->findOrFail($subject->getKey());
-            if ($line && $this->alreadyMoved($line, $type)) {
+            if ($line && $this->alreadyMoved($line, $type, $subject)) {
                 throw new InventoryException(__('inventory::inventory.errors.already_moved'));
             }
             $column = $subject instanceof Ingredient ? 'on_hand' : 'stock_qty';
@@ -138,7 +138,8 @@ class StockService
     }
 
     /**
-     * Lines just sent to the kitchen: every menu item with "count stock" goes down by the quantity sold.
+     * Lines just sent to the kitchen: every menu item with "count stock" goes down by the quantity sold, and
+     * (with Recipes switched on, E5.1) every ingredient of the dish's recipe goes down by what it uses.
      *
      * @param  BaseCollection<int, OrderItem>  $lines
      */
@@ -147,40 +148,63 @@ class StockService
         if ($order->is_training) {
             return 0; // practice orders never touch stock
         }
+        $recipes = app(RecipeService::class);
+        $useRecipes = $recipes->enabled();
         $count = 0;
         foreach ($lines as $line) {
             $item = $line->item_id ? Item::query()->find($line->item_id) : null;
-            if (! $item || ! $item->track_stock || $this->alreadyMoved($line, StockMovementType::Sale)) {
-                continue; // not counted, or this line was already deducted (security review M2)
+            if (! $item || $this->alreadyMoved($line, StockMovementType::Sale)) {
+                continue; // this line was already deducted (security review M2)
             }
-            $this->move($item, StockMovementType::Sale, -$line->quantity, $by, __('inventory::inventory.reasons.sale', ['number' => $order->displayNumber()]), $order, line: $line);
-            $count++;
+            $reason = __('inventory::inventory.reasons.sale', ['number' => $order->displayNumber()]);
+            if ($item->track_stock) {
+                $this->move($item, StockMovementType::Sale, -$line->quantity, $by, $reason, $order, line: $line);
+                $count++;
+            }
+            if ($useRecipes) {
+                foreach ($recipes->usage($item->id, $line->variant_id, (float) $line->quantity, $order->branch_id) as $ingredientId => $quantity) {
+                    $ingredient = Ingredient::query()->where('branch_id', $order->branch_id)->find($ingredientId);
+                    if ($ingredient) {
+                        $this->move($ingredient, StockMovementType::Sale, -$quantity, $by, __('inventory::inventory.reasons.recipe', ['number' => $order->displayNumber(), 'item' => $item->name]), $order, line: $line);
+                        $count++;
+                    }
+                }
+            }
         }
 
         return $count;
     }
 
-    /** Has this order line already produced a movement of this kind? (Sale on send, Void on restock.) */
-    private function alreadyMoved(OrderItem $line, StockMovementType $type): bool
+    /** Has this order line already produced a movement of this kind (for this item or ingredient)? */
+    private function alreadyMoved(OrderItem $line, StockMovementType $type, Ingredient|Item|null $subject = null): bool
     {
-        return StockMovement::query()->where('order_item_id', $line->id)->where('type', $type->value)->exists();
+        return StockMovement::query()->where('order_item_id', $line->id)->where('type', $type->value)
+            ->when($subject instanceof Ingredient, fn ($q) => $q->where('ingredient_id', $subject->id))
+            ->when($subject instanceof Item, fn ($q) => $q->where('item_id', $subject->id))
+            ->exists();
     }
 
-    /** A sent line was voided (or its order cancelled): the stock comes back. */
+    /**
+     * A sent line was voided (or its order cancelled): what it took from stock comes back — the counted item and
+     * the recipe ingredients, exactly as they were deducted (so a recipe changed since does not matter).
+     */
     public function restockLine(Order $order, OrderItem $line, ?User $by = null): ?StockMovement
     {
         if ($line->sent_at === null || $order->is_training) {
             return null; // never deducted
         }
-        $item = $line->item_id ? Item::query()->find($line->item_id) : null;
-        if (! $item || ! $item->track_stock) {
-            return null;
-        }
-        if ($this->alreadyMoved($line, StockMovementType::Void)) {
-            return null; // already put back
+        $first = null;
+        $sales = StockMovement::query()->where('order_item_id', $line->id)->where('type', StockMovementType::Sale->value)->get();
+        foreach ($sales as $sale) {
+            $subject = $sale->ingredient_id ? Ingredient::query()->find($sale->ingredient_id) : ($sale->item_id ? Item::query()->find($sale->item_id) : null);
+            if (! $subject || $this->alreadyMoved($line, StockMovementType::Void, $subject)) {
+                continue; // gone, or already put back
+            }
+            $movement = $this->move($subject, StockMovementType::Void, abs((float) $sale->quantity), $by, __('inventory::inventory.reasons.void', ['number' => $order->displayNumber(), 'item' => $line->name]), $order, line: $line);
+            $first ??= $movement;
         }
 
-        return $this->move($item, StockMovementType::Void, $line->quantity, $by, __('inventory::inventory.reasons.void', ['number' => $order->displayNumber(), 'line' => $line->id]), $order, line: $line);
+        return $first;
     }
 
     /** @return BaseCollection<int, Ingredient|Item> everything at or below its re-order level */

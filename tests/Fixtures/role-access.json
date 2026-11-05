@@ -176,6 +176,8 @@
         "owner",
         "manager"
     ],
+    "admin/recipes": [],
+    "admin/recipes/{record}/edit": [],
     "admin/reports/items": [
         "owner",
         "manager",

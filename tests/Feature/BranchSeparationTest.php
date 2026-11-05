@@ -70,7 +70,8 @@ it('makes every back-office list of branch records stick to its own branch', fun
     }
 
     // The menu, customers, suppliers and promo codes belong to the whole restaurant and stay shared.
-    expect($restaurantWide)->toEqualCanonicalizing(['CustomerResource', 'SupplierResource', 'CategoryResource', 'ItemResource', 'ModifierGroupResource', 'PromoCodeResource']);
+    // Recipes list the (shared) dishes, but every recipe line shown and saved is this branch's (RecipeTest).
+    expect($restaurantWide)->toEqualCanonicalizing(['CustomerResource', 'SupplierResource', 'CategoryResource', 'ItemResource', 'ModifierGroupResource', 'PromoCodeResource', 'RecipeResource']);
 });
 
 it('shows a manager only their own branch\'s records, and "not found" for the other branch\'s', function () {

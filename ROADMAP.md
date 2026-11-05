@@ -79,7 +79,7 @@ Every feature is **off by default**. A restaurant switches it on in **Settings �
 - [ ] **E4.6 WhatsApp.** The same messages by WhatsApp. 👤 *Verification (S3).*
 
 ### E5 — Kitchen and stock depth
-- [ ] **E5.1 Recipes.** Each dish and size lists its ingredients; selling it uses up stock automatically.
+- [x] **E5.1 Recipes.** Each dish and size lists its ingredients; selling it uses up stock automatically. *Done 5 Nov: Stock → Recipes (switch on "Recipes & food cost" in Settings → Features); amounts in g/ml convert to kg/L; lines for every size plus extras per size; ingredient cost per portion shown; stock goes down when the dish goes to the kitchen or is paid, and a void puts back exactly what was taken; per branch; demo recipes for 8 dishes. Not yet: modifiers (e.g. extra egg) using ingredients.*
 - [ ] **E5.2 Correct stock value.** Weighted-average cost (allowed by IFRS), purchase price history, and a reason required for manual cost changes.
 - [ ] **E5.3 Food cost and margin** per dish and category; theoretical vs actual usage after a stock take.
 - [ ] **E5.4 Accountant's daily export.** A daily journal (sales, VAT, NHIL, GETFund, discounts, refunds, tips, service charge, payment methods, cash over/short) to Excel. 👤 *Accountant gives account codes.*

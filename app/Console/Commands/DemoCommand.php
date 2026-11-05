@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Modules\Customers\Seeders\CustomersDemoSeeder;
 use App\Modules\Inventory\Seeders\IngredientsDemoSeeder;
+use App\Modules\Inventory\Seeders\RecipesDemoSeeder;
 use App\Modules\Inventory\Seeders\SuppliersDemoSeeder;
 use App\Modules\Kitchen\Seeders\StationsDemoSeeder;
 use App\Modules\Menu\Seeders\MenuDemoSeeder;
@@ -81,11 +82,12 @@ class DemoCommand extends Command
         $stations = (new StationsDemoSeeder)->run();
         $staff = (new StaffDemoSeeder)->run();
         $ingredients = (new IngredientsDemoSeeder)->run();
+        $recipes = (new RecipesDemoSeeder)->run(); // used only once "Recipes & food cost" is switched on
         $promos = (new PromoCodesDemoSeeder)->run();
         $roster = (new RosterDemoSeeder)->run();
         $inventory = (new SuppliersDemoSeeder)->run();
         $customers = (new CustomersDemoSeeder)->run();
-        $this->components->info("Tables: {$tables} · Tills: {$tills} · Stations: {$stations} · Staff: {$staff} · Ingredients: {$ingredients} · Promo codes: {$promos} · Roster shifts: {$roster['shifts']} · Clock-ins: {$roster['entries']} · Suppliers: {$inventory['suppliers']} · Counted drinks: {$inventory['tracked_items']} · Customers: {$customers}.");
+        $this->components->info("Tables: {$tables} · Tills: {$tills} · Stations: {$stations} · Staff: {$staff} · Ingredients: {$ingredients} · Recipe lines: {$recipes} · Promo codes: {$promos} · Roster shifts: {$roster['shifts']} · Clock-ins: {$roster['entries']} · Suppliers: {$inventory['suppliers']} · Counted drinks: {$inventory['tracked_items']} · Customers: {$customers}.");
 
         $settings = app(SettingsService::class);
         $settings->set('receipt.header', 'Akwaaba! TIN: C0000000000 (demo)', tenantWide: true);

@@ -21,7 +21,7 @@ return [
         'offsite_backups' => ['group' => 'online', 'needs' => ['online_service'], 'tier' => 'pro', 'stage' => 'E3', 'available' => false],
         'sms' => ['group' => 'messages', 'needs' => ['sms'], 'tier' => 'pro', 'stage' => 'E4', 'available' => false],
         'whatsapp' => ['group' => 'messages', 'needs' => ['whatsapp'], 'tier' => 'business', 'stage' => 'E4', 'available' => false],
-        'recipes' => ['group' => 'kitchen', 'needs' => [], 'tier' => 'pro', 'stage' => 'E5', 'available' => false],
+        'recipes' => ['group' => 'kitchen', 'needs' => [], 'tier' => 'pro', 'stage' => 'E5', 'available' => true],
         'accounting_export' => ['group' => 'office', 'needs' => [], 'tier' => 'pro', 'stage' => 'E5', 'available' => false],
         'payroll' => ['group' => 'office', 'needs' => [], 'tier' => 'business', 'stage' => 'E6', 'available' => false],
         'reservations' => ['group' => 'guests', 'needs' => [], 'tier' => 'pro', 'stage' => 'E7', 'available' => false],
