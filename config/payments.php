@@ -65,7 +65,7 @@ return [
 
     'paystack' => [
         'base_url' => 'https://api.paystack.co',
-        // Paystack's codes for Ghana networks. Confirm against the Paystack sandbox before going live.
+        // Paystack's codes for Ghana networks (checked against paystack.com/docs on 5 Nov 2026; confirm with a test prompt).
         'networks' => ['mtn' => 'mtn', 'telecel' => 'vod', 'at' => 'atl'],
         // Paystack needs an email; customers at a till rarely give one, so this address is used instead.
         'fallback_email_domain' => env('RMS_PAYSTACK_EMAIL_DOMAIN', 'customers.corralbusiness.app'),

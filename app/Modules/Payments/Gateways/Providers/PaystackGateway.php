@@ -17,7 +17,9 @@ use Illuminate\Support\Str;
 /**
  * Paystack (Ghana): MoMo prompts through the Charge API (MTN, Telecel, AT), status through Verify,
  * cards and MoMo online through Paystack's hosted page (Initialize), refunds through the Refund API.
- * Docs: paystack.com/docs — amounts in pesewas, currency GHS.
+ * Docs: paystack.com/docs — amounts in pesewas, currency GHS, local phone numbers (0551234987).
+ * Checked against the docs on 5 Nov 2026: network codes mtn / vod (Telecel) / atl (AT), prompt status
+ * pay_offline, 180 seconds for the customer to approve. Test number: MTN 055 123 4987 (approves, no OTP).
  */
 class PaystackGateway extends AbstractGateway
 {
@@ -86,7 +88,8 @@ class PaystackGateway extends AbstractGateway
 
         return match ($data['status'] ?? null) {
             'success' => GatewayResponse::succeeded($data['reference'] ?? $reference, $data['gateway_response'] ?? null, $details),
-            'failed', 'reversed' => GatewayResponse::failed($data['gateway_response'] ?? $response->json('message'), $data['reference'] ?? $reference, $details),
+            // For Mobile Money Paystack gives the reason a prompt failed in data.message (docs: Payment Channels).
+            'failed', 'reversed' => GatewayResponse::failed($data['message'] ?? $data['gateway_response'] ?? $response->json('message'), $data['reference'] ?? $reference, $details),
             default => GatewayResponse::pending($data['reference'] ?? $reference, null, $details),
         };
     }

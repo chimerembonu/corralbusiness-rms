@@ -46,6 +46,15 @@ it('Paystack: tests keys, sends a MoMo prompt, follows OTP, verifies, pays onlin
         ->and($paystack->refund('RMSTEST1', null, Money::of(4500))->status)->toBe(GatewayStatus::Pending);
 });
 
+it('Paystack: shows the reason Paystack gives when a MoMo prompt fails', function () {
+    Http::fake(['api.paystack.co/transaction/verify/*' => Http::response(['status' => true, 'data' => [
+        'reference' => 'R3', 'status' => 'failed', 'gateway_response' => 'Declined', 'message' => 'The customer did not approve in time',
+    ]])]);
+
+    $result = app(PaystackGateway::class)->configure(['mode' => 'test', 'secret_key' => 'sk_test_abc'])->status('R3', null);
+    expect($result->status)->toBe(GatewayStatus::Failed)->and($result->message)->toBe('The customer did not approve in time');
+});
+
 it('Paystack: Telecel asks for a voucher code, bad keys and declines are plain answers', function () {
     Http::fake([
         'api.paystack.co/charge' => Http::response(['status' => true, 'data' => ['reference' => 'R2', 'status' => 'send_otp', 'display_text' => 'Dial *110# to get a voucher']]),
