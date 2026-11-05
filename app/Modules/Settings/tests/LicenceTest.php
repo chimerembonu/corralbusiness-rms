@@ -2,11 +2,13 @@
 
 use App\Modules\Orders\Enums\OrderType;
 use App\Modules\Orders\Services\OrderService;
+use App\Modules\Orders\Support\TillSettings;
 use App\Modules\Payments\Services\CashService;
 use App\Modules\Payments\Services\PaymentService;
 use App\Modules\Pos\Models\Till;
 use App\Modules\Settings\Filament\Pages\LicencePage;
 use App\Modules\Settings\Models\Branch;
+use App\Modules\Settings\Services\SettingsService;
 use App\Modules\Staff\Enums\Role;
 use App\Modules\Staff\Models\User;
 use App\Support\Connections\ConnectionService;
@@ -187,6 +189,8 @@ it('makes the back office reports-only after the grace period, keeping reports a
     Carbon::setTestNow('2027-02-10 12:00'); // grace: everything opens, with the warning
     $this->get('/admin/items')->assertOk()->assertSee('Your licence has ended. Everything still works until 14 February 2027');
 
+    // This test jumps months ahead while signed in; the back-office idle sign-out (E9.2) is tested elsewhere.
+    app(SettingsService::class)->set(TillSettings::BACK_OFFICE_IDLE_MINUTES, 0);
     Carbon::setTestNow('2027-02-16 12:00');
     $this->get('/admin/items')->assertRedirect('/admin/licence');
     $this->get('/admin/staff/create')->assertRedirect('/admin/licence');

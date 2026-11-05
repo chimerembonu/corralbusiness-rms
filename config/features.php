@@ -33,6 +33,8 @@ return [
         'delivery_apps' => ['group' => 'online', 'needs' => [], 'tier' => 'pro', 'stage' => 'E8', 'available' => false],
         'customer_display' => ['group' => 'extras', 'needs' => [], 'tier' => 'pro', 'stage' => 'E8', 'available' => false],
         'barcode_scanner' => ['group' => 'extras', 'needs' => [], 'tier' => 'starter', 'stage' => 'E8', 'available' => false],
+        // Owners and managers must add an authenticator-app code to their back-office password (E9.2).
+        'two_step_sign_in' => ['group' => 'security', 'needs' => [], 'tier' => 'starter', 'stage' => 'E9', 'available' => true],
     ],
 
     // A "need" is met by any one of these connections being set up and tested.

@@ -4,9 +4,12 @@ namespace App\Providers\Filament;
 
 use App\Modules\Settings\Http\RedirectToSetup;
 use App\Modules\Staff\Filament\Auth\Login;
+use App\Support\Filament\RequireTwoStepSignIn;
+use App\Support\Filament\SignOutIdleBackOffice;
 use App\Support\Licence\EnforceLicence;
 use App\Support\Modules;
 use App\Support\Tenancy\SetTenantFromUser;
+use Filament\Auth\MultiFactor\App\AppAuthentication;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -38,6 +41,9 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path(config('rms.admin_path', 'admin'))
             ->login(Login::class) // logs throttled sign-ins (compliance assessment)
+            // Profile page: where two-step sign-in is set up, recovery codes renewed (E9.2).
+            ->profile(isSimple: false)
+            ->multiFactorAuthentication([AppAuthentication::make()->recoverable()->brandName(config('rms.product_name'))])
             // Button presses that fail show these instead of a technical error box (same words as the till).
             ->registerErrorNotification(fn () => __('errors.pages.500.title'), fn () => __('errors.action.failed'))
             ->registerErrorNotification(fn () => __('errors.pages.403.title'), fn () => __('errors.action.forbidden'), 403)
@@ -74,6 +80,8 @@ class AdminPanelProvider extends PanelProvider
                 Authenticate::class,
                 SetTenantFromUser::class,
                 EnforceLicence::class, // reports-only once a licence has ended (E1.2)
+                SignOutIdleBackOffice::class, // signs out after the set minutes unused (E9.2)
+                RequireTwoStepSignIn::class, // owners and managers set up two-step sign-in first, when switched on (E9.2)
             ])
             // Licence warning (ending soon, grace period, reports-only) for owner and managers.
             ->renderHook(PanelsRenderHook::CONTENT_START, fn () => view('settings::filament.licence-banner'));

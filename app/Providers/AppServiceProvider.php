@@ -7,6 +7,8 @@ use App\Modules\Pos\Http\EnsurePosUser;
 use App\Modules\Staff\Models\User;
 use App\Support\Audit\SecurityLog;
 use App\Support\Database\BlueprintMacros;
+use App\Support\Filament\RequireTwoStepSignIn;
+use App\Support\Filament\SignOutIdleBackOffice;
 use App\Support\Licence\EnforceLicence;
 use App\Support\Outbox\RecordToOutbox;
 use App\Support\Outbox\ShouldRecordToOutbox;
@@ -34,7 +36,7 @@ class AppServiceProvider extends ServiceProvider
 
         // The till and kitchen gates (active user, permission, till branch) run on every Livewire request too,
         // so deactivating someone mid-shift stops the screen they already have open (re-review).
-        Livewire::addPersistentMiddleware([EnsurePosUser::class, EnsureKitchenUser::class, EnforceLicence::class]);
+        Livewire::addPersistentMiddleware([EnsurePosUser::class, EnsureKitchenUser::class, EnforceLicence::class, SignOutIdleBackOffice::class, RequireTwoStepSignIn::class]);
 
         // Wrong back-office / head-office passwords go to the security log (never the password itself).
         Event::listen(Failed::class, function (Failed $event) {

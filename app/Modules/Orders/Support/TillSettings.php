@@ -40,6 +40,10 @@ final class TillSettings
 
     public const LOYALTY_POINTS_PER_CEDI = 'loyalty.points_per_cedi';    // 0 = points off
 
+    public const TILL_LOCK_MINUTES = 'security.till_lock_minutes';       // a till nobody touches goes back to the PIN screen (E9.2, D1); 0 = never
+
+    public const BACK_OFFICE_IDLE_MINUTES = 'security.back_office_idle_minutes'; // the back office signs out after this long unused (E9.2); 0 = never
+
     public function __construct(private readonly SettingsService $settings) {}
 
     /** @return array<string, mixed> */
@@ -61,7 +65,19 @@ final class TillSettings
             self::CASH_PAY_OUT_REASONS => ['Supplier paid in cash', 'Bank deposit', 'Staff advance', 'Petty cash', 'Tips paid to staff'],
             self::CASH_REQUIRE_SESSION => true,
             self::LOYALTY_POINTS_PER_CEDI => 0,
+            self::TILL_LOCK_MINUTES => 5,
+            self::BACK_OFFICE_IDLE_MINUTES => 30,
         ];
+    }
+
+    public function tillLockMinutes(?string $branchId = null): int
+    {
+        return max(0, (int) $this->get(self::TILL_LOCK_MINUTES, $branchId));
+    }
+
+    public function backOfficeIdleMinutes(?string $branchId = null): int
+    {
+        return max(0, (int) $this->get(self::BACK_OFFICE_IDLE_MINUTES, $branchId));
     }
 
     public function get(string $key, ?string $branchId = null): mixed

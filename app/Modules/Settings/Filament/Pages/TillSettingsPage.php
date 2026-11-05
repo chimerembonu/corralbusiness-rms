@@ -78,6 +78,8 @@ class TillSettingsPage extends Page
             'pay_out_reasons' => $settings->payOutReasons(),
             'require_session' => $settings->requireSession(),
             'loyalty_points' => (int) $settings->get(TillSettings::LOYALTY_POINTS_PER_CEDI),
+            'till_lock_minutes' => $settings->tillLockMinutes(),
+            'back_office_idle_minutes' => $settings->backOfficeIdleMinutes(),
         ]);
     }
 
@@ -109,6 +111,10 @@ class TillSettingsPage extends Page
                 TagsInput::make('pay_out_reasons')->label($t('pay_out_reasons'))->placeholder($t('add_reason')),
                 Toggle::make('require_session')->label($t('require_session'))->inline(false)->columnSpanFull(),
             ]),
+            Section::make($t('security'))->columns(2)->schema([
+                TextInput::make('till_lock_minutes')->label($t('till_lock_minutes'))->numeric()->integer()->minValue(0)->maxValue(240)->suffix($t('minutes'))->helperText($t('till_lock_help')),
+                TextInput::make('back_office_idle_minutes')->label($t('back_office_idle_minutes'))->numeric()->integer()->minValue(0)->maxValue(720)->suffix($t('minutes'))->helperText($t('back_office_idle_help')),
+            ]),
             Section::make(__('customers::customers.navigation_group'))->columns(2)->schema([
                 TextInput::make('loyalty_points')->label(__('customers::customers.loyalty.setting'))->numeric()->minValue(0)->helperText(__('customers::customers.loyalty.setting_help')),
             ]),
@@ -134,6 +140,8 @@ class TillSettingsPage extends Page
         $settings->set(TillSettings::CASH_PAY_OUT_REASONS, array_values($data['pay_out_reasons'] ?? []));
         $settings->set(TillSettings::CASH_REQUIRE_SESSION, (bool) ($data['require_session'] ?? false));
         $settings->set(TillSettings::LOYALTY_POINTS_PER_CEDI, (int) ($data['loyalty_points'] ?? 0));
+        $settings->set(TillSettings::TILL_LOCK_MINUTES, max(0, (int) ($data['till_lock_minutes'] ?? 0)));
+        $settings->set(TillSettings::BACK_OFFICE_IDLE_MINUTES, max(0, (int) ($data['back_office_idle_minutes'] ?? 0)));
 
         Notification::make()->success()->title(__('settings::settings.till.saved'))->send();
     }

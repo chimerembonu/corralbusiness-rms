@@ -51,6 +51,12 @@ return [
         'require_session' => 'A till must be opened (float counted) before payments can be taken',
         'save' => 'Save settings',
         'saved' => 'Till settings saved.',
+        'security' => 'Security',
+        'minutes' => 'minutes',
+        'till_lock_minutes' => 'Lock a till nobody touches after',
+        'till_lock_help' => 'The till goes back to the PIN screen, so nobody can use the last person\'s name. 0 = never. Kitchen screens and clock-in never lock.',
+        'back_office_idle_minutes' => 'Sign out of the back office after',
+        'back_office_idle_help' => 'If nobody uses the back office for this long, it signs out. 0 = never.',
     ],
     'features' => [
         'title' => 'Features',
@@ -63,7 +69,7 @@ return [
         'owner_only' => 'Only the owner can switch features on or off.',
         'groups' => [
             'payments' => 'Payments', 'online' => 'Online', 'messages' => 'Messages to customers', 'kitchen' => 'Kitchen & stock',
-            'office' => 'Office', 'guests' => 'Guests', 'tax' => 'Tax', 'extras' => 'Extras',
+            'office' => 'Office', 'guests' => 'Guests', 'tax' => 'Tax', 'extras' => 'Extras', 'security' => 'Security',
         ],
         'tiers' => ['starter' => 'Starter', 'pro' => 'Pro', 'business' => 'Business'],
         'needs' => [
@@ -87,6 +93,7 @@ return [
             'sms' => ['name' => 'SMS to customers', 'about' => 'Order confirmations, "your order is ready", delivery and reservation messages.'],
             'whatsapp' => ['name' => 'WhatsApp messages', 'about' => 'The same messages by WhatsApp.'],
             'recipes' => ['name' => 'Recipes & food cost', 'about' => 'Each dish uses up its ingredients automatically; see food cost and margin per dish.'],
+            'two_step_sign_in' => ['name' => 'Two-step sign-in for owners and managers', 'about' => 'Owners and managers sign in to the back office with their password plus a 6-digit code from an authenticator app on their phone (works without internet). Each sets it up once on their profile page and keeps the recovery codes safe.'],
             'average_cost' => ['name' => 'Average cost for stock', 'about' => 'Values ingredients at the average of what you paid (weighted average, as IAS 2 allows) instead of the last price paid. Ask your accountant before switching; the change applies from the next delivery.'],
             'accounting_export' => ['name' => 'Accountant\'s daily export', 'about' => 'A daily journal of sales, taxes, discounts and payments for your accountant.'],
             'payroll' => ['name' => 'Payroll', 'about' => 'Pay runs with SSNIT and PAYE, payslips and Excel export.'],
@@ -290,6 +297,10 @@ return [
             'till_twice' => ':till already prints its receipts on another printer. Untick it on one of them.',
             'backup_check' => 'Those are not the last 4 characters of the backup password.',
         ],
+    ],
+    'security' => [
+        'signed_out_idle' => 'You were signed out after :minutes minutes without use. Please sign in again.',
+        'two_step_needed' => 'Two-step sign-in is switched on for owners and managers. Set it up below (scan the code with an authenticator app) to carry on.',
     ],
     'connections' => [
         'title' => 'Connections',

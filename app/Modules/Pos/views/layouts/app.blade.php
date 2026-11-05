@@ -96,11 +96,27 @@
             @endif
         @endauth
         @if (app(\App\Modules\Pos\Services\TrainingMode::class)->isOn())<p class="bg-amber-400 px-4 py-2 text-center text-sm font-black uppercase tracking-wide text-slate-950" role="status">{{ __('pos::pos.training.banner') }}</p>@endif
-        @if (session('status'))<p class="bg-emerald-600 px-4 py-2 text-sm font-semibold text-white" role="status">{{ session('status') }}</p>@endif
+        @if (session('status') && ! request()->routeIs('pos.login')){{-- the PIN screen shows it in its own card --}}<p class="bg-emerald-600 px-4 py-2 text-sm font-semibold text-white" role="status">{{ session('status') }}</p>@endif
         @if (session('error'))<p class="bg-rose-600 px-4 py-2 text-sm font-semibold text-white" role="alert">{{ session('error') }}</p>@endif
         <main class="min-h-0 flex-1">
             {{ $slot }}
         </main>
     </div>
+    @auth
+        @php($lockMinutes = request()->routeIs('pos.*') ? app(\App\Modules\Orders\Support\TillSettings::class)->tillLockMinutes() : 0)
+        @if ($lockMinutes > 0)
+            {{-- Idle lock (E9.2, D1): nobody touches the screen for the set minutes → back to the PIN screen. --}}
+            <form method="post" action="{{ route('pos.logout') }}" id="idle-lock" class="hidden">@csrf<input type="hidden" name="idle" value="1"></form>
+            <script>
+                (() => {
+                    const ms = {{ $lockMinutes }} * 60 * 1000;
+                    let timer;
+                    const reset = () => { clearTimeout(timer); timer = setTimeout(() => document.getElementById('idle-lock').submit(), ms); };
+                    ['pointerdown', 'keydown', 'touchstart', 'wheel'].forEach((e) => window.addEventListener(e, reset, { passive: true }));
+                    reset();
+                })();
+            </script>
+        @endif
+    @endauth
 </body>
 </html>

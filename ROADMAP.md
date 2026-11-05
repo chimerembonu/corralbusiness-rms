@@ -101,7 +101,7 @@ Every feature is **off by default**. A restaurant switches it on in **Settings �
 
 ### E9 — Security and compliance finish
 - [ ] **E9.1** Encrypted connections (HTTPS) on the restaurant network.
-- [ ] **E9.2** Two-step sign-in for Owner and Manager; shorter back-office sessions; tills lock themselves when left idle.
+- [x] **E9.2** Two-step sign-in for Owner and Manager; shorter back-office sessions; tills lock themselves when left idle. *Done 5 Nov: tills lock after 5 minutes untouched and the back office signs out after 30 minutes unused (both in Till settings → Security, 0 = never; screens refreshing themselves do not count); "Two-step sign-in for owners and managers" (Settings → Features, off by default) makes them set up an authenticator app on their profile page, with recovery codes; `rms:two-step:reset` for a lost phone and codes.*
 - [ ] **E9.3** Customer data export and anonymise; automatic clean-up after the agreed retention period.
 - [ ] **E9.4** Tamper-evident audit log; optional second-person approval for big refunds and day close.
 - [ ] **E9.5** Tests run automatically on every GitHub change; `main` protected; the remaining items from the security reviews (D3, N3, N4, N6, N7). *5 Nov: tests run on GitHub for every push and pull request on `main` and `complete-edition` (`.github/workflows/tests.yml`; first `main` run passed); D3, N3, N4, N6, N7 fixed. Still open: protecting `main` needs GitHub Pro for a private repository (owner's decision).*

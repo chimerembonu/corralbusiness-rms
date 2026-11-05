@@ -151,6 +151,12 @@
         "owner",
         "manager"
     ],
+    "admin/profile": [
+        "owner",
+        "manager",
+        "inventory",
+        "accountant"
+    ],
     "admin/promo-codes": [
         "owner",
         "manager"
@@ -301,6 +307,9 @@
         "cashier"
     ],
     "hq": [
+        "owner"
+    ],
+    "hq/profile": [
         "owner"
     ],
     "inventory/stock-takes/{stockTake}/print": [

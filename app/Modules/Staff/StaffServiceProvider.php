@@ -3,6 +3,7 @@
 namespace App\Modules\Staff;
 
 use App\Modules\Staff\Console\AutoClockOut;
+use App\Modules\Staff\Console\ResetTwoStepSignIn;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 
 /**
@@ -30,6 +31,6 @@ class StaffServiceProvider extends ServiceProvider
     {
         parent::boot();
 
-        $this->commands([AutoClockOut::class]);
+        $this->commands([AutoClockOut::class, ResetTwoStepSignIn::class]);
     }
 }

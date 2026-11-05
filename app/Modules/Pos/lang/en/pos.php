@@ -60,6 +60,7 @@ return [
         'pay_needs_cashier' => 'Ask a cashier to take the payment.',
     ],
     'login' => [
+        'locked_idle' => 'The till locked itself after :minutes minutes without use. Enter your PIN to carry on.',
         'title' => 'Enter your PIN',
         'subtitle' => 'Tap your 4 to 6 digit staff PIN',
         'clear' => 'Clear',
