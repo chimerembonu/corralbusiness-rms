@@ -107,3 +107,25 @@ it('PaySwitch: a time-out after sending keeps waiting; access denied and decline
         ->and($ps->status('123456789012', null))->status->toBe(GatewayStatus::Failed)
         ->and($ps->test(['mode' => 'test', 'merchant_id' => 'TTM-0001', 'api_user' => 'user', 'api_key' => 'key'])->ok)->toBeTrue(); // "not found" = details accepted
 });
+
+it('never re-sends a payment request by itself, but does ask about its status again', function () {
+    Http::fake([
+        'api.paystack.co/charge' => Http::sequence()->push(['status' => false, 'message' => 'Server busy'], 502)->push(['status' => true, 'data' => ['status' => 'pay_offline']]),
+        'api.paystack.co/transaction/verify/*' => Http::sequence()->push(['status' => false], 502)->push(['status' => true, 'data' => ['status' => 'success', 'amount' => 100]]),
+    ]);
+    $paystack = app(PaystackGateway::class)->configure(['mode' => 'test', 'secret_key' => 'sk_test_abc']);
+
+    $paystack->requestMomo(new ChargeRequest('R9', Money::of(100), 'x', MomoProvider::Mtn, '0551234987'));
+    Http::assertSentCount(1); // one prompt only: the customer is never asked twice
+
+    expect($paystack->status('R9', null)->status)->toBe(GatewayStatus::Succeeded);
+    Http::assertSentCount(3); // the status question was asked again after the 502
+});
+
+it('PaySwitch: "duplicate transaction id" means the first request is under way, so it keeps waiting', function () {
+    Http::fake(['test.theteller.net/v1.1/transaction/process' => Http::response(['code' => '909', 'status' => 'failed', 'reason' => 'Duplicate Transaction ID'])]);
+    $payswitch = app(PaySwitchGateway::class)->configure(['mode' => 'test', 'merchant_id' => 'TTM-1', 'api_user' => 'u', 'api_key' => 'k']);
+
+    expect($payswitch->requestMomo(new ChargeRequest('123456789012', Money::of(100), 'x', MomoProvider::Mtn, '0241234567'))->status)
+        ->toBe(GatewayStatus::Pending);
+});

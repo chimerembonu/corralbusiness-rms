@@ -74,7 +74,8 @@ return [
     'payswitch' => [
         'base_url' => ['test' => 'https://test.theteller.net', 'live' => 'https://prod.theteller.net'],
         'checkout_url' => ['test' => 'https://checkout-test.theteller.net', 'live' => 'https://checkout.theteller.net'],
-        // theteller "r-switch" codes. Confirm against the PaySwitch test account before going live.
+        // theteller "r-switch" codes (checked against theteller.net/documentation on 5 Nov 2026; AT Money is
+        // listed there as ATL "Airtel" — the old TGO "Tigo" code is not used). Confirm with a test prompt.
         'networks' => ['mtn' => 'MTN', 'telecel' => 'VDF', 'at' => 'ATL'],
     ],
 ];

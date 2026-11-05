@@ -14,7 +14,8 @@ use Illuminate\Http\Client\ConnectionException;
 
 /**
  * PaySwitch / theteller (Ghana): MoMo prompts (processing_code 000200, r-switch MTN/VDF/ATL), status
- * checks, and the hosted checkout page for cards and MoMo online. Docs: theteller.net/documentation.
+ * checks, and the hosted checkout page for cards and MoMo online. Docs: theteller.net/documentation
+ * (checked 5 Nov 2026: endpoints, 000200, MTN/VDF/ATL, 233… numbers, 12-digit ids and amounts all match).
  *
  * Deliberately NOT used: theteller's direct card API (processing_code 000000), which needs the card
  * number and CVV to pass through our server — that would put the till inside PCI DSS scope.
@@ -125,7 +126,8 @@ class PaySwitchGateway extends AbstractGateway
     {
         return match (true) {
             $code === '000' => GatewayResponse::succeeded($reference, $reason),
-            in_array($code, ['111', '200', ''], true) => GatewayResponse::pending($reference, $reason),
+            // 909 "duplicate transaction id": our own id arrived twice, so the first request is under way.
+            in_array($code, ['111', '200', '909', ''], true) => GatewayResponse::pending($reference, $reason),
             in_array($code, self::ACCESS_DENIED, true) => GatewayResponse::failed(__('payments::payments.gateway.test.bad_keys', ['provider' => 'PaySwitch']), $reference),
             $pendingIfUnknown && ! in_array($code, ['100', '101', '102', '103', '104', '105', '107', '114'], true) => GatewayResponse::pending($reference, $reason),
             default => GatewayResponse::failed($reason ?: __('payments::payments.gateway.status.failed'), $reference),

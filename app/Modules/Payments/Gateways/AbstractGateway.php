@@ -14,7 +14,7 @@ use Illuminate\Support\Str;
 
 /**
  * Shared plumbing for providers: capability checks, "not supported" defaults, and an HTTP client with
- * short time-outs and retries, so a slow provider never freezes a till.
+ * short time-outs and retries for status checks, so a slow provider never freezes a till.
  */
 abstract class AbstractGateway implements PaymentGateway
 {
@@ -73,6 +73,9 @@ abstract class AbstractGateway implements PaymentGateway
         return Http::acceptJson()->asJson()
             ->connectTimeout((int) config('payments.http.connect_timeout', 5))
             ->timeout((int) config('payments.http.timeout', 15))
-            ->retry(2, 300, throw: false);
+            // Only questions (GET: status checks) are asked again. A payment request is never re-sent by
+            // itself: a slow provider may already have prompted the customer, and a second request would be
+            // refused as a duplicate (or, worse, charge twice). Its status is checked instead.
+            ->retry(2, 300, fn ($e, $request, $method = null) => strtoupper((string) $method) === 'GET', throw: false);
     }
 }
