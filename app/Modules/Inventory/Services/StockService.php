@@ -142,7 +142,8 @@ class StockService
 
     /**
      * Lines just sent to the kitchen: every menu item with "count stock" goes down by the quantity sold, and
-     * (with Recipes switched on, E5.1) every ingredient of the dish's recipe goes down by what it uses.
+     * (with Recipes switched on, E5.1) every ingredient of the dish's recipe — and of its extras — goes down
+     * by what it uses.
      *
      * @param  BaseCollection<int, OrderItem>  $lines
      */
@@ -165,7 +166,7 @@ class StockService
                 $count++;
             }
             if ($useRecipes) {
-                foreach ($recipes->usage($item->id, $line->variant_id, (float) $line->quantity, $order->branch_id) as $ingredientId => $quantity) {
+                foreach ($recipes->usageForLine($line, $order->branch_id) as $ingredientId => $quantity) { // the dish and its extras
                     $ingredient = Ingredient::query()->where('branch_id', $order->branch_id)->find($ingredientId);
                     if ($ingredient) {
                         $this->move($ingredient, StockMovementType::Sale, -$quantity, $by, __('inventory::inventory.reasons.recipe', ['number' => $order->displayNumber(), 'item' => $item->name]), $order, line: $line);

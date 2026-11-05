@@ -3,11 +3,13 @@
 namespace App\Modules\Inventory\Seeders;
 
 use App\Modules\Inventory\Models\Ingredient;
+use App\Modules\Inventory\Models\ModifierRecipeLine;
 use App\Modules\Inventory\Models\RecipeLine;
 use App\Modules\Menu\Models\Item;
+use App\Modules\Menu\Models\Modifier;
 
 /**
- * Demo recipes (E5.1) for the popular dishes, using the twenty demo ingredients. Rough portion sizes for a
+ * Demo recipes (E5.1) for the popular dishes and their main extras, using the twenty demo ingredients. Rough portion sizes for a
  * demo, not a real kitchen's figures. Re-runnable: a dish's demo recipe is replaced, not added twice.
  */
 class RecipesDemoSeeder
@@ -44,6 +46,29 @@ class RecipesDemoSeeder
                 }
                 RecipeLine::create(['item_id' => $item->id, 'variant_id' => $variant?->id, 'ingredient_id' => $ingredient->id, 'quantity' => $amount, 'unit' => $unit, 'sort_order' => $i]);
                 $count++;
+            }
+        }
+
+        // Extras: what one of each uses, on top of the dish (e.g. the protein chosen with jollof).
+        $extras = [
+            'Chicken' => [['Chicken (whole)', 150, 'g']],
+            'Beef' => [['Beef', 120, 'g']],
+            'Fried fish' => [['Tilapia', 150, 'g'], ['Vegetable oil', 20, 'ml']],
+            'Egg' => [['Eggs', 1, 'pcs']],
+            'Boiled egg' => [['Eggs', 1, 'pcs']],
+            'Fried plantain' => [['Ripe plantain', 100, 'g'], ['Vegetable oil', 15, 'ml']],
+            'Extra plantain' => [['Ripe plantain', 100, 'g'], ['Vegetable oil', 15, 'ml']],
+            'Gari' => [['Gari', 30, 'g']],
+        ];
+        foreach ($extras as $name => $lines) {
+            foreach (Modifier::query()->where('name', $name)->get() as $modifier) {
+                ModifierRecipeLine::query()->where('modifier_id', $modifier->id)->forBranch()->delete();
+                foreach ($lines as $i => [$ingredientName, $amount, $unit]) {
+                    if ($ingredient = $ingredients->get($ingredientName)) {
+                        ModifierRecipeLine::create(['modifier_id' => $modifier->id, 'ingredient_id' => $ingredient->id, 'quantity' => $amount, 'unit' => $unit, 'sort_order' => $i]);
+                        $count++;
+                    }
+                }
             }
         }
 

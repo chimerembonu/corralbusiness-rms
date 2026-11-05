@@ -63,6 +63,8 @@
         "owner",
         "manager"
     ],
+    "admin/extra-recipes": [],
+    "admin/extra-recipes/{record}/edit": [],
     "admin/features": [
         "owner",
         "manager"

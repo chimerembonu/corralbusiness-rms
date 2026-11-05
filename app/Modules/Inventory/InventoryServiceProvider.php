@@ -4,8 +4,10 @@ namespace App\Modules\Inventory;
 
 use App\Modules\Inventory\Listeners\DeductStockWhenSent;
 use App\Modules\Inventory\Listeners\RestockWhenVoided;
+use App\Modules\Inventory\Models\ModifierRecipeLine;
 use App\Modules\Inventory\Models\RecipeLine;
 use App\Modules\Menu\Models\Item;
+use App\Modules\Menu\Models\Modifier;
 use App\Modules\Orders\Events\ItemVoided;
 use App\Modules\Orders\Events\OrderSentToKitchen;
 use App\Modules\Orders\Events\OrderVoided;
@@ -40,5 +42,6 @@ class InventoryServiceProvider extends ServiceProvider
 
         // A dish's recipe lines (E5.1). Defined here so the Menu module does not need to know about stock.
         Item::resolveRelationUsing('recipeLines', fn (Item $item) => $item->hasMany(RecipeLine::class, 'item_id'));
+        Modifier::resolveRelationUsing('recipeLines', fn (Modifier $modifier) => $modifier->hasMany(ModifierRecipeLine::class, 'modifier_id'));
     }
 }

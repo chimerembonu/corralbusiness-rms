@@ -1,6 +1,7 @@
 <?php
 
 use App\Console\Commands\DemoCommand;
+use App\Modules\Inventory\Models\ModifierRecipeLine;
 use App\Modules\Inventory\Models\RecipeLine;
 use App\Modules\Menu\Models\Item;
 use App\Modules\Orders\Models\DiningTable;
@@ -25,14 +26,17 @@ it('loads the demo restaurant with menu and owner login, and can run twice', fun
         ->and(Item::where('code', 'CMB1')->first()->comboItems()->count())->toBe(2)
         ->and(DiningTable::count())->toBe(12)
         ->and(RecipeLine::query()->where('item_id', Item::where('code', 'JOL')->value('id'))->count())->toBe(6) // demo recipes (E5.1)
+        ->and(ModifierRecipeLine::query()->count())->toBeGreaterThan(5) // demo recipes for extras
         ->and(app(PinAuthenticator::class)->attempt('1234', 'till-1')->id)->toBe($owner->id);
 
     $items = Item::count();
     $recipeLines = RecipeLine::count();
+    $extraLines = ModifierRecipeLine::count();
     $this->artisan('rms:demo')->assertSuccessful();
 
     expect(Item::count())->toBe($items)
         ->and(RecipeLine::count())->toBe($recipeLines)
+        ->and(ModifierRecipeLine::count())->toBe($extraLines)
         ->and(Tenant::count())->toBe(1)
         ->and(User::withoutGlobalScope(TenantScope::class)->count())->toBe(11);
 

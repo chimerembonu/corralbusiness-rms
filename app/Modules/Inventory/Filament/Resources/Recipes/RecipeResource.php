@@ -74,57 +74,68 @@ class RecipeResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        $f = fn (string $k) => __('inventory::inventory.recipes.fields.'.$k);
-        $ingredient = fn (?string $id) => $id ? Ingredient::query()->forBranch()->find($id) : null;
-
         return $schema->components([
             Section::make(__('inventory::inventory.recipes.lines'))->description(__('inventory::inventory.recipes.lines_help'))->columnSpanFull()->schema([
                 Repeater::make('recipeLines')->label('')
                     ->relationship('recipeLines', modifyQueryUsing: fn (Builder $query) => $query->forBranch())
                     ->orderColumn('sort_order')->defaultItems(0)->columns(12)
                     ->addActionLabel(__('inventory::inventory.recipes.add_line'))
-                    ->schema([
-                        Select::make('ingredient_id')->label($f('ingredient'))->columnSpan(4)->required()->searchable()->live()
-                            ->options(fn () => Ingredient::query()->forBranch()->active()->orderBy('name')->get()
-                                ->mapWithKeys(fn (Ingredient $i) => [$i->id => $i->name.' ('.$i->unit->short().')'])->all())
-                            ->afterStateUpdated(fn (Set $set, $state) => $set('unit', $ingredient($state)?->unit->value)),
-                        TextInput::make('quantity')->label($f('quantity'))->columnSpan(2)->numeric()->required()->live(onBlur: true)
-                            ->minValue(0.0001)->step('any')
-                            ->validationMessages(['min' => __('inventory::inventory.recipes.errors.quantity')]),
-                        Select::make('unit')->label($f('unit'))->columnSpan(2)->required()->live()
-                            ->options(function (Get $get) use ($ingredient) {
-                                $units = $ingredient($get('ingredient_id'))?->unit->compatible() ?? [];
-
-                                return collect($units)->mapWithKeys(fn (Unit $u) => [$u->value => $u->short()])->all();
-                            })
-                            ->rule(fn (Get $get) => function ($attribute, $value, $fail) use ($get, $ingredient) {
-                                $base = $ingredient($get('ingredient_id'))?->unit;
-                                if ($base && (! Unit::tryFrom((string) $value) || Unit::from($value)->convert(1, $base) === null)) {
-                                    $fail(__('inventory::inventory.recipes.errors.unit', ['unit' => $base->short(), 'units' => collect($base->compatible())->map->short()->implode(' / ')]));
-                                }
-                            }),
-                        Select::make('variant_id')->label($f('variant'))->columnSpan(2)->placeholder($f('every_size'))->nullable()
-                            // Inside a line, "record" is the line: the dish is the page's record.
-                            ->options(fn ($livewire) => self::dish($livewire)?->variants()->pluck('name', 'id')->all() ?? [])
-                            ->visible(fn ($livewire) => self::dish($livewire)?->variants()->exists() ?? false),
-                        Placeholder::make('cost')->label($f('cost'))->columnSpan(2)
-                            ->content(function (Get $get) use ($ingredient) {
-                                $i = $ingredient($get('ingredient_id'));
-                                $unit = Unit::tryFrom((string) $get('unit'));
-                                if (! $i || ! $unit || ! is_numeric($get('quantity'))) {
-                                    return '—';
-                                }
-                                $line = new RecipeLine(['quantity' => (float) $get('quantity'), 'unit' => $unit]);
-                                $line->setRelation('ingredient', $i);
-
-                                return money($line->cost());
-                            }),
-                    ]),
+                    ->schema(self::lineFields(withSizes: true)),
             ]),
             Section::make(__('inventory::inventory.recipes.portion_cost'))->columnSpanFull()->schema([
                 Placeholder::make('portion_cost')->hiddenLabel()->content(fn (?Item $record) => $record ? self::costSummary($record) : '—'),
             ]),
         ]);
+    }
+
+    /**
+     * The boxes of one recipe line: ingredient, amount, unit (only ones that convert), size (dishes only), cost.
+     * Shared with the recipes for extras.
+     *
+     * @return array<int, mixed>
+     */
+    public static function lineFields(bool $withSizes): array
+    {
+        $f = fn (string $k) => __('inventory::inventory.recipes.fields.'.$k);
+        $ingredient = fn (?string $id) => $id ? Ingredient::query()->forBranch()->find($id) : null;
+
+        return array_values(array_filter([
+            Select::make('ingredient_id')->label($f('ingredient'))->columnSpan(4)->required()->searchable()->live()
+                ->options(fn () => Ingredient::query()->forBranch()->active()->orderBy('name')->get()
+                    ->mapWithKeys(fn (Ingredient $i) => [$i->id => $i->name.' ('.$i->unit->short().')'])->all())
+                ->afterStateUpdated(fn (Set $set, $state) => $set('unit', $ingredient($state)?->unit->value)),
+            TextInput::make('quantity')->label($f('quantity'))->columnSpan(2)->numeric()->required()->live(onBlur: true)
+                ->minValue(0.0001)->step('any')
+                ->validationMessages(['min' => __('inventory::inventory.recipes.errors.quantity')]),
+            Select::make('unit')->label($f('unit'))->columnSpan(2)->required()->live()
+                ->options(function (Get $get) use ($ingredient) {
+                    $units = $ingredient($get('ingredient_id'))?->unit->compatible() ?? [];
+
+                    return collect($units)->mapWithKeys(fn (Unit $u) => [$u->value => $u->short()])->all();
+                })
+                ->rule(fn (Get $get) => function ($attribute, $value, $fail) use ($get, $ingredient) {
+                    $base = $ingredient($get('ingredient_id'))?->unit;
+                    if ($base && (! Unit::tryFrom((string) $value) || Unit::from($value)->convert(1, $base) === null)) {
+                        $fail(__('inventory::inventory.recipes.errors.unit', ['unit' => $base->short(), 'units' => collect($base->compatible())->map->short()->implode(' / ')]));
+                    }
+                }),
+            $withSizes ? Select::make('variant_id')->label($f('variant'))->columnSpan(2)->placeholder($f('every_size'))->nullable()
+                // Inside a line, "record" is the line: the dish is the page's record.
+                ->options(fn ($livewire) => self::dish($livewire)?->variants()->pluck('name', 'id')->all() ?? [])
+                ->visible(fn ($livewire) => self::dish($livewire)?->variants()->exists() ?? false) : null,
+            Placeholder::make('cost')->label($f('cost'))->columnSpan(2)
+                ->content(function (Get $get) use ($ingredient) {
+                    $i = $ingredient($get('ingredient_id'));
+                    $unit = Unit::tryFrom((string) $get('unit'));
+                    if (! $i || ! $unit || ! is_numeric($get('quantity'))) {
+                        return '—';
+                    }
+                    $line = new RecipeLine(['quantity' => (float) $get('quantity'), 'unit' => $unit]);
+                    $line->setRelation('ingredient', $i);
+
+                    return money($line->cost());
+                }),
+        ]));
     }
 
     private static function dish(mixed $livewire): ?Item
