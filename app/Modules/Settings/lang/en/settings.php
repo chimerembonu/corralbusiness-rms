@@ -87,6 +87,7 @@ return [
             'sms' => ['name' => 'SMS to customers', 'about' => 'Order confirmations, "your order is ready", delivery and reservation messages.'],
             'whatsapp' => ['name' => 'WhatsApp messages', 'about' => 'The same messages by WhatsApp.'],
             'recipes' => ['name' => 'Recipes & food cost', 'about' => 'Each dish uses up its ingredients automatically; see food cost and margin per dish.'],
+            'average_cost' => ['name' => 'Average cost for stock', 'about' => 'Values ingredients at the average of what you paid (weighted average, as IAS 2 allows) instead of the last price paid. Ask your accountant before switching; the change applies from the next delivery.'],
             'accounting_export' => ['name' => 'Accountant\'s daily export', 'about' => 'A daily journal of sales, taxes, discounts and payments for your accountant.'],
             'payroll' => ['name' => 'Payroll', 'about' => 'Pay runs with SSNIT and PAYE, payslips and Excel export.'],
             'reservations' => ['name' => 'Reservations', 'about' => 'Table bookings, holds, deposits and reminders.'],

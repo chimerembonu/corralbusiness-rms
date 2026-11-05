@@ -16,7 +16,7 @@ use App\Support\Money\Money;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Support\Facades\DB;
 
-/** Purchase orders → goods received. Receiving posts the stock and updates each ingredient's average cost (E5.2). */
+/** Purchase orders → goods received. Receiving posts the stock and updates each ingredient's cost (last price paid, or the average: E5.2). */
 class PurchaseService
 {
     public function __construct(private readonly StockService $stock, private readonly CounterService $counters, private readonly TenantContext $context) {}

@@ -8,6 +8,7 @@ use App\Modules\Inventory\Models\Ingredient;
 use App\Modules\Inventory\Models\IngredientCostChange;
 use App\Modules\Inventory\Models\Purchase;
 use App\Modules\Staff\Models\User;
+use App\Support\Features\FeatureService;
 use App\Support\Money\Money;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -15,10 +16,12 @@ use Illuminate\Support\Facades\DB;
 /**
  * Ingredient costs (Complete Edition E5.2).
  *
- * Weighted-average cost, as IAS 2 allows: after each delivery the cost per unit becomes
- *   (stock before × cost before + delivered × price paid) ÷ (stock before + delivered).
- * When there was no stock (or less than none, after sales ran it below zero), the price paid becomes the
- * cost. Every change is kept (the purchase price history), and a change by hand needs a reason.
+ * With "Average cost for stock" switched on (Settings → Features), the weighted average as IAS 2 allows:
+ * after each delivery the cost per unit becomes
+ *   (stock before × cost before + delivered × price paid) ÷ (stock before + delivered);
+ * when there was no stock (or less than none, after sales ran it below zero), the price paid. Switched off
+ * (the default), the cost is simply the last price paid. Either way every change is kept (the purchase
+ * price history), and a change by hand needs a reason.
  */
 class CostService
 {
@@ -37,11 +40,17 @@ class CostService
     public function applyPurchase(Ingredient $ingredient, float $onHandBefore, float $quantity, Money $pricePaid, ?User $by = null, ?Purchase $purchase = null): Money
     {
         $old = $ingredient->cost_per_unit;
-        $new = self::average($onHandBefore, $old, $quantity, $pricePaid);
+        $new = $this->averaging() ? self::average($onHandBefore, $old, $quantity, $pricePaid) : $pricePaid;
         $ingredient->cost_per_unit = $new;
         $this->record($ingredient, CostChangeSource::Purchase, $old, $new, $by, pricePaid: $pricePaid, quantity: $quantity, onHandBefore: $onHandBefore, purchase: $purchase);
 
         return $new;
+    }
+
+    /** Is "Average cost for stock" switched on? Off = last price paid. */
+    public function averaging(): bool
+    {
+        return app(FeatureService::class)->isOn('average_cost');
     }
 
     /** A cost changed by hand: a reason is required, and the change is kept. */

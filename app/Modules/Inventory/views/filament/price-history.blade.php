@@ -5,7 +5,7 @@
         {{ $c('now', ['cost' => money($ingredient->cost_per_unit), 'unit' => $unit]) }}
         @if ($last) · {{ $c('last_paid', ['price' => money($last), 'unit' => $unit]) }} @endif
     </p>
-    <p style="opacity: .7; font-size: .8rem">{{ $c('method') }}</p>
+    <p style="opacity: .7; font-size: .8rem">{{ $c(app(\App\Modules\Inventory\Services\CostService::class)->averaging() ? 'method_average' : 'method') }}</p>
     @if ($changes->isEmpty())
         <p style="opacity: .7">{{ $c('none') }}</p>
     @else

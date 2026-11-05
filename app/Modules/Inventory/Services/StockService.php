@@ -53,7 +53,7 @@ class StockService
             $before = (float) $subject->{$column};
             $subject->{$column} = $after;
             if ($subject instanceof Ingredient && $unitCost && $type === StockMovementType::Purchase && $quantity > 0) {
-                // Weighted-average cost (E5.2): the old stock and the delivery averaged, and the change kept.
+                // The new cost (last price paid, or the weighted average when switched on: E5.2), and the change kept.
                 app(CostService::class)->applyPurchase($subject, $before, $quantity, $unitCost, $by, $reference instanceof Purchase ? $reference : null);
             }
             $subject->saveQuietly();
@@ -220,7 +220,7 @@ class StockService
         return $ingredients->toBase()->merge($items->toBase());
     }
 
-    /** Total value of ingredient stock at average cost (E5.2), in pesewas. */
+    /** Total value of ingredient stock at cost (last price paid, or the average: E5.2), in pesewas. */
     public function valuation(?string $branchId = null): Money
     {
         return Money::of(Ingredient::query()->active()->where('branch_id', $branchId ?? $this->context->branchId())->get()->sum(fn (Ingredient $i) => $i->stockValue()));

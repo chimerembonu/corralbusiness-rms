@@ -15,7 +15,9 @@ use App\Modules\Inventory\Services\StockService;
 use App\Modules\Settings\Services\Import\Importers;
 use App\Modules\Staff\Enums\Role;
 use App\Modules\Staff\Models\User;
+use App\Support\Features\FeatureService;
 use App\Support\Money\Money;
+use App\Support\Tenancy\Tenancy;
 use Filament\Actions\Testing\TestAction;
 use Livewire\Livewire;
 
@@ -31,6 +33,26 @@ beforeEach(function () {
     $this->costs = app(CostService::class);
     $this->stock = app(StockService::class);
     $this->rice = Ingredient::create(['name' => 'Rice', 'unit' => 'kg', 'cost_per_unit' => 2000, 'on_hand' => 10]); // 10 kg at GH₵ 20.00
+
+    // "Average cost for stock" is off by default; these tests are about the average, so it is switched on.
+    installTestLicence('starter');
+    $owner = Tenancy::runAs($this->branch->tenant, null, function () {
+        $owner = User::factory()->create(['tenant_id' => $this->branch->tenant_id, 'branch_id' => null]);
+        $owner->assignRole(Role::Owner->value);
+
+        return $owner;
+    });
+    app(FeatureService::class)->set('average_cost', true, $owner);
+});
+
+it('uses the last price paid while "Average cost for stock" is off, and still keeps the price history', function () {
+    app(FeatureService::class)->set('average_cost', false, null);
+    expect($this->costs->averaging())->toBeFalse();
+
+    $this->stock->move($this->rice, StockMovementType::Purchase, 30, $this->manager, 'Market run', null, Money::of(2400));
+    expect($this->rice->fresh()->cost_per_unit)->toBePesewas(2400)
+        ->and($this->costs->history($this->rice)->sole()->new_cost)->toBePesewas(2400)
+        ->and($this->costs->history($this->rice)->sole()->price_paid)->toBePesewas(2400);
 });
 
 it('averages the stock on the shelf with each delivery, by quantity', function () {
@@ -97,7 +119,7 @@ it('lets managers change the cost only through "Change cost", and shows the pric
 
     Livewire::test(ListIngredients::class)->mountAction(TestAction::make('priceHistory')->table($this->rice))->assertActionMounted(TestAction::make('priceHistory')->table($this->rice));
     $html = view('inventory::filament.price-history', ['ingredient' => $this->rice->fresh(), 'changes' => $this->costs->history($this->rice), 'last' => null])->render();
-    expect($html)->toContain('Average cost now: GH₵ 21.50 per kg')->toContain('Changed by hand')->toContain('Supplier price list')->toContain('Akosua');
+    expect($html)->toContain('Cost now: GH₵ 21.50 per kg')->toContain('Average cost: after every delivery')->toContain('Changed by hand')->toContain('Supplier price list')->toContain('Akosua');
 
     // A new ingredient starts its history with the cost it was created with.
     Livewire::test(CreateIngredient::class)

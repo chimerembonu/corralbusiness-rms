@@ -40,7 +40,7 @@ class Ingredient extends BusinessModel
         return $this->hasMany(StockMovement::class)->latest('happened_at');
     }
 
-    /** Value of what is on the shelf at its average cost (E5.2), in pesewas. */
+    /** Value of what is on the shelf at its cost (last price paid, or the average: E5.2), in pesewas. */
     public function stockValue(): int
     {
         return (int) round((float) $this->on_hand * $this->cost_per_unit->amount);

@@ -69,7 +69,7 @@ it('creates and receives a purchase in the back office', function () {
         ->callAction(TestAction::make('receive')->table($purchase), ['reference' => 'INV-9', 'received' => [$line->id => 48]])->assertHasNoErrors();
     expect($purchase->fresh()->status)->toBe(PurchaseStatus::Received)
         ->and((float) $this->rice->fresh()->on_hand)->toBe(58.0)
-        ->and($this->rice->fresh()->cost_per_unit)->toBePesewas(2159) // average (E5.2): (10 × 22.00 + 48 × 21.50) ÷ 58
+        ->and($this->rice->fresh()->cost_per_unit)->toBePesewas(2150) // last price paid ("Average cost for stock" is off by default)
         ->and($purchase->fresh()->reference)->toBe('INV-9');
 });
 

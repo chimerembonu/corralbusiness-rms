@@ -22,6 +22,8 @@ return [
         'sms' => ['group' => 'messages', 'needs' => ['sms'], 'tier' => 'pro', 'stage' => 'E4', 'available' => false],
         'whatsapp' => ['group' => 'messages', 'needs' => ['whatsapp'], 'tier' => 'business', 'stage' => 'E4', 'available' => false],
         'recipes' => ['group' => 'kitchen', 'needs' => [], 'tier' => 'pro', 'stage' => 'E5', 'available' => true],
+        // Off: an ingredient costs what was paid on its last delivery. On: the IAS 2 weighted average (E5.2).
+        'average_cost' => ['group' => 'kitchen', 'needs' => [], 'tier' => 'starter', 'stage' => 'E5', 'available' => true],
         'accounting_export' => ['group' => 'office', 'needs' => [], 'tier' => 'pro', 'stage' => 'E5', 'available' => false],
         'payroll' => ['group' => 'office', 'needs' => [], 'tier' => 'business', 'stage' => 'E6', 'available' => false],
         'reservations' => ['group' => 'guests', 'needs' => [], 'tier' => 'pro', 'stage' => 'E7', 'available' => false],
