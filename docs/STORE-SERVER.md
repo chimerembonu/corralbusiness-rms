@@ -30,8 +30,8 @@ gh repo clone chimerembonu/corralbusiness-rms /opt/corralbusiness-rms && cd /opt
 
 **With a USB stick:** copy the project folder from the Mac to the stick, plug it into the mini PC, open a terminal in that folder and run `sudo ./install.sh`.
 
-3. Answer the questions: restaurant name, branch name, your name, email, password and till PIN.
-4. The installer prints the address, for example `http://192.168.8.10`. Open it on a till.
+3. The installer prints the address and a 6-digit **setup code**, for example `http://192.168.8.10/setup` and `482913`.
+4. Open that address on any computer, tablet or phone on the restaurant network, type the setup code and follow the setup screens: restaurant and TIN, owner login, taxes, receipt, tills, menu and staff from Excel (optional), and the backup password (write it down). At the end you are signed in to the back office.
 
 Run `sudo ./install.sh` again at any time; it keeps your data and settings.
 
@@ -48,11 +48,8 @@ The same Docker package runs on a Windows 10/11 PC or a Mac. It is fine for a de
 docker compose up -d --build
 ```
 
-```bash
-docker compose exec app php artisan rms:setup
-```
-
-5. Open `http://<the address>` on the tills. To start again after a reboot, open Docker Desktop (set it to start with the computer) and the app comes back by itself.
+5. Open `http://<the address>/setup` in a browser and follow the setup screens (restaurant, owner login, taxes, receipt, tills, menu and staff from Excel, backup password). If you put a 6-digit `RMS_SETUP_CODE=` in `.env`, the first screen asks for it. Prefer the command line? `docker compose exec app php artisan rms:setup` does the basics instead.
+6. Open `http://<the address>` on the tills. To start again after a reboot, open Docker Desktop (set it to start with the computer) and the app comes back by itself.
 
 Printers: network printers work exactly as on Ubuntu. USB printers on Windows must be shared from Windows and used with connection "Browser" on a till, or plugged into the computer and set up in Docker Desktop's USB sharing (advanced).
 

@@ -397,6 +397,7 @@
         "inventory",
         "accountant"
     ],
+    "setup": [],
     "staff/cheat-sheet": [
         "owner",
         "manager"

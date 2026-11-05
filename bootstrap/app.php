@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Settings\Http\RedirectToSetup;
 use App\Support\Tenancy\SetTenantFromUser;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -16,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [
             SetTenantFromUser::class,
+            RedirectToSetup::class, // a fresh install opens the setup wizard (E1.3)
         ]);
         // The tenant must be known BEFORE {order}, {job}, {session}… are looked up from the URL, so the
         // tenant scope applies to that lookup and another restaurant's record is a 404 (security review H4).

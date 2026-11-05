@@ -11,7 +11,7 @@
 #   2. Puts the code in /opt/corralbusiness-rms (git clone or the folder you ran it from).
 #   3. Creates .env with generated keys and passwords, bound to this computer's LAN address.
 #   4. Builds and starts everything (web, app, database, realtime, queue, scheduler).
-#   5. Creates the restaurant and the owner login (rms:setup), unless the database already has one.
+#   5. Shows the address and setup code of the browser setup wizard (/setup), unless a restaurant already exists.
 # Safe to run again: it keeps the existing .env and data.
 # ---------------------------------------------------------------------------
 set -euo pipefail
@@ -76,6 +76,7 @@ if [ ! -f .env ]; then
     sed -i "s|^REVERB_APP_KEY=.*|REVERB_APP_KEY=$(rand 20)|" .env
     sed -i "s|^REVERB_APP_SECRET=.*|REVERB_APP_SECRET=$(rand 32)|" .env
     sed -i "s|^RMS_BACKUP_PASSWORD=.*|RMS_BACKUP_PASSWORD=$(rand 24)|" .env
+    sed -i "s|^RMS_SETUP_CODE=.*|RMS_SETUP_CODE=$(tr -dc '0-9' </dev/urandom | head -c 6)|" .env
     chmod 600 .env
 else
     say "Keeping the existing .env."
@@ -100,8 +101,11 @@ done
 if docker compose exec -T app php artisan rms:setup --check >/dev/null 2>&1; then
     say "The restaurant is already set up."
 else
-    say "Let's set up the restaurant and the owner login."
-    docker compose exec app php artisan rms:setup
+    SETUP_CODE="$(grep '^RMS_SETUP_CODE=' .env | cut -d= -f2-)"
+    say "Finish in a browser: open http://$LAN_IP/setup on any computer, tablet or phone on the restaurant network."
+    echo "    Setup code: ${SETUP_CODE:-(none needed)}"
+    echo "    The setup screens ask for the restaurant, owner login, taxes, receipt, tills, menu and staff."
+    echo "    (Prefer the command line? Run: docker compose exec app php artisan rms:setup)"
 fi
 
 say "Done. Open http://$LAN_IP on any till, tablet or phone on the restaurant Wi-Fi."

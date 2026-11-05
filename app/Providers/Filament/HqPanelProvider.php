@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Modules\Settings\Http\RedirectToSetup;
 use App\Modules\Staff\Filament\Auth\Login;
 use App\Support\Licence\EnforceLicence;
 use App\Support\Tenancy\SetTenantFromUser;
@@ -64,6 +65,7 @@ class HqPanelProvider extends PanelProvider
                 SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
+                RedirectToSetup::class, // a fresh install opens the setup wizard instead of the login (E1.3)
             ])
             ->authMiddleware([
                 Authenticate::class,

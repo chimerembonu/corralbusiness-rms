@@ -65,6 +65,13 @@ return [
         'password' => env('RMS_BACKUP_PASSWORD'),
     ],
 
+    // First-run setup wizard (/setup, Complete Edition E1.3). It is only open while the server has no restaurant.
+    // When a code is set (the installer generates one and prints it), the wizard asks for it first, so nobody
+    // else on the network can set up the server before the owner.
+    'setup' => [
+        'code' => env('RMS_SETUP_CODE'),
+    ],
+
     // PIN security (CLAUDE.md §3.14).
     'pin' => [
         'min_length' => 4,

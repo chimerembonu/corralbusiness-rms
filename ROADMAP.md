@@ -51,7 +51,7 @@ Every feature is **off by default**. A restaurant switches it on in **Settings �
 ### E1 — Plug-and-play foundation
 - [x] **E1.1** Features page and Connections page (keys stored locked, Test connection). *Done 4 Nov.*
 - [x] **E1.2 Licence and plans.** Corral Systems issues a licence code per restaurant (Starter / Pro / Business, number of branches, end date), checked by the app **without internet**. A Licence page shows the plan and expiry. Features outside the plan stay off. An expired licence gives a 14-day grace period, then read-only reports, and **never stops a till mid-service**. 👤 *You decide which features go in which plan (see the pricing notes from 1 Nov) and keep Corral's signing key safe.* *Done 4 Nov: Settings → Licence; codes made with `rms:licence-issue`; plan of each feature in config/features.php ("tier"), to be confirmed by the owner.*
-- [ ] **E1.3 First-run setup wizard.** On a fresh install the browser opens a wizard: restaurant name, TIN, branch, owner account, taxes (2026 Ghana defaults, to confirm), receipt, tills, menu and staff from Excel, and the backup password shown and confirmed. No command line needed.
+- [x] **E1.3 First-run setup wizard.** On a fresh install the browser opens a wizard: restaurant name, TIN, branch, owner account, taxes (2026 Ghana defaults, to confirm), receipt, tills, menu and staff from Excel, and the backup password shown and confirmed. No command line needed. *Done 5 Nov: `/setup`, opened by every screen of a fresh install; the installer prints a 6-digit setup code; `rms:setup` still works.*
 - [ ] **E1.4 Printers in the wizard.** The wizard scans the network and USB for printers, prints a test page on each, and assigns them to kitchen stations and tills.
 
 ### E2 — Payments
