@@ -178,6 +178,7 @@
     ],
     "admin/recipes": [],
     "admin/recipes/{record}/edit": [],
+    "admin/reports/food-cost": [],
     "admin/reports/items": [
         "owner",
         "manager",
@@ -188,6 +189,7 @@
         "manager",
         "accountant"
     ],
+    "admin/reports/recipe-usage": [],
     "admin/reports/sales": [
         "owner",
         "manager",

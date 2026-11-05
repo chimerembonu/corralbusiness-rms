@@ -55,4 +55,34 @@ return [
     'dashboard' => [
         'today' => 'Today', 'yesterday' => 'yesterday', 'orders' => 'orders', 'last_14_days' => 'Sales, last 14 days', 'gross' => 'Gross sales',
     ],
+    'food_cost' => [
+        'title' => 'Food cost & margin',
+        'help' => 'For each dish: sales (without tax), what its ingredients cost when it was sold, and what is left. Only dishes with a recipe have a cost; the others count in sales but not in the food cost %.',
+        'by_category' => 'By category',
+        'by_dish' => 'By dish',
+        'columns' => [
+            'dish' => 'Dish', 'category' => 'Category', 'quantity' => 'Sold', 'net' => 'Sales (no tax)', 'cost' => 'Ingredient cost',
+            'margin' => 'Margin', 'food_cost_pct' => 'Food cost %',
+        ],
+        'kpis' => [
+            'net' => 'Sales (no tax)', 'cost' => 'Ingredient cost', 'margin' => 'Margin', 'food_cost_pct' => 'Food cost %', 'uncosted' => 'Sales without a cost',
+        ],
+        'no_cost' => 'no cost yet',
+        'some_cost' => 'part costed',
+        'uncosted_help' => ':count dish(es) sold :amount without a recorded ingredient cost (no recipe, or sold before recipes were switched on). They are left out of the food cost %.',
+    ],
+    'usage' => [
+        'title' => 'Recipes vs stock take',
+        'help' => 'After a stock take: for each ingredient counted, what the recipes say was used since its last count, recorded waste, and what is missing (the count found less than expected). Look at the biggest "missing" first: over-portioning, unrecorded waste, theft, or a recipe to correct.',
+        'take' => 'Stock take',
+        'none' => 'No completed stock takes yet. Complete one in Inventory → Stock Takes.',
+        'nothing' => 'Nothing to compare: none of the counted ingredients was used by recipes, wasted or found different since its last count.',
+        'columns' => [
+            'ingredient' => 'Ingredient', 'since' => 'Since', 'purchased' => 'Delivered', 'recipe' => 'Used by recipes', 'waste' => 'Recorded waste',
+            'missing' => 'Missing', 'actual' => 'Actually used', 'missing_pct' => 'Missing %', 'missing_value' => 'Missing (GH₵)',
+        ],
+        'kpis' => ['recipe_value' => 'Used by recipes (at cost)', 'waste_value' => 'Recorded waste (at cost)', 'missing_value' => 'Missing (at cost)'],
+        'first_count' => 'first count',
+        'counted_on' => 'Counted :date',
+    ],
 ];
