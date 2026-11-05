@@ -32,7 +32,7 @@
                 <h2 class="text-xl font-bold">{{ $w('welcome.heading') }}</h2>
                 <p class="text-slate-300">{{ $w('welcome.body') }}</p>
                 <ul class="list-disc space-y-1 pl-5 text-sm text-slate-400">
-                    @foreach (['restaurant', 'owner', 'taxes', 'receipt', 'tills', 'data', 'backup'] as $s)
+                    @foreach (['restaurant', 'owner', 'taxes', 'receipt', 'tills', 'printers', 'data', 'backup'] as $s)
                         <li>{{ $w('steps.'.$s) }}</li>
                     @endforeach
                 </ul>
@@ -118,10 +118,123 @@
                         @error('tills.'.$i) <span class="mt-1 block text-sm text-rose-300">{{ $message }}</span> @enderror
                     </label>
                 @endforeach
-                <div class="flex gap-3">
+                <div class="flex flex-wrap gap-3">
                     <button type="button" wire:click="addTill" class="{{ $secondary }}" @disabled(count($tills) >= 12)>{{ $w('tills.add') }}</button>
                     <button type="button" wire:click="removeTill" class="{{ $secondary }}" @disabled(count($tills) <= 1)>{{ $w('tills.remove') }}</button>
                 </div>
+                <h3 class="mt-2 text-lg font-bold">{{ $w('tills.stations_heading') }}</h3>
+                <p class="text-sm text-slate-400">{{ $w('tills.stations_help') }}</p>
+                @foreach ($stations as $i => $name)
+                    <label class="{{ $label }}" wire:key="station-{{ $i }}">{{ $w('fields.station_name') }} {{ $i + 1 }}@if ($i === 0) · {{ $w('tills.station_default') }}@endif
+                        <input type="text" wire:model="stations.{{ $i }}" class="{{ $input }}" @if ($i > 0) placeholder="{{ $w('tills.station_example') }}" @endif>
+                        @error('stations.'.$i) <span class="mt-1 block text-sm text-rose-300">{{ $message }}</span> @enderror
+                    </label>
+                @endforeach
+                <div class="flex flex-wrap gap-3">
+                    <button type="button" wire:click="addStation" class="{{ $secondary }}" @disabled(count($stations) >= 8)>{{ $w('tills.add_station') }}</button>
+                    <button type="button" wire:click="removeStation" class="{{ $secondary }}" @disabled(count($stations) <= 1)>{{ $w('tills.remove') }}</button>
+                </div>
+                @break
+
+            @case('printers')
+                @php($added = collect($printers)->pluck('address')->all())
+                <h2 class="text-xl font-bold">{{ $w('steps.printers') }}</h2>
+                <p class="text-sm text-slate-400">{{ $w('printers.help') }}</p>
+                <form wire:submit="searchPrinters" class="flex flex-col gap-3 rounded-2xl bg-slate-800 p-4">
+                    <label class="{{ $label }}">{{ $w('fields.scan_network') }}
+                        <input type="text" wire:model="scanNetwork" placeholder="{{ $w('printers.network_placeholder') }}" class="{{ $input }} bg-slate-900">
+                    </label>
+                    <button type="submit" wire:loading.attr="disabled" wire:target="searchPrinters" class="{{ $primary }} self-start">
+                        <span wire:loading.remove wire:target="searchPrinters">{{ $w('printers.search') }}</span>
+                        <span wire:loading wire:target="searchPrinters">{{ $w('printers.searching') }}</span>
+                    </button>
+                    @if ($found['searched'])
+                        @foreach (array_filter(['network' => $found['subnet'] ? $found['network'] : null, 'usb' => $found['usb']], 'is_array') as $driver => $addresses)
+                            <div class="flex flex-col gap-2">
+                                <span class="text-sm font-semibold text-slate-300">{{ $w('printers.found_'.$driver, ['network' => $found['subnet'] ?? '—']) }}</span>
+                                @forelse ($addresses as $address)
+                                    <div class="flex min-h-12 items-center justify-between gap-3 rounded-xl bg-slate-900 px-4" wire:key="found-{{ $driver }}-{{ $address }}">
+                                        <span class="min-w-0 truncate font-mono">{{ $address }}</span>
+                                        @if (in_array($address, $added, true))
+                                            <span class="shrink-0 text-sm text-emerald-300">{{ $w('printers.added') }}</span>
+                                        @else
+                                            <button type="button" wire:click="addPrinter('{{ $driver }}', @js($address))" class="{{ $secondary }} min-h-12 shrink-0 bg-slate-700 px-4">{{ $w('printers.use') }}</button>
+                                        @endif
+                                    </div>
+                                @empty
+                                    <p class="text-sm text-slate-400">{{ $w('printers.none_'.$driver) }}</p>
+                                @endforelse
+                            </div>
+                        @endforeach
+                    @endif
+                </form>
+
+                @foreach ($printers as $key => $printer)
+                    <div class="flex flex-col gap-4 rounded-2xl border border-slate-700 p-4" wire:key="printer-{{ $key }}">
+                        <label class="{{ $label }}">{{ $w('fields.printer_name') }}
+                            <input type="text" wire:model="printers.{{ $key }}.name" class="{{ $input }}">
+                            @error('printers.'.$key.'.name') <span class="mt-1 block text-sm text-rose-300">{{ $message }}</span> @enderror
+                        </label>
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <label class="{{ $label }}">{{ $w('fields.printer_driver') }}
+                                <select wire:model.live="printers.{{ $key }}.driver" class="{{ $input }}">
+                                    @foreach ($drivers as $value => $name)
+                                        <option value="{{ $value }}">{{ $name }}</option>
+                                    @endforeach
+                                </select>
+                            </label>
+                            <label class="{{ $label }}">{{ $w('fields.printer_address') }}
+                                <input type="text" wire:model="printers.{{ $key }}.address" placeholder="{{ $printer['driver'] === 'usb' ? 'RMS_USB_1' : '192.168.8.50' }}" class="{{ $input }} font-mono">
+                                @error('printers.'.$key.'.address') <span class="mt-1 block text-sm text-rose-300">{{ $message }}</span> @enderror
+                            </label>
+                        </div>
+                        <fieldset class="flex flex-wrap gap-2">
+                            <legend class="{{ $label }} mb-2">{{ $w('fields.paper_width') }}</legend>
+                            @foreach (['80', '58'] as $width)
+                                <label class="flex min-h-12 items-center gap-3 rounded-xl bg-slate-800 px-4">
+                                    <input type="radio" wire:model="printers.{{ $key }}.paper_width" value="{{ $width }}" class="h-5 w-5">
+                                    <span>{{ $width }} mm</span>
+                                </label>
+                            @endforeach
+                        </fieldset>
+                        <fieldset class="flex flex-wrap gap-2">
+                            <legend class="{{ $label }} mb-2">{{ $w('printers.receipts_for') }}</legend>
+                            @foreach ($tills as $i => $till)
+                                <label class="flex min-h-12 items-center gap-3 rounded-xl bg-slate-800 px-4" wire:key="printer-{{ $key }}-till-{{ $i }}">
+                                    <input type="checkbox" wire:model="printers.{{ $key }}.tills" value="{{ $i }}" class="h-5 w-5">
+                                    <span>{{ $till }}</span>
+                                </label>
+                            @endforeach
+                        </fieldset>
+                        <fieldset class="flex flex-wrap gap-2">
+                            <legend class="{{ $label }} mb-2">{{ $w('printers.tickets_for') }}</legend>
+                            @foreach ($stations as $i => $station)
+                                <label class="flex min-h-12 items-center gap-3 rounded-xl bg-slate-800 px-4" wire:key="printer-{{ $key }}-station-{{ $i }}">
+                                    <input type="checkbox" wire:model="printers.{{ $key }}.stations" value="{{ $i }}" class="h-5 w-5">
+                                    <span>{{ $station }}</span>
+                                </label>
+                            @endforeach
+                        </fieldset>
+                        @error('printers.'.$key.'.tills') <span class="text-sm text-rose-300">{{ $message }}</span> @enderror
+                        <label class="flex min-h-12 items-center gap-3 rounded-xl bg-slate-800 px-4">
+                            <input type="checkbox" wire:model="printers.{{ $key }}.drawer" class="h-5 w-5">
+                            <span>{{ $w('fields.printer_drawer') }}</span>
+                        </label>
+                        @if (isset($tested[$key]))
+                            <p class="rounded-xl px-4 py-3 text-sm {{ $tested[$key]['ok'] ? 'bg-emerald-500/15 text-emerald-200' : 'bg-rose-500/15 text-rose-300' }}" role="status">{{ $tested[$key]['message'] }}</p>
+                        @endif
+                        <div class="flex flex-wrap gap-3">
+                            <button type="button" wire:click="testPrinter(@js($key))" wire:loading.attr="disabled" wire:target="testPrinter(@js($key))" class="{{ $primary }}">
+                                <span wire:loading.remove wire:target="testPrinter(@js($key))">{{ $w('printers.test') }}</span>
+                                <span wire:loading wire:target="testPrinter(@js($key))">{{ $w('printers.testing') }}</span>
+                            </button>
+                            <button type="button" wire:click="removePrinter(@js($key))" class="{{ $secondary }}">{{ $w('printers.remove') }}</button>
+                        </div>
+                    </div>
+                @endforeach
+
+                <button type="button" wire:click="addPrinter" class="{{ $secondary }} self-start" @disabled(count($printers) >= 12)>{{ $w('printers.add_by_hand') }}</button>
+                <p class="text-sm text-slate-400">{{ $w('printers.skip_help') }}</p>
                 @break
 
             @case('data')
@@ -164,7 +277,16 @@
                     <dt class="text-slate-400">{{ $w('fields.owner_name') }}</dt><dd>{{ $ownerName }} · {{ $email }}</dd>
                     <dt class="text-slate-400">{{ $w('steps.taxes') }}</dt>
                     <dd>{{ collect($rates)->map(fn ($r, $c) => ($taxNames[$c] ?? $c).' '.$r.' %')->implode(', ') }} · {{ $w('taxes.inclusive_'.($pricesIncludeTax ?: 'no')) }}</dd>
-                    <dt class="text-slate-400">{{ $w('steps.tills') }}</dt><dd>{{ implode(', ', $tills) }}</dd>
+                    <dt class="text-slate-400">{{ $w('review.tills') }}</dt><dd>{{ implode(', ', $tills) }}</dd>
+                    <dt class="text-slate-400">{{ $w('tills.stations_heading') }}</dt><dd>{{ implode(', ', $stations) }}</dd>
+                    <dt class="text-slate-400">{{ $w('steps.printers') }}</dt>
+                    <dd>
+                        @forelse ($printers as $printer)
+                            <span class="block">{{ $printer['name'] }} ({{ $printer['address'] }}): {{ collect($printer['tills'])->map(fn ($i) => $tills[(int) $i] ?? null)->merge(collect($printer['stations'])->map(fn ($i) => $stations[(int) $i] ?? null))->filter()->implode(', ') ?: '—' }}</span>
+                        @empty
+                            {{ $w('review.no_printers') }}
+                        @endforelse
+                    </dd>
                     <dt class="text-slate-400">{{ $w('steps.data') }}</dt>
                     <dd>{{ collect(['menu' => $menuFile, 'staff' => $staffFile])->filter()->map(fn ($f) => $f->getClientOriginalName())->implode(', ') ?: $w('review.no_files') }}</dd>
                 </dl>

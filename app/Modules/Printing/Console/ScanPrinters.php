@@ -4,6 +4,7 @@ namespace App\Modules\Printing\Console;
 
 use App\Modules\Printing\Contracts\PortProber;
 use App\Modules\Printing\Models\Printer;
+use App\Modules\Printing\Services\PrinterDiscovery;
 use Illuminate\Console\Command;
 
 /** `php artisan rms:printers:scan` — finds network thermal printers (port 9100) on the restaurant network. */
@@ -13,9 +14,9 @@ class ScanPrinters extends Command
 
     protected $description = 'Find network receipt/kitchen printers on the restaurant network';
 
-    public function handle(PortProber $prober): int
+    public function handle(PortProber $prober, PrinterDiscovery $discovery): int
     {
-        $subnet = $this->option('subnet') ?: $prober->localAddress();
+        $subnet = $this->option('subnet') ?: $discovery->subnet();
         if (! $subnet) {
             $this->components->error('Could not work out this computer\'s network. Run again with --subnet=192.168.8.0/24 (your router\'s range).');
 
@@ -45,28 +46,9 @@ class ScanPrinters extends Command
         return self::SUCCESS;
     }
 
-    /**
-     * Every usable host address in a CIDR block (network and broadcast left out). Blocks bigger than /22 are refused.
-     *
-     * @return array<int, string>
-     */
+    /** @return array<int, string> every usable host address in a CIDR block (see PrinterDiscovery::hosts) */
     public static function hosts(string $cidr): array
     {
-        if (! preg_match('#^(\d+\.\d+\.\d+\.\d+)/(\d+)$#', trim($cidr), $m)) {
-            return [];
-        }
-        $ip = ip2long($m[1]);
-        $bits = (int) $m[2];
-        if ($ip === false || $bits < 22 || $bits > 30) {
-            return [];
-        }
-        $size = 2 ** (32 - $bits);
-        $network = $ip & (-1 << (32 - $bits));
-        $hosts = [];
-        for ($i = 1; $i < $size - 1; $i++) {
-            $hosts[] = long2ip($network + $i);
-        }
-
-        return $hosts;
+        return PrinterDiscovery::hosts($cidr);
     }
 }

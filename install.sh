@@ -81,8 +81,18 @@ if [ ! -f .env ]; then
 else
     say "Keeping the existing .env."
 fi
+# The restaurant network the app searches for printers on (the app cannot see it from inside Docker).
+LAN_NET="$(ip -4 -o addr show 2>/dev/null | awk -v ip="$LAN_IP" '{split($4, a, "/"); if (a[1] == ip) print $4}' | head -1)"
+if [ -n "$LAN_NET" ]; then
+    if grep -q '^RMS_PRINTER_SUBNET=' .env; then
+        sed -i "s|^RMS_PRINTER_SUBNET=$|RMS_PRINTER_SUBNET=$LAN_NET|" .env
+    else
+        printf '\n# (set by install) the restaurant network printers are searched on\nRMS_PRINTER_SUBNET=%s\n' "$LAN_NET" >> .env
+    fi
+fi
 
-# USB printers: share the computer's print system (CUPS) with the app.
+# USB printers: give each one a print queue, then share the computer's print system (CUPS) with the app.
+./scripts/usb-printers.sh || say "USB printers could not be prepared; network printers still work. Run sudo ./scripts/usb-printers.sh later."
 if [ -S /run/cups/cups.sock ]; then
     rm -rf docker/cups && ln -sfn /run/cups docker/cups
 fi
@@ -104,7 +114,8 @@ else
     SETUP_CODE="$(grep '^RMS_SETUP_CODE=' .env | cut -d= -f2-)"
     say "Finish in a browser: open http://$LAN_IP/setup on any computer, tablet or phone on the restaurant network."
     echo "    Setup code: ${SETUP_CODE:-(none needed)}"
-    echo "    The setup screens ask for the restaurant, owner login, taxes, receipt, tills, menu and staff."
+    echo "    The setup screens ask for the restaurant, owner login, taxes, receipt, tills, printers, menu and staff."
+    echo "    Switch the printers on first: the wizard finds them and prints a test page."
     echo "    (Prefer the command line? Run: docker compose exec app php artisan rms:setup)"
 fi
 

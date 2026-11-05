@@ -2,7 +2,9 @@
 
 namespace App\Modules\Settings\Services;
 
+use App\Modules\Kitchen\Models\Station;
 use App\Modules\Pos\Models\Till;
+use App\Modules\Printing\Models\Printer;
 use App\Modules\Settings\Models\Branch;
 use App\Modules\Settings\Models\TaxComponent;
 use App\Modules\Settings\Models\Tenant;
@@ -17,6 +19,7 @@ use App\Support\Tenancy\TenantScope;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * First-run setup of a store server (Complete Edition E1.3): used by the browser wizard (/setup) and by
@@ -62,7 +65,8 @@ class SetupService
      * Creates everything. $data keys:
      *  restaurant, branch, address?, phone?, tin?, owner_name, email, password, pin,
      *  taxes? [code => basis points], prices_include_tax?, receipt_header?, receipt_footer?, show_server?,
-     *  tills? [names]
+     *  tills? [names], stations? [names] (the first is the default kitchen station),
+     *  printers? [[name, driver, address, paper_width?, tills? [till indexes], stations? [station indexes], drawer?]]
      *
      * @return array{owner: User, branch: Branch}
      */
@@ -112,13 +116,16 @@ class SetupService
                         $this->settings->set($key, is_string($value) && trim($value) === '' ? null : (is_string($value) ? trim($value) : $value), tenantWide: true);
                     }
 
+                    $stations = $this->createStations($branch, array_values($data['stations'] ?? []));
+                    $tillPrinters = $this->createPrinters($branch, array_values($data['printers'] ?? []), $stations);
+
                     foreach (array_values($data['tills'] ?? []) as $i => $name) {
-                        Till::create(['branch_id' => $branch->id, 'name' => trim($name), 'code' => 'T'.($i + 1)]);
+                        Till::create(['branch_id' => $branch->id, 'name' => trim($name), 'code' => 'T'.($i + 1), 'receipt_printer_id' => $tillPrinters[$i] ?? null]);
                     }
 
                     $this->settings->set('setup.completed_at', now()->toIso8601String(), tenantWide: true);
                     activity('settings')->event('setup_completed')->causedBy($owner)->performedOn($branch->tenant)
-                        ->withProperties(['tills' => count($data['tills'] ?? []), 'prices_include_tax' => $data['prices_include_tax'] ?? null])
+                        ->withProperties(['tills' => count($data['tills'] ?? []), 'stations' => count($stations), 'printers' => count($data['printers'] ?? []), 'prices_include_tax' => $data['prices_include_tax'] ?? null])
                         ->log('setup_completed');
 
                     return ['owner' => $owner, 'branch' => $branch];
@@ -131,6 +138,57 @@ class SetupService
         } finally {
             $lock->release();
         }
+    }
+
+    /**
+     * @param  array<int, string>  $names
+     * @return array<int, Station> by position; the first one gets every item no rule sends elsewhere
+     */
+    private function createStations(Branch $branch, array $names): array
+    {
+        $stations = [];
+        $codes = [];
+        foreach ($names as $i => $name) {
+            $code = Str::upper(Str::limit(Str::slug($name, ''), 16, '')) ?: 'STATION';
+            if (in_array($code, $codes, true)) {
+                $code = Str::limit($code, 14, '').($i + 1);
+            }
+            $codes[] = $code;
+            $stations[$i] = Station::create(['branch_id' => $branch->id, 'name' => trim($name), 'code' => $code, 'sort_order' => $i, 'is_default' => $i === 0]);
+        }
+
+        return $stations;
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $printers
+     * @param  array<int, Station>  $stations
+     * @return array<int, string> till position => its receipt printer's id
+     */
+    private function createPrinters(Branch $branch, array $printers, array $stations): array
+    {
+        $tillPrinters = [];
+        foreach ($printers as $details) {
+            $tills = array_map('intval', array_values($details['tills'] ?? []));
+            $stationIds = collect($details['stations'] ?? [])->map(fn ($i) => $stations[(int) $i]->id ?? null)->filter()->unique()->values()->all();
+            $printer = Printer::create([
+                'branch_id' => $branch->id,
+                'name' => trim((string) $details['name']),
+                'driver' => $details['driver'],
+                'address' => trim((string) $details['address']),
+                'paper_width' => (int) ($details['paper_width'] ?? 80) === 58 ? 58 : 80,
+                'prints_receipts' => $tills !== [],
+                'prints_kitchen_tickets' => $stationIds !== [],
+                // Every station ticked = "all stations", so stations added later print here too.
+                'station_ids' => $stationIds === [] || count($stationIds) === count($stations) ? null : $stationIds,
+                'has_cash_drawer' => (bool) ($details['drawer'] ?? false),
+            ]);
+            foreach ($tills as $till) {
+                $tillPrinters[$till] ??= $printer->id;
+            }
+        }
+
+        return $tillPrinters;
     }
 
     /**

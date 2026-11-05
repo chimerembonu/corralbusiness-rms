@@ -72,6 +72,12 @@ return [
         'code' => env('RMS_SETUP_CODE'),
     ],
 
+    // Printer search (setup wizard, rms:printers:scan): the restaurant network to look on, e.g. 192.168.8.0/24.
+    // The installer fills it in; empty = this computer's own network (fine on a Mac, wrong inside Docker).
+    'printers' => [
+        'subnet' => env('RMS_PRINTER_SUBNET'),
+    ],
+
     // PIN security (CLAUDE.md §3.14).
     'pin' => [
         'min_length' => 4,

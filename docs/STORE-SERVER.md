@@ -30,8 +30,9 @@ gh repo clone chimerembonu/corralbusiness-rms /opt/corralbusiness-rms && cd /opt
 
 **With a USB stick:** copy the project folder from the Mac to the stick, plug it into the mini PC, open a terminal in that folder and run `sudo ./install.sh`.
 
-3. The installer prints the address and a 6-digit **setup code**, for example `http://192.168.8.10/setup` and `482913`.
-4. Open that address on any computer, tablet or phone on the restaurant network, type the setup code and follow the setup screens: restaurant and TIN, owner login, taxes, receipt, tills, menu and staff from Excel (optional), and the backup password (write it down). At the end you are signed in to the back office.
+3. Switch the receipt and kitchen printers on first: network printers plugged into the router, USB printers into the mini PC. The installer prepares USB printers by itself.
+   The installer then prints the address and a 6-digit **setup code**, for example `http://192.168.8.10/setup` and `482913`.
+4. Open that address on any computer, tablet or phone on the restaurant network, type the setup code and follow the setup screens: restaurant and TIN, owner login, taxes, receipt, tills and kitchen stations, printers (tap **Look for printers**, then **Print a test page** on each and tick which tills and stations it prints for), menu and staff from Excel (optional), and the backup password (write it down). At the end you are signed in to the back office.
 
 Run `sudo ./install.sh` again at any time; it keeps your data and settings.
 
@@ -48,7 +49,7 @@ The same Docker package runs on a Windows 10/11 PC or a Mac. It is fine for a de
 docker compose up -d --build
 ```
 
-5. Open `http://<the address>/setup` in a browser and follow the setup screens (restaurant, owner login, taxes, receipt, tills, menu and staff from Excel, backup password). If you put a 6-digit `RMS_SETUP_CODE=` in `.env`, the first screen asks for it. Prefer the command line? `docker compose exec app php artisan rms:setup` does the basics instead.
+5. Open `http://<the address>/setup` in a browser and follow the setup screens (restaurant, owner login, taxes, receipt, tills and kitchen stations, printers, menu and staff from Excel, backup password). On the printers screen, type your router's range in **Restaurant network** (for example `192.168.1.0/24`: the computer's address with the last number replaced by `0/24`), or put it in `.env` as `RMS_PRINTER_SUBNET=` beforehand. If you put a 6-digit `RMS_SETUP_CODE=` in `.env`, the first screen asks for it. Prefer the command line? `docker compose exec app php artisan rms:setup` does the basics instead.
 6. Open `http://<the address>` on the tills. To start again after a reboot, open Docker Desktop (set it to start with the computer) and the app comes back by itself.
 
 Printers: network printers work exactly as on Ubuntu. USB printers on Windows must be shared from Windows and used with connection "Browser" on a till, or plugged into the computer and set up in Docker Desktop's USB sharing (advanced).
@@ -86,16 +87,16 @@ The app listens only on that address (`RMS_BIND_IP`), never on the internet side
 
 ## 4. Printers
 
-- **Network printer:** plug it into the router. On the server run `./scripts/rms rms:printers:scan`; it lists the printers it finds with their addresses. Add each in Back office → Printers with connection "Network".
+The setup screens find printers, print a test page and assign them to tills and kitchen stations. To add or change printers later:
+
+- **Network printer:** plug it into the router. In the router's settings, give it a fixed address (like the server, section 3), so it does not move. On the server run `./scripts/rms rms:printers:scan`; it lists the printers it finds with their addresses. Add each in Back office → Printers with connection "Network".
 - **USB printer:** plug it into the mini PC, then run:
 
 ```bash
-sudo apt-get install -y cups
-sudo lpadmin -p RECEIPT -E -v "$(lpinfo -v | grep -i usb | head -1 | awk '{print $2}')" -m raw
-./scripts/rms rms:printers:queues
+sudo ./scripts/usb-printers.sh
 ```
 
-Add the printer in Back office → Printers with connection "USB" and address `RECEIPT`. (The installer links the computer's print system into the app; re-run `sudo ./install.sh` if CUPS was installed afterwards.)
+It gives the printer a print queue called `RMS_USB_1` (the next one `RMS_USB_2`, and so on). Add the printer in Back office → Printers with connection "USB" and that name as the address. `./scripts/rms rms:printers:queues` lists them.
 
 ## 5. Day to day
 

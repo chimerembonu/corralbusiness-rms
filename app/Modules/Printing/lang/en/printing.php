@@ -46,6 +46,11 @@ return [
         'retry_all' => 'Retry all',
         'worker_hint' => 'Is the queue worker running? Start it with: composer run rms',
     ],
+    'discovery' => [
+        'no_network' => 'Could not work out the restaurant network. Type your router\'s range, e.g. 192.168.8.0/24.',
+        'bad_network' => '":network" is not a restaurant network. Use your router\'s range, e.g. 192.168.8.0/24 (inside the building only, at most 1,000 addresses).',
+        'bad_address' => '":address" is not a printer address. Network printers: an address such as 192.168.8.50. USB printers: the print queue name.',
+    ],
     'errors' => [
         'unreachable' => 'Cannot reach printer at :address (:error). Check it is on, connected to the network and the address is right.',
         'write_failed' => 'Printer at :address stopped accepting data.',

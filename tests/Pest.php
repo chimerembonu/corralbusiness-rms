@@ -3,7 +3,10 @@
 use App\Modules\Menu\Models\Category;
 use App\Modules\Menu\Models\Item;
 use App\Modules\Menu\Models\ModifierGroup;
+use App\Modules\Settings\Livewire\SetupWizard;
 use App\Modules\Settings\Models\Branch;
+use App\Modules\Settings\Services\BackupService;
+use App\Modules\Settings\Services\Import\ImportTemplates;
 use App\Modules\Settings\Services\TenantProvisioner;
 use App\Support\Licence\Licence;
 use App\Support\Licence\LicenceCodec;
@@ -12,6 +15,9 @@ use App\Support\Tenancy\Tenancy;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Livewire\Features\SupportTesting\Testable;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 /*
@@ -107,4 +113,53 @@ function demoMenu(): array
     $water = Item::create(['category_id' => $drinks->id, 'name' => 'Bottled Water', 'code' => 'WAT', 'price' => 500, 'taxable' => false]);
 
     return compact('rice', 'drinks', 'jollof', 'regular', 'large', 'protein', 'chicken', 'beef', 'extras', 'plantain', 'coke', 'water');
+}
+
+/* Setup wizard (E1.3, E1.4): a spreadsheet to upload, and the wizard walked to its last screen. */
+
+function setupCsv(string $type, array $rows): UploadedFile
+{
+    $h = fopen('php://temp', 'w+');
+    fputcsv($h, ImportTemplates::headings($type));
+    foreach ($rows as $row) {
+        fputcsv($h, $row);
+    }
+    rewind($h);
+    $csv = stream_get_contents($h);
+    fclose($h);
+
+    return UploadedFile::fake()->createWithContent("{$type}.csv", $csv);
+}
+
+/** Fills in and walks every screen up to "Check and finish". */
+function walkSetup(array $overrides = []): Testable
+{
+    $v = $overrides + [
+        'restaurant' => 'Mama Efua Chop Bar', 'branch' => 'Osu', 'address' => '12 Oxford St, Osu', 'phone' => '024 555 0101',
+        'tin' => 'c0012345678', 'ownerName' => 'Efua Mensah', 'email' => 'Efua@Example.com',
+        'password' => 'secret-pass-1', 'pin' => '1357', 'rates' => ['NHIL' => '2.50', 'GETFUND' => '2.50', 'VAT' => '15.00'],
+        'pricesIncludeTax' => 'yes', 'tills' => ['Front counter', 'Bar'],
+    ];
+    $backup = app(BackupService::class)->password();
+
+    return Livewire::test(SetupWizard::class)
+        ->call('next')->assertSet('step', 'restaurant')
+        ->set('restaurant', $v['restaurant'])->set('branch', $v['branch'])->set('address', $v['address'])->set('phone', $v['phone'])->set('tin', $v['tin'])
+        ->call('next')->assertHasNoErrors()->assertSet('step', 'owner')
+        ->set('ownerName', $v['ownerName'])->set('email', $v['email'])
+        ->set('password', $v['password'])->set('password_confirmation', $v['password'])->set('pin', $v['pin'])->set('pin_confirmation', $v['pin'])
+        ->call('next')->assertHasNoErrors()->assertSet('step', 'taxes')
+        ->set('rates', $v['rates'])->set('pricesIncludeTax', $v['pricesIncludeTax'])
+        ->call('next')->assertHasNoErrors()->assertSet('step', 'receipt')
+        ->assertSet('receiptHeader', "{$v['restaurant']}\n{$v['address']}\n{$v['phone']}") // filled in from the restaurant screen
+        ->call('next')->assertSet('step', 'tills')
+        ->set('tills', $v['tills'])->set('stations', $v['stations'] ?? ['Kitchen'])
+        ->call('next')->assertHasNoErrors()->assertSet('step', 'printers')
+        ->set('printers', $v['printers'] ?? [])
+        ->call('next')->assertHasNoErrors()->assertSet('step', 'data')
+        ->set('menuFile', $v['menuFile'] ?? null)->set('staffFile', $v['staffFile'] ?? null)
+        ->call('next')->assertHasNoErrors()->assertSet('step', 'backup')
+        ->assertSee($backup)
+        ->set('backupWritten', true)->set('backupCheck', substr($backup, -4))
+        ->call('next')->assertHasNoErrors()->assertSet('step', 'review');
 }

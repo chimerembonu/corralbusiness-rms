@@ -6,8 +6,6 @@ use App\Modules\Settings\Livewire\SetupWizard;
 use App\Modules\Settings\Models\Branch;
 use App\Modules\Settings\Models\TaxComponent;
 use App\Modules\Settings\Models\Tenant;
-use App\Modules\Settings\Services\BackupService;
-use App\Modules\Settings\Services\Import\ImportTemplates;
 use App\Modules\Settings\Services\SettingsService;
 use App\Modules\Settings\Services\SetupService;
 use App\Modules\Settings\Services\TaxService;
@@ -15,59 +13,12 @@ use App\Modules\Staff\Models\User;
 use App\Modules\Staff\Services\PinAuthenticator;
 use App\Support\Errors\UserFacingException;
 use App\Support\Tenancy\Tenancy;
-use Illuminate\Http\UploadedFile;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
-use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 
 /*
  * Complete Edition E1.3 — the first-run setup wizard at /setup (no command line needed).
  */
-
-function setupCsv(string $type, array $rows): UploadedFile
-{
-    $h = fopen('php://temp', 'w+');
-    fputcsv($h, ImportTemplates::headings($type));
-    foreach ($rows as $row) {
-        fputcsv($h, $row);
-    }
-    rewind($h);
-    $csv = stream_get_contents($h);
-    fclose($h);
-
-    return UploadedFile::fake()->createWithContent("{$type}.csv", $csv);
-}
-
-/** Fills in and walks every screen up to "Check and finish". */
-function walkSetup(array $overrides = []): Testable
-{
-    $v = $overrides + [
-        'restaurant' => 'Mama Efua Chop Bar', 'branch' => 'Osu', 'address' => '12 Oxford St, Osu', 'phone' => '024 555 0101',
-        'tin' => 'c0012345678', 'ownerName' => 'Efua Mensah', 'email' => 'Efua@Example.com',
-        'password' => 'secret-pass-1', 'pin' => '1357', 'rates' => ['NHIL' => '2.50', 'GETFUND' => '2.50', 'VAT' => '15.00'],
-        'pricesIncludeTax' => 'yes', 'tills' => ['Front counter', 'Bar'],
-    ];
-    $backup = app(BackupService::class)->password();
-
-    return Livewire::test(SetupWizard::class)
-        ->call('next')->assertSet('step', 'restaurant')
-        ->set('restaurant', $v['restaurant'])->set('branch', $v['branch'])->set('address', $v['address'])->set('phone', $v['phone'])->set('tin', $v['tin'])
-        ->call('next')->assertHasNoErrors()->assertSet('step', 'owner')
-        ->set('ownerName', $v['ownerName'])->set('email', $v['email'])
-        ->set('password', $v['password'])->set('password_confirmation', $v['password'])->set('pin', $v['pin'])->set('pin_confirmation', $v['pin'])
-        ->call('next')->assertHasNoErrors()->assertSet('step', 'taxes')
-        ->set('rates', $v['rates'])->set('pricesIncludeTax', $v['pricesIncludeTax'])
-        ->call('next')->assertHasNoErrors()->assertSet('step', 'receipt')
-        ->assertSet('receiptHeader', "{$v['restaurant']}\n{$v['address']}\n{$v['phone']}") // filled in from the restaurant screen
-        ->call('next')->assertSet('step', 'tills')
-        ->set('tills', $v['tills'])
-        ->call('next')->assertHasNoErrors()->assertSet('step', 'data')
-        ->set('menuFile', $v['menuFile'] ?? null)->set('staffFile', $v['staffFile'] ?? null)
-        ->call('next')->assertHasNoErrors()->assertSet('step', 'backup')
-        ->assertSee($backup)
-        ->set('backupWritten', true)->set('backupCheck', substr($backup, -4))
-        ->call('next')->assertHasNoErrors()->assertSet('step', 'review');
-}
 
 it('opens the wizard on every screen of a fresh install, and never again once set up', function () {
     $this->get('/')->assertRedirect('/setup');
@@ -148,7 +99,7 @@ it('keeps the owner on the screen with a mistake until it is fixed', function ()
     // Tills: no two with the same name.
     $wizard->call('next')->set('tills', ['Till 1', 'Till 1'])->call('next')->assertHasErrors(['tills.1'])->assertSet('step', 'tills')
         ->call('addTill')->assertCount('tills', 3)->call('removeTill')->call('removeTill')->assertCount('tills', 1)->call('removeTill')->assertCount('tills', 1)
-        ->call('next')->assertSet('step', 'data')->call('next')->assertSet('step', 'backup');
+        ->call('next')->assertSet('step', 'printers')->call('next')->assertSet('step', 'data')->call('next')->assertSet('step', 'backup');
 
     // Backup password: must be written down and its last 4 characters typed back.
     $wizard->call('next')->assertHasErrors(['backupWritten', 'backupCheck'])->assertSet('step', 'backup')
