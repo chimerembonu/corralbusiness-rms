@@ -21,13 +21,18 @@ use Livewire\Attributes\Locked;
  */
 trait AsksForManagerPin
 {
-    /** null when closed, else ['permission', 'method', 'args', 'title', 'error'] */
+    /** null when closed, else ['permission', 'method', 'args', 'title', 'error', 'second', 'first', 'first_name'] */
     #[Locked]
     public ?array $approval = null;
 
-    protected function askManager(Permission $permission, string $method, array $args, string $title): void
+    /**
+     * $second: Till settings ask a second, different manager to confirm (E9.4). The keypad then asks twice and
+     * the "…Approved" method receives the second manager as its last argument.
+     */
+    protected function askManager(Permission $permission, string $method, array $args, string $title, bool $second = false): void
     {
-        $this->approval = ['permission' => $permission->value, 'method' => $method, 'args' => $args, 'title' => $title, 'error' => null];
+        $this->approval = ['permission' => $permission->value, 'method' => $method, 'args' => $args, 'title' => $title, 'error' => null,
+            'second' => $second, 'first' => null, 'first_name' => null];
     }
 
     public function cancelApproval(): void
@@ -51,13 +56,32 @@ trait AsksForManagerPin
         }
 
         $approval = $this->approval;
+        $args = $approval['args'];
+
+        if ($approval['second'] ?? false) {
+            if (! $approval['first']) {
+                // First manager done: the keypad stays open for the second one.
+                $this->approval['first'] = $manager->id;
+                $this->approval['first_name'] = $manager->name;
+                $this->approval['error'] = null;
+
+                return;
+            }
+            if ($manager->id === $approval['first']) {
+                $this->approval['error'] = __('rms.pin.second_approval_same_person');
+
+                return;
+            }
+            $args[] = $manager;
+            $manager = User::query()->findOrFail($approval['first']);
+        }
         $this->approval = null;
 
         if (! str_ends_with($approval['method'], 'Approved') || ! method_exists($this, $approval['method'])) {
             abort(400);
         }
 
-        $this->{$approval['method']}($manager, ...$approval['args']);
+        $this->{$approval['method']}($manager, ...$args);
     }
 
     /** Run $callback; when it needs a manager, open the PIN keypad to retry with their approval. */

@@ -88,11 +88,12 @@ class OrdersList extends Component
         $refund = $this->refund;
         $this->refund = null;
         $this->askManager(Permission::OrdersRefund, 'refundApproved', [$refund['payment_id'], $refund['reason']],
-            __('pos::pos.approval.refund', ['amount' => money($payment->amount), 'method' => $payment->methodLabel()]));
+            __('pos::pos.approval.refund', ['amount' => money($payment->amount), 'method' => $payment->methodLabel()]),
+            second: app(PaymentService::class)->needsSecondApproval($payment));
     }
 
     /** Only reachable through approve() with a manager PIN (protected: never callable from the browser). */
-    protected function refundApproved(User $manager, string $paymentId, string $reason): void
+    protected function refundApproved(User $manager, string $paymentId, string $reason, ?User $second = null): void
     {
         // A cash refund must leave a drawer: the till has to be open (same rule as taking a payment).
         $payment = Payment::query()->forBranch()->findOrFail($paymentId);
@@ -103,7 +104,7 @@ class OrdersList extends Component
         }
 
         try {
-            app(PaymentService::class)->refund(Payment::query()->forBranch()->findOrFail($paymentId), $reason, $manager, auth()->user());
+            app(PaymentService::class)->refund(Payment::query()->forBranch()->findOrFail($paymentId), $reason, $manager, auth()->user(), $second);
             $this->notice = $this->refundNotice($paymentId);
         } catch (RuntimeException $e) {
             $this->error = FriendlyError::message($e);

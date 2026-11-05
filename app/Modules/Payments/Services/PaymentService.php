@@ -7,6 +7,7 @@ use App\Modules\Orders\Enums\OrderStatus;
 use App\Modules\Orders\Events\OrderRefunded;
 use App\Modules\Orders\Models\Order;
 use App\Modules\Orders\Services\OrderService;
+use App\Modules\Orders\Support\TillSettings;
 use App\Modules\Payments\Enums\MomoProvider;
 use App\Modules\Payments\Enums\PaymentMethod;
 use App\Modules\Payments\Enums\PaymentStatus;
@@ -17,6 +18,7 @@ use App\Modules\Payments\Models\Payment;
 use App\Modules\Staff\Enums\Permission;
 use App\Modules\Staff\Exceptions\ManagerPinRequiredException;
 use App\Modules\Staff\Models\User;
+use App\Modules\Staff\Support\SecondApproval;
 use App\Support\Money\Money;
 use App\Support\Security\CardNumberGuard;
 use Illuminate\Support\Facades\DB;
@@ -144,8 +146,23 @@ class PaymentService
         });
     }
 
-    /** Refund a whole payment. $approvedBy must hold the refund permission (manager PIN). */
-    public function refund(Payment $payment, string $reason, User $approvedBy, ?User $by = null): Payment
+    /** Do Till settings ask a second manager to confirm this refund (the order's refunds would pass the limit)? (E9.4) */
+    public function needsSecondApproval(Payment $payment): bool
+    {
+        $limit = app(TillSettings::class)->secondApprovalRefundAbove($payment->branch_id);
+        if ($limit === 0) {
+            return false;
+        }
+        $order = $payment->order()->first();
+
+        return (int) $order?->refunded_total?->amount + $payment->amount->amount > $limit;
+    }
+
+    /**
+     * Refund a whole payment. $approvedBy must hold the refund permission (manager PIN); a big refund also
+     * needs $secondApprover, a different manager, when Till settings ask for one (E9.4).
+     */
+    public function refund(Payment $payment, string $reason, User $approvedBy, ?User $by = null, ?User $secondApprover = null): Payment
     {
         if ($payment->isRefunded()) {
             throw new PaymentException(__('payments::payments.errors.already_refunded'));
@@ -156,6 +173,10 @@ class PaymentService
         if (blank($reason)) {
             throw new PaymentException(__('orders::orders.errors.reason_required'));
         }
+        $second = $this->needsSecondApproval($payment);
+        if ($second) {
+            SecondApproval::assert(Permission::OrdersRefund, $approvedBy, $secondApprover);
+        }
 
         // The refund is posted to today's business day, which must still be open: a closed day's Z report
         // never changes afterwards (security review L3).
@@ -163,7 +184,7 @@ class PaymentService
         $this->days->assertOpen($businessDate, $payment->branch_id);
         $session = $this->cash->current($by ?? $approvedBy, $payment->branch_id);
 
-        return DB::transaction(function () use ($payment, $reason, $approvedBy, $session, $businessDate) {
+        return DB::transaction(function () use ($payment, $reason, $approvedBy, $session, $businessDate, $second, $secondApprover) {
             // Lock the payment row and read it again: a double tap on Refund (or a stale copy on a second
             // till) must not refund twice (re-review N5).
             Payment::query()->whereKey($payment->id)->lockForUpdate()->first();
@@ -179,7 +200,12 @@ class PaymentService
                 'refund_reason' => trim($reason),
                 'refunded_by_id' => $approvedBy->id,
                 'refund_session_id' => $session?->id,
+                'refund_second_approved_by_id' => $second ? $secondApprover->id : null,
             ])->save();
+            if ($second) {
+                activity('payments')->performedOn($payment)->causedBy($secondApprover)
+                    ->withProperties(['first_approver_id' => $approvedBy->id, 'amount' => $payment->amount->amount])->log('refund_second_approval');
+            }
             if ($session) {
                 $this->cash->recalculate($session);
             }

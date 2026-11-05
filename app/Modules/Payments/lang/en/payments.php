@@ -48,7 +48,7 @@ return [
         'z_report' => 'Z report',
         'fields' => [
             'number' => 'Z no.', 'date' => 'Business day', 'status' => 'Status', 'closed_at' => 'Closed at', 'closed_by' => 'Closed by',
-            'approved_by' => 'Approved by', 'reopened_at' => 'Reopened at', 'reopened_by' => 'Reopened by', 'reopen_reason' => 'Reopen reason',
+            'approved_by' => 'Approved by', 'second_approved_by' => 'Confirmed by', 'reopened_at' => 'Reopened at', 'reopened_by' => 'Reopened by', 'reopen_reason' => 'Reopen reason',
             'gross_sales' => 'Gross sales', 'orders' => 'Orders', 'notes' => 'Notes',
         ],
         'blockers' => [

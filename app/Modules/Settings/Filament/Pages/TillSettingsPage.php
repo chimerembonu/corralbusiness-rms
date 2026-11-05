@@ -81,6 +81,8 @@ class TillSettingsPage extends Page
             'till_lock_minutes' => $settings->tillLockMinutes(),
             'back_office_idle_minutes' => $settings->backOfficeIdleMinutes(),
             'customer_retention_months' => $settings->customerRetentionMonths(),
+            'second_approval_refund_above' => $settings->secondApprovalRefundAbove(),
+            'second_approval_day_close' => $settings->secondApprovalDayClose(),
         ]);
     }
 
@@ -115,6 +117,8 @@ class TillSettingsPage extends Page
             Section::make($t('security'))->columns(2)->schema([
                 TextInput::make('till_lock_minutes')->label($t('till_lock_minutes'))->numeric()->integer()->minValue(0)->maxValue(240)->suffix($t('minutes'))->helperText($t('till_lock_help')),
                 TextInput::make('back_office_idle_minutes')->label($t('back_office_idle_minutes'))->numeric()->integer()->minValue(0)->maxValue(720)->suffix($t('minutes'))->helperText($t('back_office_idle_help')),
+                MoneyInput::make('second_approval_refund_above')->label($t('second_approval_refund_above'))->helperText($t('second_approval_refund_help')),
+                Toggle::make('second_approval_day_close')->label($t('second_approval_day_close'))->helperText($t('second_approval_day_close_help'))->inline(false),
             ]),
             Section::make(__('customers::customers.navigation_group'))->columns(2)->schema([
                 TextInput::make('loyalty_points')->label(__('customers::customers.loyalty.setting'))->numeric()->minValue(0)->helperText(__('customers::customers.loyalty.setting_help')),
@@ -145,6 +149,8 @@ class TillSettingsPage extends Page
         $settings->set(TillSettings::LOYALTY_POINTS_PER_CEDI, (int) ($data['loyalty_points'] ?? 0));
         $settings->set(TillSettings::TILL_LOCK_MINUTES, max(0, (int) ($data['till_lock_minutes'] ?? 0)));
         $settings->set(TillSettings::BACK_OFFICE_IDLE_MINUTES, max(0, (int) ($data['back_office_idle_minutes'] ?? 0)));
+        $settings->set(TillSettings::SECOND_APPROVAL_REFUND_ABOVE, max(0, (int) ($data['second_approval_refund_above'] ?? 0)));
+        $settings->set(TillSettings::SECOND_APPROVAL_DAY_CLOSE, (bool) ($data['second_approval_day_close'] ?? false));
         $settings->set(TillSettings::CUSTOMER_RETENTION_MONTHS, max(0, (int) ($data['customer_retention_months'] ?? 0)), tenantWide: true);
 
         Notification::make()->success()->title(__('settings::settings.till.saved'))->send();

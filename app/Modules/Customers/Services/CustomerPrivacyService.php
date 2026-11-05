@@ -10,10 +10,10 @@ use App\Modules\Orders\Models\Order;
 use App\Modules\Reports\Services\ReportDocument;
 use App\Modules\Staff\Enums\Role;
 use App\Modules\Staff\Models\User;
+use App\Support\Audit\AuditChain;
 use App\Support\Tenancy\Tenancy;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Spatie\Activitylog\Models\Activity;
 use Spatie\Activitylog\Support\ActivityLogStatus;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
@@ -99,13 +99,17 @@ class CustomerPrivacyService
                 $orders->each(fn (Order $o) => $this->stripOrder($o));
             });
 
-            $this->scrubLog($customer->getMorphClass(), [$customer->id]);
-            $this->scrubLog((new CustomerAddress)->getMorphClass(), $addresses->pluck('id')->all());
-            $this->scrubLog((new Order)->getMorphClass(), $orders->pluck('id')->all());
+            $removed = array_merge(
+                $this->scrubLog($customer->getMorphClass(), [$customer->id]),
+                $this->scrubLog((new CustomerAddress)->getMorphClass(), $addresses->pluck('id')->all()),
+                $this->scrubLog((new Order)->getMorphClass(), $orders->pluck('id')->all()),
+            );
 
             $log = activity('customers')->performedOn($customer);
-            ($by ? $log->causedBy($by) : $log->causedByAnonymous()) // the nightly clean-up: nobody did it by hand
-                ->withProperties(['reason' => trim($reason), 'orders' => $orders->count()])->log('customer_anonymised');
+            $entry = ($by ? $log->causedBy($by) : $log->causedByAnonymous()) // the nightly clean-up: nobody did it by hand
+                ->withProperties(['reason' => trim($reason), 'orders' => $orders->count(), 'redacted_entries' => count($removed), 'redactions' => AuditChain::redactionDigest($removed)])
+                ->log('customer_anonymised');
+            app(AuditChain::class)->storeRedactions($removed, $entry?->getKey(), $customer->tenant_id);
 
             return $customer->refresh();
         });
@@ -141,8 +145,16 @@ class CustomerPrivacyService
             ->where('opened_at', '<', $cutoff)->whereNotIn('status', [OrderStatus::Open->value, OrderStatus::Sent->value])
             ->where(fn ($q) => $q->whereNotNull('customer_name')->orWhereNotNull('customer_phone')->orWhereNotNull('delivery_address')->orWhereNotNull('delivery_notes'))
             ->limit(2000)->get();
-        $this->quietly(fn () => $orders->each(fn (Order $o) => $this->stripOrder($o)));
-        $this->scrubLog((new Order)->getMorphClass(), $orders->pluck('id')->all());
+        if ($orders->isNotEmpty()) {
+            DB::transaction(function () use ($orders, $months) {
+                $this->quietly(fn () => $orders->each(fn (Order $o) => $this->stripOrder($o)));
+                $removed = $this->scrubLog((new Order)->getMorphClass(), $orders->pluck('id')->all());
+                $entry = activity('customers')->causedByAnonymous()
+                    ->withProperties(['months' => $months, 'orders' => $orders->count(), 'redacted_entries' => count($removed), 'redactions' => AuditChain::redactionDigest($removed)])
+                    ->log('order_details_cleaned_up');
+                app(AuditChain::class)->storeRedactions($removed, $entry?->getKey(), Tenancy::tenantId());
+            });
+        }
 
         return ['customers' => $count, 'orders' => $orders->count()];
     }
@@ -161,19 +173,15 @@ class CustomerPrivacyService
     }
 
     /** Blank personal fields in the audit log entries of these records (who did what, and when, stays). */
-    private function scrubLog(string $subjectType, array $ids): void
+    /**
+     * Blank personal fields in the audit log entries of these records (who did what, and when, stays). The
+     * tamper-evident chain (E9.4) records the removal, so the check still passes.
+     *
+     * @return list<array{activity_id: int, old_content_hash: string, new_content_hash: string}>
+     */
+    private function scrubLog(string $subjectType, array $ids): array
     {
-        if ($ids === []) {
-            return;
-        }
-        Activity::query()->where('subject_type', $subjectType)->whereIn('subject_id', $ids)->each(function (Activity $entry) {
-            $changes = $this->blank($entry->attribute_changes?->toArray() ?? []);
-            $properties = $this->blank($entry->properties?->toArray() ?? []);
-            DB::table($entry->getTable())->where('id', $entry->getKey())->update([
-                'attribute_changes' => $changes === [] ? null : json_encode($changes),
-                'properties' => $properties === [] ? null : json_encode($properties),
-            ]);
-        });
+        return app(AuditChain::class)->redact($subjectType, $ids, fn (array $data) => $this->blank($data));
     }
 
     private function blank(array $data): array

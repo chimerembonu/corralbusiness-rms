@@ -17,7 +17,7 @@ class DayClose extends BusinessModel
     /** The report snapshot is large and never changes; keep it out of the activity log. */
     protected array $auditExcept = ['report'];
 
-    protected $fillable = ['branch_id', 'number', 'business_date', 'status', 'closed_at', 'closed_by_id', 'approved_by_id', 'reopened_at', 'reopened_by_id', 'reopen_reason', 'report', 'notes'];
+    protected $fillable = ['branch_id', 'number', 'business_date', 'status', 'closed_at', 'closed_by_id', 'approved_by_id', 'second_approved_by_id', 'reopened_at', 'reopened_by_id', 'reopen_reason', 'report', 'notes'];
 
     protected $attributes = ['status' => 'closed'];
 
@@ -35,6 +35,11 @@ class DayClose extends BusinessModel
     public function closedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'closed_by_id');
+    }
+
+    public function secondApprovedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'second_approved_by_id');
     }
 
     public function approvedBy(): BelongsTo

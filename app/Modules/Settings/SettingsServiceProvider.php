@@ -2,6 +2,8 @@
 
 namespace App\Modules\Settings;
 
+use App\Modules\Settings\Console\AuditCheckCommand;
+use App\Modules\Settings\Console\AuditSealCommand;
 use App\Modules\Settings\Console\BackupCommand;
 use App\Modules\Settings\Console\ImportCommand;
 use App\Modules\Settings\Console\LicenceCommand;
@@ -42,6 +44,6 @@ class SettingsServiceProvider extends ServiceProvider
         parent::boot();
 
         $this->commands([SetupCommand::class, BackupCommand::class, RestoreCommand::class, ListBackupsCommand::class, ImportCommand::class,
-            LicenceCommand::class, LicenceIssueCommand::class, LicenceKeysCommand::class]);
+            LicenceCommand::class, LicenceIssueCommand::class, LicenceKeysCommand::class, AuditSealCommand::class, AuditCheckCommand::class]);
     }
 }

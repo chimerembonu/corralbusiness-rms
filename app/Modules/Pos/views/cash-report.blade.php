@@ -24,6 +24,9 @@
         <div class="row"><span>{{ __('pos::pos.cash.printed_at') }}</span><span>{{ \Carbon\Carbon::parse($report['generated_at'])->format('d/m/Y H:i') }}</span></div>
         @if ($close)
             <div class="row"><span>{{ __('payments::payments.day.fields.closed_by') }}</span><span>{{ $close->closedBy?->name }}</span></div>
+            @if ($close->second_approved_by_id)
+                <div class="row"><span>{{ __('payments::payments.day.fields.second_approved_by') }}</span><span>{{ $close->secondApprovedBy?->name }}</span></div>
+            @endif
         @endif
         <hr>
         <div class="row bold"><span>{{ __('pos::pos.today.gross') }}</span><span>{{ $m($report['gross_sales']) }}</span></div>
@@ -74,6 +77,10 @@
         @foreach ($report['top_items'] as $row)
             <div class="row"><span class="l">{{ $row['name'] }} x{{ $row['quantity'] }}</span><span>{{ $m($row['total']) }}</span></div>
         @endforeach
+        @if (! empty($report['history_code']))
+            <hr>
+            <div class="row"><span>{{ __('settings::settings.history.z_label') }}</span><span>{{ $report['history_code'] }}</span></div>
+        @endif
         <hr>
         <div class="center muted">{{ __('rms.product_name') }}</div>
     </div>

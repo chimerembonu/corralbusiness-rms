@@ -133,6 +133,10 @@ final class CashReportDocument
             $doc->row($row['name'].' x'.$row['quantity'], $m($row['total']));
         }
 
+        if (! empty($report['history_code'])) {
+            $doc->rule()->row(__('settings::settings.history.z_label'), (string) $report['history_code']);
+        }
+
         return $doc->rule()->center()->text(__('rms.product_name'))->normal()->feed(2)->cut();
     }
 

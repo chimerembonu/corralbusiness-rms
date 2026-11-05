@@ -48,6 +48,8 @@ return [
         'locked' => 'Too many wrong PINs. Try again in :seconds seconds.',
         'manager_required' => 'A manager PIN is required for this action.',
         'other_branch' => 'That manager works at another branch and cannot approve this here.',
+        'second_approval_required' => 'A second manager must confirm this.',
+        'second_approval_same_person' => 'The second approval must come from a different manager.',
         'invalid_format' => 'PIN must be :min to :max digits.',
     ],
     'tax' => [

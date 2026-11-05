@@ -19,3 +19,7 @@ Schedule::command('rms:payments:check')->everyMinute()->withoutOverlapping();
 
 // Customers' details are removed after the restaurant's retention period without a visit, when one is set (Complete Edition E9.3).
 Schedule::command('rms:customers:clean-up')->dailyAt('03:15');
+
+// Tamper-evident audit log (Complete Edition E9.4): new entries are sealed into the chain each minute, and the whole chain is checked nightly.
+Schedule::command('rms:audit:seal')->everyMinute()->withoutOverlapping();
+Schedule::command('rms:audit:check')->dailyAt('03:45');

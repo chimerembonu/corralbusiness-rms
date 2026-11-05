@@ -228,6 +228,8 @@ return [
     'approval' => [
         'title' => 'Manager approval',
         'approve' => 'Approve',
+        'two_needed' => 'Two managers must approve this: the first types their PIN now.',
+        'second_now' => 'Approved by :name. A second, different manager now types their PIN.',
         'void_line' => 'Void :item',
         'reduce_quantity' => 'Reduce :item to :quantity after the bill was printed',
         'void_order' => 'Cancel order #:number',

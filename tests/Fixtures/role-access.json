@@ -85,6 +85,9 @@
         "owner",
         "manager"
     ],
+    "admin/history-check": [
+        "owner"
+    ],
     "admin/import": [
         "owner",
         "manager"

@@ -44,6 +44,10 @@ final class TillSettings
 
     public const BACK_OFFICE_IDLE_MINUTES = 'security.back_office_idle_minutes'; // the back office signs out after this long unused (E9.2); 0 = never
 
+    public const SECOND_APPROVAL_REFUND_ABOVE = 'security.second_approval_refund_above'; // pesewas; refunds on an order above this need a second manager's PIN (E9.4); 0 = never
+
+    public const SECOND_APPROVAL_DAY_CLOSE = 'security.second_approval_day_close'; // closing the day needs a second manager's PIN (E9.4)
+
     public const CUSTOMER_RETENTION_MONTHS = 'customers.retention_months'; // restaurant-wide: customers' details are removed after this long without a visit (E9.3); 0 = kept
 
     public function __construct(private readonly SettingsService $settings) {}
@@ -69,6 +73,8 @@ final class TillSettings
             self::LOYALTY_POINTS_PER_CEDI => 0,
             self::TILL_LOCK_MINUTES => 5,
             self::BACK_OFFICE_IDLE_MINUTES => 30,
+            self::SECOND_APPROVAL_REFUND_ABOVE => 0,
+            self::SECOND_APPROVAL_DAY_CLOSE => false,
             self::CUSTOMER_RETENTION_MONTHS => 0,
         ];
     }
@@ -81,6 +87,16 @@ final class TillSettings
     public function backOfficeIdleMinutes(?string $branchId = null): int
     {
         return max(0, (int) $this->get(self::BACK_OFFICE_IDLE_MINUTES, $branchId));
+    }
+
+    public function secondApprovalRefundAbove(?string $branchId = null): int
+    {
+        return max(0, (int) $this->get(self::SECOND_APPROVAL_REFUND_ABOVE, $branchId));
+    }
+
+    public function secondApprovalDayClose(?string $branchId = null): bool
+    {
+        return (bool) $this->get(self::SECOND_APPROVAL_DAY_CLOSE, $branchId);
     }
 
     /** Restaurant-wide (customers belong to the whole restaurant, not one branch). */
