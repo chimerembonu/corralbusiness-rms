@@ -4,6 +4,7 @@ namespace App\Modules\Payments\Filament\Pages;
 
 use App\Modules\Payments\Gateways\Data\GatewayStatus;
 use App\Modules\Payments\Gateways\GatewayManager;
+use App\Modules\Payments\Models\GatewayRefund;
 use App\Modules\Payments\Models\GatewayTransaction;
 use App\Modules\Staff\Enums\Role;
 use BackedEnum;
@@ -111,5 +112,11 @@ class PaymentProvidersPage extends Page
     public function attention()
     {
         return GatewayTransaction::query()->where('status', GatewayStatus::NeedsAttention->value)->with('order')->latest()->limit(50)->get();
+    }
+
+    /** Refunds the provider could not send back, waiting for a manager to give the money back by hand (E2.4). */
+    public function refundsByHand()
+    {
+        return GatewayRefund::query()->needsHand()->with(['payment.order', 'transaction'])->latest()->limit(50)->get();
     }
 }

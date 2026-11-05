@@ -67,8 +67,13 @@ class DemoGateway extends AbstractGateway
         return GatewayResponse::pending($reference);
     }
 
-    public function refund(string $reference, ?string $providerReference, Money $amount): GatewayResponse
+    public function refund(string $reference, ?string $providerReference, Money $amount, string $refundReference): GatewayResponse
     {
-        return GatewayResponse::succeeded($reference);
+        return GatewayResponse::succeeded($refundReference, __('payments::payments.refunds.demo'));
+    }
+
+    public function refundStatus(string $refundReference, ?string $providerRefundId): GatewayResponse
+    {
+        return GatewayResponse::succeeded($refundReference, __('payments::payments.refunds.demo'));
     }
 }

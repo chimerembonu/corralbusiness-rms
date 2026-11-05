@@ -61,6 +61,11 @@ return [
         'till_poll_seconds' => 4,
     ],
 
+    // Refunds through a provider (E2.4): if the provider cannot be reached for this long, a person refunds by hand.
+    'refunds' => [
+        'give_up_sending_after_days' => 3,
+    ],
+
     'http' => ['connect_timeout' => 5, 'timeout' => 15],
 
     'paystack' => [

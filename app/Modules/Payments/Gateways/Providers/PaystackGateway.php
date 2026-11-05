@@ -112,16 +112,54 @@ class PaystackGateway extends AbstractGateway
         return new GatewayResponse(GatewayStatus::Pending, $response->json('data.reference') ?? $charge->reference, null, $response->json('data.authorization_url'));
     }
 
-    public function refund(string $reference, ?string $providerReference, Money $amount): GatewayResponse
+    /**
+     * Refund API (paystack.com/docs/payments/refunds, checked 5 Nov 2026). Our reference makes it safe to send
+     * twice: Paystack answers 409 "already exists" and the status is fetched by reference instead.
+     */
+    public function refund(string $reference, ?string $providerReference, Money $amount, string $refundReference): GatewayResponse
     {
-        $response = $this->api()->post('/refund', ['transaction' => $providerReference ?? $reference, 'amount' => $amount->amount]);
+        $response = $this->api()->post('/refund', [
+            'transaction' => $providerReference ?? $reference,
+            'amount' => $amount->amount,
+            'reference' => $refundReference,
+            'merchant_note' => 'CorralBusiness RMS refund '.$refundReference,
+        ]);
+        if ($response->status() === 409) {
+            return GatewayResponse::pending(null, $response->json('message'));
+        }
+        if ($response->serverError()) {
+            throw new \RuntimeException('Paystack refund: HTTP '.$response->status()); // not sure it arrived: try again
+        }
         if (! $response->successful() || ! $response->json('status')) {
             return GatewayResponse::failed((string) ($response->json('message') ?? $response->status()));
         }
 
-        return $response->json('data.status') === 'processed'
-            ? GatewayResponse::succeeded((string) $response->json('data.id'))
-            : GatewayResponse::pending((string) $response->json('data.id'), $response->json('message'));
+        return $this->refundState((array) $response->json('data', []));
+    }
+
+    public function refundStatus(string $refundReference, ?string $providerRefundId): GatewayResponse
+    {
+        $response = $this->api()->get('/refund', ['reference' => $refundReference]);
+        if (! $response->successful()) {
+            throw new \RuntimeException('Paystack refund status: HTTP '.$response->status());
+        }
+        $refund = collect((array) $response->json('data', []))->first(fn ($r) => strcasecmp((string) ($r['reference'] ?? ''), $refundReference) === 0)
+            ?? collect((array) $response->json('data', []))->first(fn ($r) => $providerRefundId !== null && (string) ($r['id'] ?? '') === $providerRefundId);
+
+        return $refund ? $this->refundState((array) $refund) : new GatewayResponse(GatewayStatus::Expired, null, null);
+    }
+
+    /** pending / processing → Pending; processed → Succeeded; failed → Failed; needs-attention → NeedsAttention. */
+    private function refundState(array $data): GatewayResponse
+    {
+        $id = isset($data['id']) ? (string) $data['id'] : null;
+
+        return match ($data['status'] ?? null) {
+            'processed' => GatewayResponse::succeeded($id, __('payments::payments.refunds.paystack.processed')),
+            'failed' => GatewayResponse::failed(__('payments::payments.refunds.paystack.failed'), $id),
+            'needs-attention' => new GatewayResponse(GatewayStatus::NeedsAttention, $id, __('payments::payments.refunds.paystack.needs_attention')),
+            default => GatewayResponse::pending($id, __('payments::payments.refunds.paystack.pending')),
+        };
     }
 
     private function chargeResponse(Response $response): GatewayResponse

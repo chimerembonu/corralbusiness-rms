@@ -17,7 +17,7 @@ class PaymentsServiceProvider extends ServiceProvider
      * @var array<class-string, array<int, class-string>>
      */
     protected $listen = [
-        //
+        Events\PaymentRefunded::class => [Listeners\RefundThroughProvider::class],
     ];
 
     public function register(): void

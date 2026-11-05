@@ -66,4 +66,27 @@
             </table>
         @endif
     </x-filament::section>
+
+    <x-filament::section :heading="__('payments::payments.refunds.page.heading')" :description="__('payments::payments.refunds.page.help')">
+        @php($byHand = $this->refundsByHand())
+        @if ($byHand->isEmpty())
+            <p class="text-sm text-gray-500">{{ __('payments::payments.refunds.page.none') }}</p>
+        @else
+            <table class="pp-table">
+                <thead><tr><th>{{ $g('when') }}</th><th>{{ $g('order') }}</th><th>{{ $g('amount') }}</th><th>{{ $g('provider') }}</th><th>{{ __('payments::payments.refunds.page.payment') }}</th><th>{{ $g('why') }}</th></tr></thead>
+                <tbody>
+                    @foreach ($byHand as $r)
+                        <tr>
+                            <td>{{ $r->created_at->format('d/m H:i') }}</td>
+                            <td>#{{ $r->payment?->order?->displayNumber() }}</td>
+                            <td>{{ money($r->amount) }}</td>
+                            <td>{{ __('payments::payments.gateway.names.'.$r->gateway) }}</td>
+                            <td>{{ $r->transaction?->phone_masked }} · {{ $r->transaction?->provider_reference ?? $r->transaction?->reference }}</td>
+                            <td>{{ $r->message }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        @endif
+    </x-filament::section>
 </x-filament-panels::page>

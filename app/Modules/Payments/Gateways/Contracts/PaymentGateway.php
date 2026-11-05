@@ -49,6 +49,17 @@ interface PaymentGateway extends ConnectionTester
     /** Start the provider's own secure payment page; the response carries checkoutUrl. */
     public function checkout(ChargeRequest $charge): GatewayResponse;
 
-    /** Send money back. */
-    public function refund(string $reference, ?string $providerReference, Money $amount): GatewayResponse;
+    /**
+     * Send money back for a payment. $refundReference is ours and unique: if the same refund is sent again
+     * (after a time-out, say), the provider must not refund twice — answer Pending and let refundStatus() tell.
+     * Return Succeeded (money sent back), Pending (accepted, processing), Failed (refused, with the reason) or
+     * NeedsAttention (the provider needs a person). Throw if the provider could not be reached: it is tried again.
+     */
+    public function refund(string $reference, ?string $providerReference, Money $amount, string $refundReference): GatewayResponse;
+
+    /**
+     * How is that refund going? Same answers as refund(), plus Expired when the provider has no refund with
+     * this reference (it never arrived): it is then sent again. Throw if the provider could not be reached.
+     */
+    public function refundStatus(string $refundReference, ?string $providerRefundId): GatewayResponse;
 }

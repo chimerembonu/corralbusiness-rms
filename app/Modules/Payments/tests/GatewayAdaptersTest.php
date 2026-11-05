@@ -43,7 +43,7 @@ it('Paystack: tests keys, sends a MoMo prompt, follows OTP, verifies, pays onlin
     expect($verified->status)->toBe(GatewayStatus::Succeeded)->and($verified->details['amount'])->toBe(4500);
 
     expect($paystack->checkout(charge())->checkoutUrl)->toBe('https://checkout.paystack.com/abc')
-        ->and($paystack->refund('RMSTEST1', null, Money::of(4500))->status)->toBe(GatewayStatus::Pending);
+        ->and($paystack->refund('RMSTEST1', null, Money::of(4500), 'RFTEST000001')->status)->toBe(GatewayStatus::Pending);
 });
 
 it('Paystack: shows the reason Paystack gives when a MoMo prompt fails', function () {

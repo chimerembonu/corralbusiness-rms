@@ -25,14 +25,15 @@ Create `app/Modules/Payments/Gateways/Providers/<Name>Gateway.php`, extending `A
 | `requestMomo()` | Send the prompt. Return `Pending` (waiting), `NeedsOtp` (customer must read a code from their phone), `Succeeded` or `Failed`. If the call times out *after* it may have been sent, return `Pending`, not `Failed`. |
 | `status()` | Ask whether it was paid. Map the provider's codes to `Succeeded`, `Failed` or `Pending`. If the provider returns the amount paid, put it in `details['amount']` (pesewas) so mismatches are caught. |
 | `checkout()` | *(if `HostedCheckout`)* Start the provider's own payment page and return its URL in `checkoutUrl`. |
-| `refund()`, `submitOtp()` | *(if supported)* Otherwise leave the defaults, which refuse politely. |
+| `refund()`, `refundStatus()` | *(if `Refund`)* Send money back for a payment, using **our** refund reference (`$refundReference`) so the same refund sent twice is never paid twice. Return `Succeeded` (sent back), `Pending` (accepted, processing), `Failed` (refused, with the reason) or `NeedsAttention` (the provider needs a person). `refundStatus()` answers the same, or `Expired` if the provider has no refund with that reference (it is then sent again). **Throw** if the provider could not be reached: the refund is retried every minute. Without `Refund`, managers are told to give the money back by hand. |
+| `submitOtp()` | *(if supported)* Otherwise leave the default, which refuses politely. |
 | `newReference()` | Override only if the provider needs a special format (PaySwitch needs 12 digits). |
 
 **Rules that are checked by tests or review:**
 - Amounts are **pesewas** (integers). Convert to the provider's format inside the adapter only.
 - **Never** send or store card numbers, expiry dates or CVVs. Cards go only through the provider's hosted page. (This is why PaySwitch's direct card API is not used.)
 - A decline is a `Failed` response, never an exception. Throw only for "not supported".
-- Use `$this->http()`, which has short time-outs and retries, so a slow provider never freezes a till.
+- Use `$this->http()`, which has short time-outs, so a slow provider never freezes a till. It repeats only status questions (GET), never a payment or refund request: a slow provider may already have acted on the first one.
 - Keep the provider's codes (network codes, endpoints) in `config/payments.php` under the provider's key, so they can be corrected without code changes.
 
 ### 2. Register it in `config/payments.php`
