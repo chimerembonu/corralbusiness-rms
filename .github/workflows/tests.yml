@@ -1,0 +1,61 @@
+# Runs every test on every push and pull request (Complete Edition E9.5), so a change that breaks the
+# tills, the kitchen screens or the money never reaches a restaurant unnoticed. The same checks as
+# CLAUDE.md asks before every commit: the code format (Pint) and the full Pest suite.
+name: Tests
+
+on:
+  push:
+    branches: [main, complete-edition]
+  pull_request:
+  workflow_dispatch:
+
+# Read-only: this workflow only checks the code, it never writes to the repository.
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      # The store server's PHP (docker/Dockerfile): 8.4 with the same extensions, plus SQLite for the tests.
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, intl, gd, bcmath, zip, pcntl, sockets, exif, sodium, pdo_sqlite, sqlite3
+          coverage: none
+          tools: composer:v2
+
+      - name: Cache Composer downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache/files
+          key: composer-${{ hashFiles('composer.lock') }}
+
+      - name: Install PHP packages
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      # Pages are rendered in the tests, and they need the compiled front-end (Vite manifest).
+      - name: Build the front-end
+        run: npm ci --no-audit --no-fund && npm run build
+
+      - name: Prepare the app settings
+        run: cp .env.example .env && php artisan key:generate --ansi
+
+      - name: Code format (Pint)
+        run: vendor/bin/pint --test
+
+      # One process on purpose: the backup tests share a folder and clash when run in parallel.
+      - name: Run all tests
+        run: php artisan test
