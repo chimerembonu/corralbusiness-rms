@@ -56,7 +56,7 @@ Every feature is **off by default**. A restaurant switches it on in **Settings �
 
 ### E2 — Payments
 - [x] **E2.1** Plug-in payment providers (Paystack, PaySwitch, Demo), a default per purpose with automatic fallback, Mobile Money prompt at the till, background re-checks, a "needs a manager" list, and the guide for adding providers. *Done 4 Nov.*
-- [ ] **E2.2 Paystack test check.** 👤 Put the Paystack **test** keys into Settings → Connections on your Mac and press Test. Send a test prompt with Paystack's test number. Claude corrects network codes or amounts if Paystack disagrees.
+- [x] **E2.2 Paystack test check.** 👤 Put the Paystack **test** keys into Settings → Connections on your Mac and press Test. Send a test prompt with Paystack's test number. Claude corrects network codes or amounts if Paystack disagrees. *Done 5 Nov: keys tested; a GH₵ 12.00 MTN prompt to Paystack's test number 055 123 4987 was approved and Paystack confirmed 1200 pesewas GHS; codes match Paystack's docs. Telecel and AT have no Paystack test numbers: confirm with one small real payment each before going live.*
 - [ ] **E2.3 PaySwitch test check.** 👤 Same with the PaySwitch test account (S1).
 - [ ] **E2.4 Refunds through the provider.** A manager refunds a MoMo prompt payment from the till and the money goes back through the same provider (where supported); otherwise the till says "refund by hand" and records it.
 - [ ] **E2.5 Reconciliation report.** The day's provider payments beside the till's records: matched, missing, "needs a manager"; Excel export.
