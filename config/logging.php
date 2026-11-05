@@ -71,6 +71,10 @@ return [
             'level' => env('LOG_LEVEL', 'debug'),
             'days' => env('LOG_DAILY_DAYS', 14),
             'replace_placeholders' => true,
+            // On the store server the app runs as www-data, but commands run with ./scripts/rms run as root. If a
+            // root command writes the day's first line, the file must still let the app add to it, or every
+            // later log line (and the till request behind it) fails with "Permission denied".
+            'permission' => 0666,
         ],
 
         'slack' => [
