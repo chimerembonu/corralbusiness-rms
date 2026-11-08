@@ -66,7 +66,11 @@ DoD
 
 ---
 
-## Two tracks from 4 November 2026 (owner's decisions)
+## One version from 8 November 2026 (owner's decision)
+
+The two tracks below were joined on 8 November 2026, before go-live: the Complete Edition was merged into `main`, every new feature switched off, so the pilot starts on the same code that is sold. New work goes to `main` through tested pull requests; until about 27 November, changes to the pilot's everyday screens are fixes only.
+
+## Two tracks from 4 November 2026 (owner's decisions, joined on 8 November)
 
 **Track A — the pilot** goes live on **13 November** on the current version (Phases 0–3). `main` is the pilot's code: until two weeks after go-live it only takes fixes the pilot needs.
 
@@ -107,7 +111,7 @@ Everything below is built in advance. At installation the restaurant (or Corral'
 
 **E1 — Platform for plug and play** (wk of 9 Nov): Features page; Connections page (encrypted credentials, Test connection); licence key + tiers; first-run setup wizard; printer auto-discovery in the wizard.
 
-**E2 — Payments** (wk of 16 Nov): `PaymentGateway` interface; **Paystack** adapter (MoMo charge for MTN/Telecel/AT, status polling, hosted checkout for cards); **PaySwitch** adapter (direct MoMo debit with r-switch MTN/VDF/ATL…, status check, hosted checkout for cards — *never* PaySwitch's direct card API, which would put card numbers on our server); MoMo prompt-to-pay at the till; refunds where the provider supports them; reconciliation report (till vs provider). Sandbox tests for both.
+**E2 — Payments** (wk of 16 Nov) — *core built 4 Nov: provider rulebook + registry, per-purpose default with automatic fallback, Paystack, PaySwitch and Demo adapters, MoMo prompt at the till, background re-checks, "needs a manager" list, guide for adding providers. Still to do: sandbox check with real test accounts, refunds through the provider from the till, reconciliation report.* `PaymentGateway` interface; **Paystack** adapter (MoMo charge for MTN/Telecel/AT, status polling, hosted checkout for cards); **PaySwitch** adapter (direct MoMo debit with r-switch MTN/VDF/ATL…, status check, hosted checkout for cards — *never* PaySwitch's direct card API, which would put card numbers on our server); MoMo prompt-to-pay at the till; refunds where the provider supports them; reconciliation report (till vs provider). Sandbox tests for both.
 
 **E3 — Online service** (wks of 23 & 30 Nov): cloud deployment package (same app, `RMS_MODE=cloud`); tenant onboarding + activation codes (Corral Cloud); store↔cloud sync over the outbox/inbox (store wins for operations, cloud wins for menu/settings edited in HQ); `/hq` phone-friendly owner dashboard across branches; off-site backups; **self-hosted options**: install the cloud package on the restaurant's own server, or the private-link (Tailscale) remote access for the owner. D2 (branch scoping) lands first.
 

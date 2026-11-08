@@ -47,6 +47,15 @@ return [
         'path' => env('REVERB_CLIENT_PATH'),
     ],
 
+    // Encrypted connections on the restaurant network (Complete Edition E9.1), switched on by scripts/https.sh.
+    // The certificate files are made on the store server and mounted read-only (never the keys).
+    'https' => [
+        'enabled' => env('RMS_HTTPS', 'off') === 'on',
+        'port' => (int) env('RMS_HTTPS_PORT', 443),
+        'ca_certificate' => env('RMS_HTTPS_CA', '/etc/rms-certs/ca.crt'),
+        'server_certificate' => env('RMS_HTTPS_CERT', '/etc/rms-certs/server.crt'),
+    ],
+
     'admin_path' => env('RMS_ADMIN_PATH', 'admin'),
     'hq_path' => env('RMS_HQ_PATH', 'hq'),
 
@@ -65,11 +74,26 @@ return [
         'password' => env('RMS_BACKUP_PASSWORD'),
     ],
 
+    // First-run setup wizard (/setup, Complete Edition E1.3). It is only open while the server has no restaurant.
+    // When a code is set (the installer generates one and prints it), the wizard asks for it first, so nobody
+    // else on the network can set up the server before the owner.
+    'setup' => [
+        'code' => env('RMS_SETUP_CODE'),
+    ],
+
+    // Printer search (setup wizard, rms:printers:scan): the restaurant network to look on, e.g. 192.168.8.0/24.
+    // The installer fills it in; empty = this computer's own network (fine on a Mac, wrong inside Docker).
+    'printers' => [
+        'subnet' => env('RMS_PRINTER_SUBNET'),
+    ],
+
     // PIN security (CLAUDE.md §3.14).
     'pin' => [
         'min_length' => 4,
         'max_length' => 6,
         'max_attempts' => 5,
+        // Wrong PINs from one device (its network address), whatever till it says it is (security review N3).
+        'max_attempts_per_device' => 10,
         'lockout_seconds' => 60,
     ],
 ];

@@ -313,14 +313,15 @@ class CashScreen extends Component
         }
         $notes = $this->notes;
         $this->modal = null;
-        $this->askManager(Permission::DayClose, 'closeDayApproved', [$notes], __('pos::pos.approval.close_day', ['date' => Carbon::parse($this->date)->format('d/m/Y')]));
+        $this->askManager(Permission::DayClose, 'closeDayApproved', [$notes], __('pos::pos.approval.close_day', ['date' => Carbon::parse($this->date)->format('d/m/Y')]),
+            second: app(DayCloseService::class)->needsSecondApproval());
     }
 
     /** Only reachable through approve() with a manager PIN (protected: never callable from the browser). */
-    protected function closeDayApproved(User $manager, string $notes): void
+    protected function closeDayApproved(User $manager, string $notes, ?User $second = null): void
     {
         try {
-            $close = app(DayCloseService::class)->close($this->date, auth()->user(), $manager, $notes);
+            $close = app(DayCloseService::class)->close($this->date, auth()->user(), $manager, $notes, secondApprover: $second);
         } catch (RuntimeException $e) {
             $this->error = FriendlyError::message($e);
 

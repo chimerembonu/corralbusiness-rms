@@ -10,6 +10,7 @@ use App\Modules\Orders\Filament\Resources\DiningTables\Pages\ListDiningTables;
 use App\Modules\Orders\Models\DiningTable;
 use App\Modules\Orders\Models\FloorSection;
 use App\Modules\Staff\Enums\Permission;
+use App\Support\Filament\BranchResource;
 use BackedEnum;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
@@ -18,7 +19,6 @@ use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Resources\Resource;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -29,7 +29,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
-class DiningTableResource extends Resource
+class DiningTableResource extends BranchResource
 {
     protected static ?string $model = DiningTable::class;
 
@@ -66,7 +66,7 @@ class DiningTableResource extends Resource
         return [
             TextInput::make('name')->label(__('orders::orders.fields.name'))->required()->maxLength(30),
             Select::make('section_id')->label(__('orders::orders.fields.section'))
-                ->options(fn () => FloorSection::query()->active()->ordered()->pluck('name', 'id'))
+                ->options(fn () => FloorSection::query()->forBranch()->active()->ordered()->pluck('name', 'id'))
                 ->searchable(),
             TextInput::make('seats')->label(__('orders::orders.fields.seats'))->numeric()->minValue(1)->maxValue(50)->default(4)->required(),
             Select::make('shape')->label(__('orders::orders.fields.shape'))->options(TableShape::options())->default(TableShape::Square->value)->required(),
@@ -102,7 +102,7 @@ class DiningTableResource extends Resource
                 IconColumn::make('is_active')->label(__('orders::orders.fields.is_active'))->boolean(),
             ])
             ->filters([
-                SelectFilter::make('section_id')->label(__('orders::orders.fields.section'))->relationship('section', 'name'),
+                SelectFilter::make('section_id')->label(__('orders::orders.fields.section'))->relationship('section', 'name', fn ($query) => $query->forBranch()),
             ])
             ->recordActions([EditAction::make(), DeleteAction::make()])
             ->toolbarActions([BulkActionGroup::make([DeleteBulkAction::make()])]);

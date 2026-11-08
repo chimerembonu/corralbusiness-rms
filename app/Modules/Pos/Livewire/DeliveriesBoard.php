@@ -39,7 +39,8 @@ class DeliveriesBoard extends Component
     {
         $this->run(function () use ($orderId, $riderId, $delivery) {
             $order = Order::query()->forBranch()->findOrFail($orderId);
-            $rider = User::query()->findOrFail($riderId);
+            // A rider of this branch (or one who works for the whole restaurant): security review N6.
+            $rider = User::query()->where(fn ($q) => $q->where('branch_id', $order->branch_id)->orWhereNull('branch_id'))->findOrFail($riderId);
             $delivery->assignRider($order, $rider, auth()->user());
             $this->assigning = null;
             $this->notice = __('pos::pos.delivery.assigned', ['name' => $rider->name]);

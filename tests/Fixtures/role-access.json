@@ -31,6 +31,9 @@
         "owner",
         "manager"
     ],
+    "admin/connections": [
+        "owner"
+    ],
     "admin/customers": [
         "owner",
         "manager"
@@ -48,6 +51,11 @@
         "manager",
         "accountant"
     ],
+    "admin/day-closes/{record}": [
+        "owner",
+        "manager",
+        "accountant"
+    ],
     "admin/dining-tables": [
         "owner",
         "manager"
@@ -57,6 +65,20 @@
         "manager"
     ],
     "admin/dining-tables/{record}/edit": [
+        "owner",
+        "manager"
+    ],
+    "admin/extra-recipes": [
+        "owner",
+        "manager",
+        "inventory"
+    ],
+    "admin/extra-recipes/{record}/edit": [
+        "owner",
+        "manager",
+        "inventory"
+    ],
+    "admin/features": [
         "owner",
         "manager"
     ],
@@ -75,6 +97,9 @@
     "admin/floor-sections/{record}/edit": [
         "owner",
         "manager"
+    ],
+    "admin/history-check": [
+        "owner"
     ],
     "admin/import": [
         "owner",
@@ -111,6 +136,10 @@
         "owner",
         "manager"
     ],
+    "admin/licence": [
+        "owner",
+        "manager"
+    ],
     "admin/modifier-groups": [
         "owner",
         "manager"
@@ -123,6 +152,9 @@
         "owner",
         "manager"
     ],
+    "admin/payment-providers": [
+        "owner"
+    ],
     "admin/print-jobs": [
         "owner",
         "manager"
@@ -134,6 +166,16 @@
     "admin/printers/create": [
         "owner",
         "manager"
+    ],
+    "admin/printers/{record}/edit": [
+        "owner",
+        "manager"
+    ],
+    "admin/profile": [
+        "owner",
+        "manager",
+        "inventory",
+        "accountant"
     ],
     "admin/promo-codes": [
         "owner",
@@ -162,9 +204,35 @@
         "owner",
         "manager"
     ],
+    "admin/recipes": [
+        "owner",
+        "manager",
+        "inventory"
+    ],
+    "admin/recipes/{record}/edit": [
+        "owner",
+        "manager",
+        "inventory"
+    ],
+    "admin/reports/food-cost": [
+        "owner",
+        "manager",
+        "accountant"
+    ],
     "admin/reports/items": [
         "owner",
         "manager",
+        "accountant"
+    ],
+    "admin/reports/payment-matching": [
+        "owner",
+        "manager",
+        "accountant"
+    ],
+    "admin/reports/recipe-usage": [
+        "owner",
+        "manager",
+        "inventory",
         "accountant"
     ],
     "admin/reports/sales": [
@@ -218,6 +286,11 @@
     "admin/stations/{record}/edit": [
         "owner",
         "manager"
+    ],
+    "admin/stock-costing": [
+        "owner",
+        "manager",
+        "accountant"
     ],
     "admin/stock-movements": [
         "owner",
@@ -275,7 +348,21 @@
         "manager",
         "cashier"
     ],
+    "device-setup": [
+        "owner",
+        "manager",
+        "cashier",
+        "waiter",
+        "kitchen",
+        "rider",
+        "inventory",
+        "accountant"
+    ],
+    "device-setup/certificate": [],
     "hq": [
+        "owner"
+    ],
+    "hq/profile": [
         "owner"
     ],
     "inventory/stock-takes/{stockTake}/print": [
@@ -383,6 +470,8 @@
         "inventory",
         "accountant"
     ],
+    "setup": [],
+    "setup/templates/{type}": [],
     "staff/cheat-sheet": [
         "owner",
         "manager"

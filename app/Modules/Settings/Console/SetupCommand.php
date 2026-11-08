@@ -2,16 +2,11 @@
 
 namespace App\Modules\Settings\Console;
 
-use App\Modules\Settings\Models\Tenant;
-use App\Modules\Settings\Services\TenantProvisioner;
-use App\Modules\Staff\Enums\Role;
-use App\Modules\Staff\Models\User;
+use App\Modules\Settings\Services\SetupService;
 use App\Modules\Staff\Support\PinHasher;
-use App\Support\Tenancy\Tenancy;
-use App\Support\Tenancy\TenantScope;
+use App\Support\Errors\UserFacingException;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Console\Command;
-use Illuminate\Support\Str;
 
 use function Laravel\Prompts\password;
 use function Laravel\Prompts\text;
@@ -33,17 +28,14 @@ class SetupCommand extends Command
 
     protected $description = 'Set up the restaurant, branch and owner login on a new store server';
 
-    public function handle(TenantProvisioner $provisioner): int
+    public function handle(SetupService $setup): int
     {
-        $existing = Tenant::query()->count();
-
         if ($this->option('check')) {
-            return $existing > 0 ? self::SUCCESS : self::FAILURE;
+            return $setup->isOpen() ? self::FAILURE : self::SUCCESS;
         }
 
-        (new RolesAndPermissionsSeeder)->run();
-
-        if ($existing > 0) {
+        if (! $setup->isOpen()) {
+            (new RolesAndPermissionsSeeder)->run();
             $this->components->warn('A restaurant is already set up on this server. Nothing changed.');
             $this->components->info('To add more branches or restaurants use Back office → Settings, or rms:demo on a test machine.');
 
@@ -69,24 +61,21 @@ class SetupCommand extends Command
 
             return self::FAILURE;
         }
-        if (User::query()->withoutGlobalScope(TenantScope::class)->where('email', $email)->exists()) {
-            $this->components->error("A login with the email {$email} already exists.");
+        try {
+            $setup->complete([
+                'restaurant' => $restaurant, 'branch' => $branchName, 'owner_name' => $ownerName,
+                'email' => $email, 'password' => $password, 'pin' => $pin,
+            ]);
+        } catch (UserFacingException $e) {
+            $this->components->error($e->getMessage());
 
             return self::FAILURE;
         }
 
-        $branch = $provisioner->provision($restaurant, $branchName, ['slug' => Str::slug($restaurant)]);
-        Tenancy::set($branch->tenant); // no branch: the owner belongs to the whole restaurant, not one branch
-
-        $owner = new User(['name' => $ownerName, 'email' => $email, 'password' => $password, 'pin' => $pin, 'is_active' => true]);
-        $owner->tenant_id = $branch->tenant_id;
-        $owner->save();
-        $owner->assignRole(Role::Owner->value);
-
         $this->components->info("Restaurant \"{$restaurant}\" with branch \"{$branchName}\" is ready.");
         $this->components->twoColumnDetail('Back office login', $email);
         $this->components->twoColumnDetail('Till PIN', $pin);
-        $this->components->info('Next: Back office → Settings (taxes, receipt design, tills, printers), then Menu.');
+        $this->components->info('Next: Back office → Settings (taxes, receipt design, tills, printers), then Menu. (The browser setup at /setup does all of this in one go.)');
 
         return self::SUCCESS;
     }

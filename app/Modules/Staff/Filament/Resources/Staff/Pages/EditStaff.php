@@ -26,6 +26,7 @@ class EditStaff extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
+        StaffResource::assertRolesAllowed($this->form->getRawState()['roles'] ?? [], $this->record);
         $pin = $this->form->getRawState()['new_pin'] ?? null;
         if (filled($pin)) {
             StaffResource::assertPinFree((string) $pin, $this->record);

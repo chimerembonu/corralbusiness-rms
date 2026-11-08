@@ -44,7 +44,8 @@ it('records wrong PINs and the lock-out, without the PIN', function () {
     expect(securityEvents())->toBe(['pin_failed', 'pin_failed', 'pin_failed', 'pin_failed', 'pin_failed', 'pin_locked_out']);
     $row = Activity::query()->where('event', 'pin_failed')->first();
     expect($row->properties['till'])->toBe('till:T1')->and($row->tenant_id)->toBe($this->branch->tenant_id)
-        ->and(json_encode(Activity::query()->get()->toArray()))->not->toContain('1230');
+        // Only what was written about each attempt: a time stamp can contain "1230" by chance (e.g. 12:30:01.123045).
+        ->and(json_encode(Activity::query()->get(['description', 'event', 'properties', 'attribute_changes'])->toArray()))->not->toContain('1230');
 });
 
 it('flags a switched-off staff member trying their old PIN', function () {

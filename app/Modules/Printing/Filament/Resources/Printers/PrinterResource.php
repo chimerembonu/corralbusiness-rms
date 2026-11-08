@@ -9,9 +9,8 @@ use App\Modules\Printing\Filament\Resources\Printers\Pages\EditPrinter;
 use App\Modules\Printing\Filament\Resources\Printers\Pages\ListPrinters;
 use App\Modules\Printing\Models\Printer;
 use App\Modules\Printing\Services\PrintService;
-use App\Modules\Settings\Models\Branch;
 use App\Modules\Staff\Enums\Permission;
-use App\Support\Tenancy\Tenancy;
+use App\Support\Filament\BranchResource;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -22,7 +21,6 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
-use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
@@ -31,7 +29,7 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
-class PrinterResource extends Resource
+class PrinterResource extends BranchResource
 {
     protected static ?string $model = Printer::class;
 
@@ -67,9 +65,6 @@ class PrinterResource extends Resource
         return $schema->components([
             Section::make()->columns(2)->schema([
                 TextInput::make('name')->label(__('printing::printing.fields.name'))->required()->maxLength(80),
-                Select::make('branch_id')->label(__('menu::menu.fields.branch'))
-                    ->options(fn () => Branch::query()->orderBy('name')->pluck('name', 'id'))
-                    ->default(fn () => Tenancy::branchId())->required(),
                 Select::make('driver')->label(__('printing::printing.fields.driver'))
                     ->options(collect(PrinterDriverType::cases())->mapWithKeys(fn (PrinterDriverType $d) => [$d->value => $d->label()]))
                     ->default(PrinterDriverType::Network->value)->required()->live(),
@@ -82,7 +77,7 @@ class PrinterResource extends Resource
                 Toggle::make('prints_receipts')->label(__('printing::printing.fields.prints_receipts'))->inline(false),
                 Toggle::make('prints_kitchen_tickets')->label(__('printing::printing.fields.prints_kitchen_tickets'))->inline(false)->live(),
                 Select::make('station_ids')->label(__('printing::printing.fields.stations'))->multiple()
-                    ->options(fn () => Station::query()->active()->ordered()->pluck('name', 'id'))
+                    ->options(fn () => Station::query()->forBranch()->active()->ordered()->pluck('name', 'id'))
                     ->helperText(__('printing::printing.fields.stations_hint'))
                     ->visible(fn (Get $get) => (bool) $get('prints_kitchen_tickets')),
                 Toggle::make('has_cash_drawer')->label(__('printing::printing.fields.has_cash_drawer'))->inline(false),

@@ -8,8 +8,8 @@ use App\Modules\Inventory\Models\Ingredient;
 use App\Modules\Inventory\Models\StockMovement;
 use App\Modules\Inventory\Services\StockService;
 use App\Modules\Staff\Enums\Permission;
+use App\Support\Filament\BranchResource;
 use BackedEnum;
-use Filament\Resources\Resource;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -17,7 +17,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
 /** Read-only history of every stock change. */
-class StockMovementResource extends Resource
+class StockMovementResource extends BranchResource
 {
     protected static ?string $model = StockMovement::class;
 
@@ -75,7 +75,7 @@ class StockMovementResource extends Resource
                 TextColumn::make('user.name')->label($f('by'))->placeholder('—'),
             ])
             ->filters([
-                SelectFilter::make('ingredient_id')->label(__('inventory::inventory.ingredient'))->options(fn () => Ingredient::query()->orderBy('name')->pluck('name', 'id')->all())->searchable(),
+                SelectFilter::make('ingredient_id')->label(__('inventory::inventory.ingredient'))->options(fn () => Ingredient::query()->forBranch()->orderBy('name')->pluck('name', 'id')->all())->searchable(),
                 SelectFilter::make('type')->label($f('type'))->options(array_combine(array_map(fn (StockMovementType $t) => $t->value, StockMovementType::cases()), array_map(fn (StockMovementType $t) => $t->label(), StockMovementType::cases()))),
             ]);
     }

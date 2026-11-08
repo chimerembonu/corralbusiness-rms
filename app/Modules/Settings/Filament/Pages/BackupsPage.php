@@ -69,10 +69,17 @@ class BackupsPage extends Page
             });
     }
 
+    /** Restoring or deleting a backup is for the owner only (security reviews H2, N7). */
+    public static function ownerOnly(): bool
+    {
+        return auth()->user()?->hasRole(Role::Owner->value) ?? false;
+    }
+
     public function restoreAction(): Action
     {
         return Action::make('restore')->label(__('settings::settings.backups.restore'))->icon(Heroicon::ArrowUturnLeft)->color('danger')
             ->visible(fn () => auth()->user()->hasRole(Role::Owner->value))
+            ->authorize(fn () => self::ownerOnly()) // security review N7: refused when called, not only hidden
             ->modalHeading(fn (array $arguments) => __('settings::settings.backups.restore_heading', ['file' => $arguments['file'] ?? '']))
             ->modalDescription(__('settings::settings.backups.restore_help'))
             ->schema([TextInput::make('confirm')->label(__('settings::settings.backups.type_restore'))->required()->rule('in:RESTORE')])
@@ -80,6 +87,7 @@ class BackupsPage extends Page
                 try {
                     $service = app(BackupService::class);
                     $safety = $service->restore($service->resolve($arguments['file']));
+                    self::logged('backup_restored', ['file' => basename((string) $arguments['file']), 'safety_copy' => basename($safety)]);
                     Notification::make()->success()->title(__('settings::settings.backups.restored', ['file' => $arguments['file'], 'safety' => basename($safety)]))->persistent()->send();
                 } catch (RuntimeException $e) {
                     Notification::make()->danger()->title(FriendlyError::message($e))->persistent()->send();
@@ -91,6 +99,7 @@ class BackupsPage extends Page
     {
         return Action::make('uploadRestore')->label(__('settings::settings.backups.upload'))->icon(Heroicon::ArrowUpTray)->color('gray')
             ->visible(fn () => auth()->user()->hasRole(Role::Owner->value))
+            ->authorize(fn () => self::ownerOnly()) // security review N7: refused when called, not only hidden
             ->modalDescription(__('settings::settings.backups.restore_help'))
             ->schema([
                 FileUpload::make('file')->label(__('settings::settings.backups.file'))->disk('local')->directory('backup-uploads')->acceptedFileTypes(['application/zip', 'application/x-zip-compressed'])->required(),
@@ -105,6 +114,7 @@ class BackupsPage extends Page
                     }
                     $safety = app(BackupService::class)->restore($path, $data['password'] ?? null);
                     @unlink($path);
+                    self::logged('backup_restored', ['file' => basename((string) $data['file']), 'uploaded' => true, 'safety_copy' => basename($safety)]);
                     Notification::make()->success()->title(__('settings::settings.backups.restored', ['file' => basename($data['file']), 'safety' => basename($safety)]))->persistent()->send();
                 } catch (RuntimeException $e) {
                     Notification::make()->danger()->title(FriendlyError::message($e))->persistent()->send();
@@ -116,11 +126,22 @@ class BackupsPage extends Page
     {
         return Action::make('delete')->label(__('filament-actions::delete.single.label'))->icon(Heroicon::Trash)->color('gray')->requiresConfirmation()
             ->visible(fn () => auth()->user()->hasRole(Role::Owner->value)) // security review H2: owner only, like restore
+            ->authorize(fn () => self::ownerOnly()) // security review N7: refused when called, not only hidden
             ->action(function (array $arguments) {
                 abort_unless(auth()->user()->hasRole(Role::Owner->value), 403);
                 @unlink(app(BackupService::class)->resolve((string) ($arguments['file'] ?? '')));
+                self::logged('backup_deleted', ['file' => basename((string) ($arguments['file'] ?? ''))]);
                 Notification::make()->success()->title(__('settings::settings.backups.deleted'))->send();
             });
+    }
+
+    /**
+     * Written to the history (E9.6 review F8). After a restore it goes into the restored database, so the
+     * history of the copy brought back says when and by whom.
+     */
+    private static function logged(string $what, array $details): void
+    {
+        activity('settings')->causedBy(auth()->user())->event($what)->withProperties($details)->log($what);
     }
 
     protected function getHeaderActions(): array

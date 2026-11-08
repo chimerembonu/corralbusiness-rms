@@ -17,6 +17,8 @@ elif ! docker compose exec -T app php artisan rms:backup --note="before update";
 fi
 echo "==> Getting the latest code…"
 git pull --ff-only
+# HTTPS (E9.1): renew the server certificate now if it is close to its end (nothing happens when HTTPS is off).
+./scripts/https.sh renew --no-restart || echo "    (the HTTPS certificate could not be checked; the app keeps running)"
 echo "==> Rebuilding and restarting…"
 docker compose build --pull
 docker compose up -d --remove-orphans

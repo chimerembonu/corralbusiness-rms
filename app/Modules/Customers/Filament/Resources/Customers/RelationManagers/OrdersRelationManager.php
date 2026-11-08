@@ -21,6 +21,8 @@ class OrdersRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
+            // A customer belongs to the whole restaurant; the orders shown here are this branch's (E3.1).
+            ->modifyQueryUsing(fn ($query) => $query->forBranch())
             ->defaultSort('opened_at', 'desc')
             ->columns([
                 TextColumn::make('number')->label(__('pos::pos.today.number'))->formatStateUsing(fn (Order $r) => '#'.$r->displayNumber()),

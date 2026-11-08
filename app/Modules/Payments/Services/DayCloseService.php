@@ -4,6 +4,7 @@ namespace App\Modules\Payments\Services;
 
 use App\Modules\Orders\Models\Order;
 use App\Modules\Orders\Services\DailySummaryService;
+use App\Modules\Orders\Support\TillSettings;
 use App\Modules\Payments\Enums\DayCloseStatus;
 use App\Modules\Payments\Events\DayClosed;
 use App\Modules\Payments\Events\DayReopened;
@@ -16,6 +17,8 @@ use App\Modules\Settings\Services\CounterService;
 use App\Modules\Staff\Enums\Permission;
 use App\Modules\Staff\Exceptions\ManagerPinRequiredException;
 use App\Modules\Staff\Models\User;
+use App\Modules\Staff\Support\SecondApproval;
+use App\Support\Audit\AuditChain;
 use App\Support\Money\Money;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Support\Facades\DB;
@@ -142,14 +145,27 @@ class DayCloseService
         return $blockers;
     }
 
-    /** Close the day (Z report). $approvedBy needs the day-close permission (manager PIN). */
-    public function close(string $date, User $by, ?User $approvedBy = null, ?string $notes = null, ?string $branchId = null): DayClose
+    /** Do Till settings ask a second manager to confirm closing the day? (E9.4) */
+    public function needsSecondApproval(?string $branchId = null): bool
+    {
+        return app(TillSettings::class)->secondApprovalDayClose($branchId ?? $this->context->branchId());
+    }
+
+    /**
+     * Close the day (Z report). $approvedBy needs the day-close permission (manager PIN); when Till settings
+     * ask for it, $secondApprover is a different manager confirming (E9.4).
+     */
+    public function close(string $date, User $by, ?User $approvedBy = null, ?string $notes = null, ?string $branchId = null, ?User $secondApprover = null): DayClose
     {
         $branchId ??= $this->context->branchId();
         $approvedBy ??= $by;
 
         if (! $approvedBy->can(Permission::DayClose->value)) {
             throw new ManagerPinRequiredException(Permission::DayClose->value);
+        }
+        $second = $this->needsSecondApproval($branchId);
+        if ($second) {
+            SecondApproval::assert(Permission::DayClose, $approvedBy, $secondApprover);
         }
         if ($this->isClosed($date, $branchId)) {
             throw new DayClosedException($date);
@@ -158,14 +174,18 @@ class DayCloseService
             throw new CashException(implode(' ', $blockers));
         }
 
-        return DB::transaction(function () use ($date, $by, $approvedBy, $notes, $branchId) {
+        return DB::transaction(function () use ($date, $by, $approvedBy, $notes, $branchId, $second, $secondApprover) {
+            $report = $this->report($date, $branchId);
+            // The chain's code of this moment, printed on the Z report: proof on paper of the history so far (E9.4).
+            $report['history_code'] = app(AuditChain::class)->code();
             $close = new DayClose([
                 'number' => $this->counters->next('day_closes', null, $branchId),
                 'business_date' => $date,
                 'closed_at' => now(),
                 'closed_by_id' => $by->id,
                 'approved_by_id' => $approvedBy->id,
-                'report' => $this->report($date, $branchId),
+                'second_approved_by_id' => $second ? $secondApprover->id : null,
+                'report' => $report,
                 'notes' => filled($notes) ? trim($notes) : null,
             ]);
             $close->branch_id = $branchId;

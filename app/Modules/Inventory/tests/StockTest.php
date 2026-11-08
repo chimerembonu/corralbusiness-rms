@@ -86,5 +86,6 @@ it('records opening stock for a new ingredient and can go negative only on sales
     expect($this->stock->recordOpening(Ingredient::create(['name' => 'Salt', 'unit' => 'kg'])))->toBeNull();
 
     $movement = $this->stock->move($this->rice, StockMovementType::Purchase, 5, $this->manager, 'Test', null, Money::fromDecimal('25'));
-    expect($this->rice->fresh()->cost_per_unit)->toBePesewas(2500)->and($movement->unit_cost)->toBePesewas(2500);
+    // Average cost, the default (see AverageCostTest): the delivery keeps the price paid, the ingredient the average.
+    expect($this->rice->fresh()->cost_per_unit)->toBePesewas(2300)->and($movement->unit_cost)->toBePesewas(2500);
 });

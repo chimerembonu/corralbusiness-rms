@@ -30,5 +30,6 @@ it('resolves module paths and namespaces', function () {
 });
 
 it('runs module tests with the Laravel test case', function () {
+    provisionTenant();
     $this->get('/')->assertOk();
 });

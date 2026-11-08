@@ -63,6 +63,38 @@
             @endif
             @if ($method === 'account' && $order->customer)
                 <p class="mt-3 rounded-xl bg-amber-500/10 px-4 py-3 text-sm text-amber-200">{{ $order->customer->name }} · {{ __('customers::customers.pos.owes', ['amount' => money($order->customer->balance())]) }}@if ($order->customer->credit_limit) · {{ __('customers::customers.fields.credit_limit_short') }} {{ money($order->customer->credit_limit) }}@endif</p>
+            @elseif ($method === 'momo' && $this->promptsAvailable)
+                {{-- Complete Edition E2: send a payment request to the customer's phone --}}
+                @if ($prompt = $this->prompt)
+                    <div @if (! $prompt->status->isFinal() && $prompt->status !== \App\Modules\Payments\Gateways\Data\GatewayStatus::Cancelled) wire:poll.{{ config('payments.momo.till_poll_seconds', 4) }}s="checkPrompt" @endif
+                         class="mt-3 rounded-2xl p-4 ring-1 {{ in_array($prompt->status->value, ['failed', 'expired', 'needs_attention']) ? 'bg-rose-500/10 ring-rose-500/40' : 'bg-amber-500/10 ring-amber-500/40' }}">
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="font-bold">{{ $prompt->status->label() }}</span>
+                            <span class="text-slate-400">{{ $prompt->phone_masked }} · {{ money($prompt->amount->add($prompt->tip)) }}</span>
+                        </div>
+                        @if ($prompt->message)<p class="mt-2 text-sm text-slate-300">{{ $prompt->message }}</p>@endif
+                        @if ($prompt->status === \App\Modules\Payments\Gateways\Data\GatewayStatus::NeedsOtp)
+                            <div class="mt-3 flex gap-2">
+                                <input type="text" inputmode="numeric" wire:model="otp" placeholder="{{ __('pos::pos.pay.prompt_otp') }}" class="h-12 flex-1 rounded-xl border-0 bg-slate-800 px-4 text-lg text-slate-100">
+                                <button type="button" wire:click="sendOtp" class="h-12 rounded-xl bg-emerald-500 px-4 font-bold text-slate-950">{{ __('pos::pos.pay.prompt_otp_send') }}</button>
+                            </div>
+                        @endif
+                        <div class="mt-3 flex gap-2">
+                            @if ($prompt->status->isFinal())
+                                <button type="button" wire:click="dismissPrompt" class="h-12 flex-1 rounded-xl bg-slate-800 font-bold hover:bg-slate-700">{{ __('pos::pos.pay.prompt_again') }}</button>
+                            @else
+                                <button type="button" wire:click="stopWaiting" class="h-12 flex-1 rounded-xl bg-slate-800 font-bold hover:bg-slate-700">{{ __('pos::pos.pay.prompt_stop') }}</button>
+                            @endif
+                        </div>
+                    </div>
+                @else
+                    <input type="tel" inputmode="numeric" wire:model="phone" placeholder="{{ __('pos::pos.pay.prompt_phone') }}" class="mt-3 h-14 w-full rounded-xl border-0 bg-slate-800 px-4 text-xl tracking-wide text-slate-100 placeholder:text-slate-500">
+                    <button type="button" wire:click="sendPrompt" class="mt-2 h-14 w-full rounded-2xl bg-amber-400 text-lg font-bold text-slate-950 hover:bg-amber-300">{{ __('pos::pos.pay.prompt_send') }}</button>
+                    <details class="mt-2 text-sm text-slate-400">
+                        <summary class="cursor-pointer">{{ __('pos::pos.pay.prompt_manual') }}</summary>
+                        <input type="text" wire:model="reference" placeholder="{{ __('pos::pos.pay.momo_reference') }}" class="mt-2 h-12 w-full rounded-xl border-0 bg-slate-800 px-4 text-base text-slate-100 placeholder:text-slate-500">
+                    </details>
+                @endif
             @elseif ($method !== 'cash')
                 <input type="text" wire:model="reference" placeholder="{{ $method === 'momo' ? __('pos::pos.pay.momo_reference') : __('pos::pos.pay.card_reference') }}" class="mt-3 h-12 w-full rounded-xl border-0 bg-slate-800 px-4 text-base text-slate-100 placeholder:text-slate-500">
             @endif

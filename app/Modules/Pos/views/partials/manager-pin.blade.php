@@ -6,6 +6,9 @@
                 <div>
                     <h2 class="text-lg font-bold text-amber-300">{{ __('pos::pos.approval.title') }}</h2>
                     <p class="text-sm text-slate-300">{{ $approval['title'] }}</p>
+                    @if ($approval['second'] ?? false)
+                        <p class="mt-1 text-sm font-semibold text-amber-200">{{ ($approval['first_name'] ?? null) ? __('pos::pos.approval.second_now', ['name' => $approval['first_name']]) : __('pos::pos.approval.two_needed') }}</p>
+                    @endif
                 </div>
                 <button type="button" wire:click="cancelApproval" class="h-11 w-11 rounded-xl bg-slate-800 text-xl hover:bg-slate-700" aria-label="{{ __('pos::pos.order.close') }}">✕</button>
             </div>

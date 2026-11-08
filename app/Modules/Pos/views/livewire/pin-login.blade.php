@@ -21,6 +21,9 @@
             <template x-for="i in 6"><span class="inline-block h-4 w-4 rounded-full" :class="pin.length >= i ? 'bg-emerald-400' : 'bg-slate-600'"></span></template>
         </div>
 
+        @if ($notice && ! $error)
+            <p class="mb-4 rounded-xl bg-emerald-500/15 px-4 py-3 text-center text-sm font-semibold text-emerald-200" role="status">{{ $notice }}</p>
+        @endif
         @if ($error)
             <p class="mb-4 rounded-xl bg-rose-500/15 px-4 py-3 text-center text-sm font-semibold text-rose-300" role="alert">{{ $error }}</p>
         @endif

@@ -30,8 +30,6 @@ class BranchPricesRelationManager extends RelationManager
     public function form(Schema $schema): Schema
     {
         return $schema->components([
-            Select::make('branch_id')->label(__('menu::menu.fields.branch'))
-                ->options(fn () => Branch::query()->orderBy('name')->pluck('name', 'id'))->required(),
             Select::make('variant_id')->label(__('menu::menu.fields.variant'))
                 ->options(fn () => ItemVariant::query()->where('item_id', $this->getOwnerRecord()->getKey())->pluck('name', 'id'))
                 ->visible(fn () => $this->getOwnerRecord()->variants()->exists()),
@@ -43,6 +41,8 @@ class BranchPricesRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
+            // This branch's own prices only (E3.1); prices for every branch are set from head office.
+            ->modifyQueryUsing(fn ($query) => $query->forBranch())
             ->columns([
                 TextColumn::make('branch.name')->label(__('menu::menu.fields.branch')),
                 TextColumn::make('variant.name')->label(__('menu::menu.fields.variant'))->placeholder('—'),

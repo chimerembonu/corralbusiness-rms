@@ -1,0 +1,34 @@
+# The app itself (php-fpm, Reverb, uploads). Included by default.conf (plain http) and https.conf.
+add_header X-Frame-Options "SAMEORIGIN";
+add_header X-Content-Type-Options "nosniff";
+
+location / {
+    try_files $uri $uri/ /index.php?$query_string;
+}
+
+# WebSockets on the same port as the app, so tills only need the server's address.
+location /reverb/ {
+    proxy_pass http://reverb:8080/;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "Upgrade";
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_read_timeout 3600s;
+}
+
+# Uploaded files (logos, item images) are data, never code: nothing under /storage runs as PHP.
+location ~* ^/storage/.*\.php$ { deny all; }
+
+location ~ \.php$ {
+    fastcgi_pass app:9000;
+    fastcgi_index index.php;
+    include fastcgi_params;
+    fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+    fastcgi_param DOCUMENT_ROOT $realpath_root;
+    fastcgi_read_timeout 120s;
+}
+
+location ~ /\.(?!well-known).* { deny all; }
+location = /favicon.ico { access_log off; log_not_found off; }
+location = /robots.txt { access_log off; log_not_found off; }

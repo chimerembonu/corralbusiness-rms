@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Orders\Support\TillSettings;
 use App\Modules\Pos\Http\CashReportController;
 use App\Modules\Pos\Http\DrawerController;
 use App\Modules\Pos\Http\EnsurePosUser;
@@ -45,7 +46,10 @@ Route::prefix('pos')->name('pos.')->group(function () {
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 
-            return redirect()->route('pos.login');
+            // The screen's idle timer sends idle=1 (E9.2): say why the till went back to the PIN screen.
+            return $request->boolean('idle')
+                ? redirect()->route('pos.login')->with('status', __('pos::pos.login.locked_idle', ['minutes' => app(TillSettings::class)->tillLockMinutes()]))
+                : redirect()->route('pos.login');
         })->name('logout');
     });
 });

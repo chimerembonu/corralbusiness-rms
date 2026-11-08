@@ -14,6 +14,7 @@ use App\Modules\Staff\Enums\Permission;
 use App\Modules\Staff\Exceptions\ManagerPinRequiredException;
 use App\Modules\Staff\Models\User;
 use App\Support\Money\Money;
+use App\Support\Tenancy\Tenancy;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -27,7 +28,7 @@ class DeliveryService
      * default (Till settings); any other figure is a price edit and needs someone with that permission
      * as $by or $approvedBy (manager PIN) — security review M4.
      */
-    public function setDetails(Order $order, string $customerName, string $phone, string $address, ?string $notes = null, ?Money $fee = null, ?User $by = null, ?User $approvedBy = null): Order
+    public function setDetails(Order $order, #[\SensitiveParameter] string $customerName, #[\SensitiveParameter] string $phone, #[\SensitiveParameter] string $address, ?string $notes = null, ?Money $fee = null, ?User $by = null, ?User $approvedBy = null): Order
     {
         $this->assertDelivery($order);
         if (! $order->isActive()) { // paid or closed: the total must not move any more
@@ -162,9 +163,14 @@ class DeliveryService
     }
 
     /** Staff who can ride, for the assign buttons. */
+    /** Riders of this branch, plus anyone who works for the whole restaurant (security review N6). */
     public function riders(?string $branchId = null): Collection
     {
-        return User::query()->where('is_active', true)->permission(Permission::DeliveryRide->value)->orderBy('name')->get();
+        $branchId ??= Tenancy::branchId();
+
+        return User::query()->where('is_active', true)->permission(Permission::DeliveryRide->value)
+            ->where(fn ($q) => $q->where('branch_id', $branchId)->orWhereNull('branch_id'))
+            ->orderBy('name')->get();
     }
 
     private function transition(Order $order, DeliveryStatus $to, ?User $by): Order

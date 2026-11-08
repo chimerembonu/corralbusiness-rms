@@ -61,19 +61,25 @@ class KitchenDisplay extends Component
     public function bump(string $ticketId, KitchenService $kitchen): void
     {
         $this->authorizeBump();
-        $kitchen->bump(Ticket::query()->findOrFail($ticketId), auth()->user());
+        $kitchen->bump($this->ticket($ticketId), auth()->user());
     }
 
     public function start(string $ticketId, KitchenService $kitchen): void
     {
         $this->authorizeBump();
-        $kitchen->start(Ticket::query()->findOrFail($ticketId), auth()->user());
+        $kitchen->start($this->ticket($ticketId), auth()->user());
     }
 
     public function done(string $ticketId, KitchenService $kitchen): void
     {
         $this->authorizeBump();
-        $kitchen->done(Ticket::query()->findOrFail($ticketId), auth()->user());
+        $kitchen->done($this->ticket($ticketId), auth()->user());
+    }
+
+    /** A ticket of THIS screen's branch only (security review N6): another branch's ticket id is "not found". */
+    private function ticket(string $ticketId): Ticket
+    {
+        return Ticket::query()->where('branch_id', $this->branchId)->findOrFail($ticketId);
     }
 
     /** Keyboard: the Nth ticket on screen (1-based). */
@@ -88,7 +94,7 @@ class KitchenDisplay extends Component
     public function recall(?string $ticketId, KitchenService $kitchen): void
     {
         $this->authorizeBump();
-        $ticket = $ticketId ? Ticket::query()->findOrFail($ticketId) : $kitchen->recentlyDone($this->branchId, 1, $this->stationId())->first();
+        $ticket = $ticketId ? $this->ticket($ticketId) : $kitchen->recentlyDone($this->branchId, 1, $this->stationId())->first();
         if ($ticket) {
             $kitchen->recall($ticket, auth()->user());
         }

@@ -14,5 +14,11 @@ it('requires RMS_BIND_IP instead of falling back to all interfaces', function ()
     expect($compose)->toContain('${RMS_BIND_IP:?')
         ->and($compose)->not->toContain('RMS_BIND_IP:-')
         ->and(file_get_contents(base_path('.env.docker.example')))->toMatch('/^RMS_BIND_IP=\S+/m')
-        ->and(file_get_contents(base_path('install.sh')))->toContain('RMS_BIND_IP=$LAN_IP');
+        ->and(file_get_contents(base_path('install.sh')))->toContain('envset RMS_BIND_IP "$LAN_IP"')
+        // A new address from the router moves the app instead of leaving it unable to start (8 Nov 2026).
+        ->and(file_get_contents(base_path('scripts/address.sh')))->toContain('envset RMS_BIND_IP "$new"')
+        ->and(file_get_contents(base_path('install.sh')))->toContain('scripts/address.sh')
+        // Windows (install.ps1) binds to the detected address too, and follows a new one on the next run.
+        ->and(file_get_contents(base_path('install.ps1')))->toContain("Set-EnvValue \$lines 'RMS_BIND_IP' \$ip")
+        ->and(file_get_contents(base_path('install.cmd')))->toContain('install.ps1');
 });

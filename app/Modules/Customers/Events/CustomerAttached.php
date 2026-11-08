@@ -20,6 +20,7 @@ class CustomerAttached extends OrderEvent
 
     protected function extraPayload(): array
     {
-        return ['customer_id' => $this->customer->id, 'phone' => $this->customer->phone];
+        // Ids only, never personal details: the outbox is kept and later synced (E9.6 review F1).
+        return ['customer_id' => $this->customer->id];
     }
 }

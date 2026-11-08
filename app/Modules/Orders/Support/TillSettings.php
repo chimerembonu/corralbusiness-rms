@@ -40,6 +40,19 @@ final class TillSettings
 
     public const LOYALTY_POINTS_PER_CEDI = 'loyalty.points_per_cedi';    // 0 = points off
 
+    public const TILL_LOCK_MINUTES = 'security.till_lock_minutes';       // a till nobody touches goes back to the PIN screen (E9.2, D1); 0 = never
+
+    public const BACK_OFFICE_IDLE_MINUTES = 'security.back_office_idle_minutes'; // the back office signs out after this long unused (E9.2); 0 = never
+
+    public const SECOND_APPROVAL_REFUND_ABOVE = 'security.second_approval_refund_above'; // pesewas; refunds on an order above this need a second manager's PIN (E9.4); 0 = never
+
+    public const SECOND_APPROVAL_DAY_CLOSE = 'security.second_approval_day_close'; // closing the day needs a second manager's PIN (E9.4)
+
+    public const CUSTOMER_RETENTION_MONTHS = 'customers.retention_months'; // restaurant-wide: customers' details are removed after this long without a visit (E9.3); 0 = kept
+
+    /** The shortest retention period allowed (E9.6 review M2), so a typo such as "1" cannot wipe nearly every customer overnight. */
+    public const MIN_CUSTOMER_RETENTION_MONTHS = 6;
+
     public function __construct(private readonly SettingsService $settings) {}
 
     /** @return array<string, mixed> */
@@ -61,7 +74,40 @@ final class TillSettings
             self::CASH_PAY_OUT_REASONS => ['Supplier paid in cash', 'Bank deposit', 'Staff advance', 'Petty cash', 'Tips paid to staff'],
             self::CASH_REQUIRE_SESSION => true,
             self::LOYALTY_POINTS_PER_CEDI => 0,
+            self::TILL_LOCK_MINUTES => 5,
+            self::BACK_OFFICE_IDLE_MINUTES => 30,
+            self::SECOND_APPROVAL_REFUND_ABOVE => 0,
+            self::SECOND_APPROVAL_DAY_CLOSE => false,
+            self::CUSTOMER_RETENTION_MONTHS => 0,
         ];
+    }
+
+    public function tillLockMinutes(?string $branchId = null): int
+    {
+        return max(0, (int) $this->get(self::TILL_LOCK_MINUTES, $branchId));
+    }
+
+    public function backOfficeIdleMinutes(?string $branchId = null): int
+    {
+        return max(0, (int) $this->get(self::BACK_OFFICE_IDLE_MINUTES, $branchId));
+    }
+
+    public function secondApprovalRefundAbove(?string $branchId = null): int
+    {
+        return max(0, (int) $this->get(self::SECOND_APPROVAL_REFUND_ABOVE, $branchId));
+    }
+
+    public function secondApprovalDayClose(?string $branchId = null): bool
+    {
+        return (bool) $this->get(self::SECOND_APPROVAL_DAY_CLOSE, $branchId);
+    }
+
+    /** Restaurant-wide (customers belong to the whole restaurant, not one branch). */
+    public function customerRetentionMonths(): int
+    {
+        $months = max(0, (int) $this->settings->get(self::CUSTOMER_RETENTION_MONTHS, 0, null));
+
+        return $months > 0 ? max($months, self::MIN_CUSTOMER_RETENTION_MONTHS) : 0;
     }
 
     public function get(string $key, ?string $branchId = null): mixed

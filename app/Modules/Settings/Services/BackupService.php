@@ -82,7 +82,7 @@ class BackupService
      * Put a backup back. A safety backup of the current state is taken first.
      * Returns the path of that safety backup.
      */
-    public function restore(string $zipPath, ?string $password = null): string
+    public function restore(string $zipPath, #[\SensitiveParameter] ?string $password = null): string
     {
         if (! is_file($zipPath)) {
             throw new UserFacingException("Backup not found: {$zipPath}");

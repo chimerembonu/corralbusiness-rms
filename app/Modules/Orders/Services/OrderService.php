@@ -46,6 +46,7 @@ use App\Modules\Settings\Services\TaxService;
 use App\Modules\Staff\Enums\Permission;
 use App\Modules\Staff\Exceptions\ManagerPinRequiredException;
 use App\Modules\Staff\Models\User;
+use App\Support\Licence\LicenceService;
 use App\Support\Money\Money;
 use App\Support\Tax\TaxIdentificationNumber;
 use App\Support\Tenancy\TenantContext;
@@ -69,6 +70,9 @@ class OrderService
         if ($type === OrderType::DineIn && $table) {
             app(TableService::class)->assertFree($table);
         }
+
+        // A licence that ended (after its grace period) stops NEW orders only; open ones can always be finished.
+        app(LicenceService::class)->assertCanStartOrders();
 
         $businessDate = $this->businessDate();
         app(DayCloseService::class)->assertOpen($businessDate, $table?->branch_id ?? $this->context->branchId());
@@ -160,8 +164,8 @@ class OrderService
 
     /**
      * Change how many of a line. Once the bill has been printed, making a line smaller is a void in
-     * disguise: it needs someone with the void permission as $by or $approvedBy (manager PIN) and is
-     * logged for the voids report (re-review of security review H5).
+     * disguise: it needs someone with the void permission as $by or $approvedBy (manager PIN) (re-review of
+     * security review H5). Every reduction, before or after the bill, is logged for the voids report (N4).
      */
     public function changeQuantity(Order $order, OrderItem $line, int $quantity, ?User $by = null, ?User $approvedBy = null): OrderItem
     {
@@ -185,12 +189,15 @@ class OrderService
         $this->dropUnapprovedDiscountsOverThreshold($order, $by);
         $line->refresh();
 
-        if ($reducedAfterBill && ! $order->is_training) {
-            $approver = $approvedBy ?? $by;
+        // Every reduction is logged and reported, before the bill too (security review N4): ring 3, take cash
+        // for 3, tap "−" twice, record 1 must leave a trace.
+        if ($quantity < $from && ! $order->is_training) {
+            $approver = $reducedAfterBill ? ($approvedBy ?? $by) : null;
             activity('order')->performedOn($order)->causedBy($by)->withProperties([
                 'number' => $order->displayNumber(), 'line' => $line->displayName(), 'from' => $from, 'to' => $quantity,
-                'value' => $before->subtract($line->line_total)->amount, 'approved_by' => $approver?->id, 'approved_by_name' => $approver?->name,
-            ])->log('quantity_reduced_after_bill');
+                'value' => $before->subtract($line->line_total)->amount, 'after_bill' => $reducedAfterBill,
+                'approved_by' => $approver?->id, 'approved_by_name' => $approver?->name,
+            ])->log($reducedAfterBill ? 'quantity_reduced_after_bill' : 'quantity_reduced');
         }
         ItemQuantityChanged::dispatch($order, $line, $by?->id);
 
@@ -499,6 +506,7 @@ class OrderService
                 'service_charge_waived' => $order->service_charge_waived,
             ]);
             $new->branch_id = $order->branch_id;
+            $new->customer_id = $order->customer_id; // so the customer's privacy rights reach the split-off bill too (E9.6 review F3)
             $new->split_from_id = $order->id;
             $new->is_training = (bool) $order->is_training; // a practice bill stays practice when split (security review M5)
             $new->bill_printed_at = $order->bill_printed_at; // the customer has seen these lines on a bill already (H5)

@@ -11,6 +11,6 @@ class OrderHeld extends OrderEvent
 
     protected function extraPayload(): array
     {
-        return ['customer_name' => $this->order->customer_name];
+        return ['named' => filled($this->order->customer_name)]; // never the name itself (E9.6 review F1)
     }
 }

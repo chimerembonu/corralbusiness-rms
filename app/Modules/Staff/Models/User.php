@@ -8,6 +8,8 @@ use App\Modules\Staff\Support\PinHasher;
 use App\Support\Audit\Auditable;
 use App\Support\Models\BelongsToTenant;
 use Database\Factories\UserFactory;
+use Filament\Auth\MultiFactor\App\Contracts\HasAppAuthentication;
+use Filament\Auth\MultiFactor\App\Contracts\HasAppAuthenticationRecovery;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Builder;
@@ -18,10 +20,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Hash;
+use SensitiveParameter;
 use Spatie\Permission\Traits\HasRoles;
 
 /** A staff member or owner. Email+password for the back office, PIN for POS screens. */
-class User extends Authenticatable implements FilamentUser
+class User extends Authenticatable implements FilamentUser, HasAppAuthentication, HasAppAuthenticationRecovery
 {
     use Auditable;
     use BelongsToTenant;
@@ -34,11 +37,11 @@ class User extends Authenticatable implements FilamentUser
     protected $fillable = ['tenant_id', 'branch_id', 'name', 'email', 'phone', 'password', 'pin', 'is_active', 'job_title', 'started_on', 'photo_path', 'notes'];
 
     /** Defaults so a freshly created model behaves like one loaded from the database. */
-    protected $attributes = ['is_active' => true];
+    protected $attributes = ['is_active' => true, 'app_authentication_secret' => null, 'app_authentication_recovery_codes' => null];
 
-    protected $hidden = ['password', 'pin', 'pin_lookup', 'remember_token'];
+    protected $hidden = ['password', 'pin', 'pin_lookup', 'remember_token', 'app_authentication_secret', 'app_authentication_recovery_codes'];
 
-    protected array $auditExcept = ['password', 'pin', 'pin_lookup', 'remember_token', 'last_login_at'];
+    protected array $auditExcept = ['password', 'pin', 'pin_lookup', 'remember_token', 'last_login_at', 'app_authentication_secret', 'app_authentication_recovery_codes'];
 
     /** Plain PIN waiting to be turned into pin_lookup once tenant_id is known. */
     private ?string $pendingPin = null;
@@ -51,7 +54,49 @@ class User extends Authenticatable implements FilamentUser
             'password' => 'hashed',
             'is_active' => 'boolean',
             'started_on' => 'date',
+            // Two-step sign-in (E9.2): the authenticator app's secret and the recovery codes, locked with the app key.
+            'app_authentication_secret' => 'encrypted',
+            'app_authentication_recovery_codes' => 'encrypted:array',
         ];
+    }
+
+    public function getAppAuthenticationSecret(): ?string
+    {
+        return $this->app_authentication_secret;
+    }
+
+    public function saveAppAuthenticationSecret(#[SensitiveParameter] ?string $secret): void
+    {
+        $had = $this->hasTwoStepSignIn();
+        $this->forceFill(['app_authentication_secret' => $secret])->save();
+        if ($had !== filled($secret)) {
+            // The secret itself is never logged (E9.6 review F8): only that it was set up or switched off.
+            activity('staff')->performedOn($this)->causedBy(auth()->user())->event($secret ? 'two_step_set_up' : 'two_step_switched_off')
+                ->log($secret ? 'two_step_set_up' : 'two_step_switched_off');
+        }
+    }
+
+    /** The name shown in the authenticator app, e.g. "Efua (efua@example.com)". */
+    public function getAppAuthenticationHolderName(): string
+    {
+        return $this->email ?? $this->name;
+    }
+
+    /** @return array<int, string>|null */
+    public function getAppAuthenticationRecoveryCodes(): ?array
+    {
+        return $this->app_authentication_recovery_codes;
+    }
+
+    /** @param  array<int, string>|null  $codes */
+    public function saveAppAuthenticationRecoveryCodes(#[SensitiveParameter] ?array $codes): void
+    {
+        $this->forceFill(['app_authentication_recovery_codes' => $codes])->save();
+    }
+
+    public function hasTwoStepSignIn(): bool
+    {
+        return filled($this->app_authentication_secret);
     }
 
     protected static function booted(): void
@@ -68,7 +113,7 @@ class User extends Authenticatable implements FilamentUser
     }
 
     /** Setting ->pin = '1234' hashes it and prepares the lookup key. */
-    public function setPinAttribute(?string $pin): void
+    public function setPinAttribute(#[SensitiveParameter] ?string $pin): void
     {
         if ($pin === null || $pin === '') {
             $this->attributes['pin'] = null;
@@ -88,7 +133,7 @@ class User extends Authenticatable implements FilamentUser
         return $this->pin !== null;
     }
 
-    public function verifyPin(string $pin): bool
+    public function verifyPin(#[SensitiveParameter] string $pin): bool
     {
         return $this->pin !== null && Hash::check($pin, $this->pin);
     }

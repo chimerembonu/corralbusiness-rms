@@ -2,6 +2,9 @@
     @if ($error)
         <p class="rounded-xl bg-rose-500/15 px-4 py-3 text-sm font-semibold text-rose-300" role="alert">{{ $error }}</p>
     @endif
+    @if (app(\App\Support\Licence\LicenceService::class)->isReadOnly())
+        <p class="rounded-xl bg-amber-500/15 px-4 py-3 text-base font-semibold text-amber-200" role="status">{{ __('settings::settings.licence.till_paused') }}</p>
+    @endif
 
     @if ($mode === 'home')
         @can(\App\Modules\Staff\Enums\Permission::OrdersCreate->value)

@@ -41,7 +41,7 @@ it('needs a manager to make a line smaller after the bill, logs it and reports i
 
     $report = app(ReportService::class)->voidsAndDiscounts(now()->toDateString(), now()->toDateString());
     expect($report['reduced_lines'])->toHaveCount(1)
-        ->and($report['reduced_lines'][0]['detail'])->toBe('Coca-Cola 11 → 1')
+        ->and($report['reduced_lines'][0]['detail'])->toBe('Coca-Cola 11 → 1 · after the bill was printed')
         ->and($report['reduced_lines'][0]['value'])->toBe(12000)
         ->and($report['reduced_lines'][0]['by'])->toBe('Kofi · approved by Akosua')
         ->and($report['totals']['reduced_lines'])->toBe(12000);
@@ -63,4 +63,22 @@ it('sends a minus that would empty the line down the void path', function () {
     Livewire::test(OrderScreen::class, ['order' => $this->order])
         ->call('changeLineQuantity', $single->id, -1)->assertSet('modal', 'void');
     expect($single->fresh()->quantity)->toBe(1);
+});
+
+it('also logs and reports reductions before the bill was printed (security review N4)', function () {
+    $order = $this->orders->open(OrderType::Takeaway, $this->cashier);
+    $line = $this->orders->addItem($order, $this->menu['coke'], null, 3, [], null, $this->cashier);
+    $this->orders->changeQuantity($order, $line, 1, $this->cashier); // no bill yet: no PIN needed, but now on record
+    $this->orders->changeQuantity($order, $line->fresh(), 2, $this->cashier); // going up is not a reduction
+
+    $practice = $this->orders->open(OrderType::Takeaway, $this->cashier);
+    $practice->forceFill(['is_training' => true])->save();
+    $practiceLine = $this->orders->addItem($practice->fresh(), $this->menu['coke'], null, 3, [], null, $this->cashier);
+    $this->orders->changeQuantity($practice->fresh(), $practiceLine, 1, $this->cashier); // practice orders stay out
+
+    $report = app(ReportService::class)->voidsAndDiscounts(now()->toDateString(), now()->toDateString());
+    expect($report['reduced_lines'])->toHaveCount(1)
+        ->and($report['reduced_lines'][0]['detail'])->toBe('Coca-Cola 3 → 1')
+        ->and($report['reduced_lines'][0]['value'])->toBe(2400)
+        ->and($report['reduced_lines'][0]['by'])->toBe('Kofi');
 });

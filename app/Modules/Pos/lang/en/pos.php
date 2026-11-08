@@ -60,6 +60,7 @@ return [
         'pay_needs_cashier' => 'Ask a cashier to take the payment.',
     ],
     'login' => [
+        'locked_idle' => 'The till locked itself after :minutes minutes without use. Enter your PIN to carry on.',
         'title' => 'Enter your PIN',
         'subtitle' => 'Tap your 4 to 6 digit staff PIN',
         'clear' => 'Clear',
@@ -102,6 +103,7 @@ return [
         'table' => 'Table',
         'takeaway' => 'Takeaway',
         'empty' => 'Tap items on the right to add them.',
+        'no_menu' => 'There is no menu yet. A manager can add dishes in Back office → Menu, or load the whole menu from Excel in Back office → Settings → Import data.',
         'subtotal' => 'Subtotal',
         'discount' => 'Discount',
         'tax' => 'Tax',
@@ -227,6 +229,8 @@ return [
     'approval' => [
         'title' => 'Manager approval',
         'approve' => 'Approve',
+        'two_needed' => 'Two managers must approve this: the first types their PIN now.',
+        'second_now' => 'Approved by :name. A second, different manager now types their PIN.',
         'void_line' => 'Void :item',
         'reduce_quantity' => 'Reduce :item to :quantity after the bill was printed',
         'void_order' => 'Cancel order #:number',
@@ -255,6 +259,13 @@ return [
         'in_shares' => 'in :ways equal shares',
         'share' => 'Share',
         'momo_reference' => 'Transaction ID from the customer’s phone',
+        'prompt_phone' => 'Customer\'s Mobile Money number, e.g. 024 123 4567',
+        'prompt_send' => 'Send payment prompt to phone',
+        'prompt_manual' => 'Customer already paid another way? Type the MoMo reference instead',
+        'prompt_otp' => 'Code from the customer\'s phone',
+        'prompt_otp_send' => 'Send code',
+        'prompt_stop' => 'Stop waiting',
+        'prompt_again' => 'Try again or take another payment',
         'card_reference' => 'Slip number or last 4 digits only — never the full card number (optional)',
     ],
     'receipt' => [

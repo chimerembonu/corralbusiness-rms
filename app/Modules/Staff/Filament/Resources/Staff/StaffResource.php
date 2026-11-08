@@ -9,6 +9,7 @@ use App\Modules\Staff\Filament\Resources\Staff\Pages\EditStaff;
 use App\Modules\Staff\Filament\Resources\Staff\Pages\ListStaff;
 use App\Modules\Staff\Models\User;
 use App\Modules\Staff\Support\PinHasher;
+use App\Support\Filament\BranchResource;
 use App\Support\Tenancy\Tenancy;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -19,7 +20,6 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
-use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -32,8 +32,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Validation\ValidationException;
 
 /** Back office → Staff: profiles, roles, PINs and back-office logins. */
-class StaffResource extends Resource
+class StaffResource extends BranchResource
 {
+    /** Staff of this branch, plus people of the whole restaurant (owner, accountant). */
+    protected static bool $includeRestaurantWide = true;
+
     protected static ?string $model = User::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUsers;
@@ -90,7 +93,7 @@ class StaffResource extends Resource
             ]),
             Section::make($f('access'))->columns(2)->schema([
                 CheckboxList::make('roles')->label($f('roles'))->options(self::roleOptions())->required()->columns(2)
-                    ->disableOptionWhen(fn (string $value) => $value === Role::Owner->value && ! auth()->user()->hasRole(Role::Owner->value))
+                    ->disableOptionWhen(fn (string $value, ?User $record) => in_array($value, self::ownerGivenRoles(), true) && ! auth()->user()->hasRole(Role::Owner->value) && ! $record?->hasRole($value))
                     ->dehydrated(false),
                 TextInput::make('new_pin')->label($f('pin'))->helperText($f('pin_help'))
                     ->numeric()->inputMode('numeric')->minLength(4)->maxLength(6)->regex('/^\d{4,6}$/')->dehydrated(false),
@@ -119,10 +122,45 @@ class StaffResource extends Resource
             ->recordActions([EditAction::make(), self::resetPinAction(), DeleteAction::make()->hidden(fn (User $r) => $r->is(auth()->user()) || self::ownerGuarded($r))]);
     }
 
-    /** Only the owner may edit, delete or reset the PIN of an owner account (re-review: a manager could take over the owner's PIN). */
+    /**
+     * Only the owner may edit, delete or reset the PIN of an owner account (re-review: a manager could take over
+     * the owner's PIN), or of another manager's account (E9.6 review M2: a manager who controls a second
+     * manager's PIN could give both approvals for a big refund or the day close alone).
+     */
     public static function ownerGuarded(User $record): bool
     {
-        return $record->hasRole(Role::Owner->value) && ! auth()->user()?->hasRole(Role::Owner->value);
+        $me = auth()->user();
+        if ($me?->hasRole(Role::Owner->value)) {
+            return false;
+        }
+
+        return $record->hasRole(Role::Owner->value) || ($record->hasRole(Role::Manager->value) && ! $record->is($me));
+    }
+
+    /** Roles only the owner may give: owner and manager (E9.6 review M2). */
+    public static function ownerGivenRoles(): array
+    {
+        return [Role::Owner->value, Role::Manager->value];
+    }
+
+    /**
+     * Checked when saving, not only on screen: someone who is not the owner cannot give the owner or manager role
+     * to anyone (a manager keeps their own).
+     *
+     * @param  list<string>  $roles
+     *
+     * @throws ValidationException
+     */
+    public static function assertRolesAllowed(array $roles, ?User $record = null): void
+    {
+        if (auth()->user()?->hasRole(Role::Owner->value)) {
+            return;
+        }
+        foreach (array_intersect($roles, self::ownerGivenRoles()) as $role) {
+            if (! $record?->hasRole($role)) {
+                throw ValidationException::withMessages(['data.roles' => __('staff::staff.errors.owner_gives_role', ['role' => Role::from($role)->label()])]);
+            }
+        }
     }
 
     public static function canEdit(Model $record): bool
@@ -152,7 +190,7 @@ class StaffResource extends Resource
     }
 
     /** @throws ValidationException when another person at this restaurant already uses the PIN */
-    public static function assertPinFree(string $pin, ?User $except = null, string $field = 'data.new_pin'): void
+    public static function assertPinFree(#[\SensitiveParameter] string $pin, ?User $except = null, string $field = 'data.new_pin'): void
     {
         $taken = User::query()->where('pin_lookup', PinHasher::lookup(Tenancy::tenantId(), $pin))
             ->when($except, fn ($q) => $q->whereKeyNot($except->getKey()))->exists();

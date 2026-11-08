@@ -24,6 +24,9 @@ class PinLogin extends Component
 
     public ?string $error = null;
 
+    /** A calm message, e.g. "the till locked itself after 5 minutes" (E9.2). */
+    public ?string $notice = null;
+
     public int $lockedFor = 0;
 
     /** The till this device is; null = not chosen yet. Locked: the browser must not be able to change it (it keys the PIN lockout). */
@@ -37,6 +40,7 @@ class PinLogin extends Component
         }
 
         $this->error = session('error');
+        $this->notice = session('status');
 
         if (request()->boolean('change-till')) {
             $current->forget();
@@ -64,7 +68,7 @@ class PinLogin extends Component
         $this->tillId = null;
     }
 
-    public function login(string $pin, PinAuthenticator $auth, StoreTenantResolver $store): void
+    public function login(#[\SensitiveParameter] string $pin, PinAuthenticator $auth, StoreTenantResolver $store): void
     {
         $this->error = null;
         $this->lockedFor = 0;

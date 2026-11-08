@@ -51,6 +51,7 @@ it('refuses a manager PIN from another branch and accepts this branch\'s manager
 });
 
 it('locks one till after five wrong PINs without locking the next till on the same network', function () {
+    $this->freezeTime(); // the lockout is read in seconds: a slow run crossing a second would show 59
     app(CurrentTill::class)->remember($this->tillA1);
     $login = Livewire::test(PinLogin::class)->assertSet('tillId', $this->tillA1->id);
     foreach (range(1, 5) as $i) {

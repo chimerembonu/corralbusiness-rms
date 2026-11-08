@@ -7,6 +7,7 @@ use App\Modules\Kitchen\Filament\Resources\Stations\Pages\EditStation;
 use App\Modules\Kitchen\Filament\Resources\Stations\Pages\ListStations;
 use App\Modules\Kitchen\Models\Station;
 use App\Modules\Staff\Enums\Permission;
+use App\Support\Filament\BranchResource;
 use BackedEnum;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
@@ -15,7 +16,6 @@ use Filament\Actions\EditAction;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -24,7 +24,7 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
-class StationResource extends Resource
+class StationResource extends BranchResource
 {
     protected static ?string $model = Station::class;
 

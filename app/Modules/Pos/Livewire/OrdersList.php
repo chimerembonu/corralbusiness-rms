@@ -4,6 +4,8 @@ namespace App\Modules\Pos\Livewire;
 
 use App\Modules\Orders\Models\Order;
 use App\Modules\Orders\Support\TillSettings;
+use App\Modules\Payments\Gateways\GatewayRefundService;
+use App\Modules\Payments\Models\GatewayRefund;
 use App\Modules\Payments\Models\Payment;
 use App\Modules\Payments\Services\CashService;
 use App\Modules\Payments\Services\PaymentService;
@@ -38,6 +40,9 @@ class OrdersList extends Component
 
     /** Refund modal: ['payment_id' => …, 'reason' => …] */
     public ?array $refund = null;
+
+    /** "How was it given back?" notes for refunds done by hand, by refund id (E2.4). */
+    public array $handNotes = [];
 
     /** Every order of the branch with customer details: for order-takers and cashiers, not riders or kitchen staff (re-review N2). */
     public function mount(): void
@@ -83,11 +88,12 @@ class OrdersList extends Component
         $refund = $this->refund;
         $this->refund = null;
         $this->askManager(Permission::OrdersRefund, 'refundApproved', [$refund['payment_id'], $refund['reason']],
-            __('pos::pos.approval.refund', ['amount' => money($payment->amount), 'method' => $payment->methodLabel()]));
+            __('pos::pos.approval.refund', ['amount' => money($payment->amount), 'method' => $payment->methodLabel()]),
+            second: app(PaymentService::class)->needsSecondApproval($payment));
     }
 
     /** Only reachable through approve() with a manager PIN (protected: never callable from the browser). */
-    protected function refundApproved(User $manager, string $paymentId, string $reason): void
+    protected function refundApproved(User $manager, string $paymentId, string $reason, ?User $second = null): void
     {
         // A cash refund must leave a drawer: the till has to be open (same rule as taking a payment).
         $payment = Payment::query()->forBranch()->findOrFail($paymentId);
@@ -98,11 +104,44 @@ class OrdersList extends Component
         }
 
         try {
-            app(PaymentService::class)->refund(Payment::query()->forBranch()->findOrFail($paymentId), $reason, $manager, auth()->user());
-            $this->notice = __('pos::pos.orders.refunded');
+            app(PaymentService::class)->refund(Payment::query()->forBranch()->findOrFail($paymentId), $reason, $manager, auth()->user(), $second);
+            $this->notice = $this->refundNotice($paymentId);
         } catch (RuntimeException $e) {
             $this->error = FriendlyError::message($e);
         }
+    }
+
+    /** A refund the provider could not send back: a manager confirms the customer got the money another way. */
+    public function confirmDoneByHand(string $refundId, string $method = 'momo'): void
+    {
+        $refund = GatewayRefund::query()->forBranch()->findOrFail($refundId);
+        $method = $method === 'cash' ? 'cash' : 'momo';
+        $this->askManager(Permission::OrdersRefund, 'doneByHandApproved', [$refundId, (string) ($this->handNotes[$refundId] ?? ''), $method],
+            __('payments::payments.refunds.till.approval', ['amount' => money($refund->amount)]));
+    }
+
+    /** Only reachable through approve() with a manager PIN. Cash comes out of this till's drawer (E9.6 review F5). */
+    protected function doneByHandApproved(User $manager, string $refundId, string $note, string $method = 'momo'): void
+    {
+        try {
+            app(GatewayRefundService::class)->markDoneByHand(GatewayRefund::query()->forBranch()->findOrFail($refundId), $manager, $note, $method, auth()->user());
+            unset($this->handNotes[$refundId]);
+            $this->notice = __('payments::payments.refunds.till.done');
+        } catch (RuntimeException $e) {
+            $this->error = FriendlyError::message($e);
+        }
+    }
+
+    /** What the cashier sees after a refund: plain, or where the money is going for a provider payment. */
+    private function refundNotice(string $paymentId): string
+    {
+        $refund = GatewayRefund::query()->forBranch()->with('transaction')->where('payment_id', $paymentId)->first();
+        if (! $refund) {
+            return __('pos::pos.orders.refunded');
+        }
+        $replace = ['amount' => money($refund->amount), 'phone' => $refund->transaction?->phone_masked ?? '—', 'provider' => __('payments::payments.gateway.names.'.$refund->gateway)];
+
+        return $refund->status->needsHand() ? __('payments::payments.refunds.till.by_hand', $replace) : __('payments::payments.refunds.till.sent', $replace);
     }
 
     public function render()
@@ -124,9 +163,12 @@ class OrdersList extends Component
             $query->forBusinessDate(now()->toDateString());
         }
 
+        $openOrder = $this->openId ? Order::query()->forBranch()->with(['items.modifiers', 'payments.receivedBy', 'table'])->find($this->openId) : null;
+
         return view('pos::livewire.orders-list', [
             'orders' => $query->limit(100)->get(),
-            'openOrder' => $this->openId ? Order::query()->forBranch()->with(['items.modifiers', 'payments.receivedBy', 'table'])->find($this->openId) : null,
+            'openOrder' => $openOrder,
+            'providerRefunds' => $openOrder ? GatewayRefund::query()->forBranch()->whereIn('payment_id', $openOrder->payments->pluck('id'))->get()->keyBy('payment_id') : collect(),
             'canRefund' => auth()->user()->can(Permission::PaymentsTake->value),
         ]);
     }

@@ -101,3 +101,31 @@ it('requires a manager PIN for voids', function () {
     expect(fn () => $this->auth->authorize('1234', Permission::OrdersVoid, 'till-1'))
         ->toThrow(ManagerPinRequiredException::class);
 });
+
+it('limits wrong PINs per device too, whichever till it claims to be, and a correct PIN does not reset that (security review N3)', function () {
+    // 5 tills × 2 wrong PINs from the same device = 10: the device is now locked, even on a sixth till.
+    foreach (range(1, 5) as $till) {
+        foreach (range(1, 2) as $_) {
+            try {
+                $this->auth->attempt('0000', "till-{$till}");
+            } catch (InvalidPinException|PinLockedException) {
+            }
+        }
+    }
+    expect(fn () => $this->auth->attempt('1234', 'till-6'))->toThrow(PinLockedException::class)
+        ->and($this->auth->isLocked('till-6'))->toBeTrue();
+
+    // A minute later it is open again; then mixing in a correct PIN does not wipe the device's count.
+    $this->travel(61)->seconds();
+    expect($this->auth->attempt('1234', 'till-6')->id)->toBe($this->cashier->id);
+    foreach (range(1, 9) as $i) {
+        try {
+            $this->auth->attempt('0000', 'till-'.(($i % 5) + 1));
+        } catch (InvalidPinException|PinLockedException) {
+        }
+        if ($i === 4) {
+            $this->auth->attempt('1234', 'till-6'); // a known, correct PIN in between
+        }
+    }
+    expect(fn () => $this->auth->attempt('0000', 'till-6'))->toThrow(PinLockedException::class); // the 10th wrong one locks it
+});
