@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Inventory\Enums\CostChangeSource;
+use App\Modules\Inventory\Enums\CostMethod;
 use App\Modules\Inventory\Enums\StockMovementType;
 use App\Modules\Inventory\Exceptions\InventoryException;
 use App\Modules\Inventory\Filament\Resources\Ingredients\Pages\CreateIngredient;
@@ -12,14 +13,16 @@ use App\Modules\Inventory\Models\Supplier;
 use App\Modules\Inventory\Services\CostService;
 use App\Modules\Inventory\Services\PurchaseService;
 use App\Modules\Inventory\Services\StockService;
+use App\Modules\Settings\Filament\Pages\StockCostingPage;
 use App\Modules\Settings\Services\Import\Importers;
 use App\Modules\Staff\Enums\Role;
 use App\Modules\Staff\Models\User;
-use App\Support\Features\FeatureService;
 use App\Support\Money\Money;
 use App\Support\Tenancy\Tenancy;
 use Filament\Actions\Testing\TestAction;
+use Filament\Facades\Filament;
 use Livewire\Livewire;
+use Spatie\Activitylog\Models\Activity;
 
 /*
  * Complete Edition E5.2 — correct stock value: weighted-average cost (IAS 2), the purchase price history,
@@ -34,19 +37,20 @@ beforeEach(function () {
     $this->stock = app(StockService::class);
     $this->rice = Ingredient::create(['name' => 'Rice', 'unit' => 'kg', 'cost_per_unit' => 2000, 'on_hand' => 10]); // 10 kg at GH₵ 20.00
 
-    // "Average cost for stock" is off by default; these tests are about the average, so it is switched on.
-    installTestLicence('starter');
-    $owner = Tenancy::runAs($this->branch->tenant, null, function () {
+    $this->owner = Tenancy::runAs($this->branch->tenant, null, function () {
         $owner = User::factory()->create(['tenant_id' => $this->branch->tenant_id, 'branch_id' => null]);
         $owner->assignRole(Role::Owner->value);
 
         return $owner;
     });
-    app(FeatureService::class)->set('average_cost', true, $owner);
 });
 
-it('uses the last price paid while "Average cost for stock" is off, and still keeps the price history', function () {
-    app(FeatureService::class)->set('average_cost', false, null);
+it('values stock at the average cost until someone chooses otherwise', function () {
+    expect($this->costs->method())->toBe(CostMethod::Average)->and($this->costs->averaging())->toBeTrue();
+});
+
+it('uses the last price paid when that method is chosen, and still keeps the price history', function () {
+    $this->costs->setMethod(CostMethod::LastPrice, $this->owner, 'Accountant prefers invoice prices');
     expect($this->costs->averaging())->toBeFalse();
 
     $this->stock->move($this->rice, StockMovementType::Purchase, 30, $this->manager, 'Market run', null, Money::of(2400));
@@ -152,4 +156,37 @@ it('keeps cost changes made by a spreadsheet import in the price history', funct
         ->and($rice->reason)->toBe('Imported from a spreadsheet')
         ->and(IngredientCostChange::query()->where('ingredient_id', $sugar->id)->sole()->source)->toBe(CostChangeSource::Import);
     @unlink($file);
+});
+
+it('lets only the owner and the accountant change the method, with a reason, and keeps every change', function () {
+    $accountant = User::factory()->forBranch($this->branch)->create(['name' => 'Kofi the accountant']);
+    $accountant->assignRole(Role::Accountant->value);
+
+    expect(fn () => $this->costs->setMethod(CostMethod::LastPrice, $this->manager, 'Simpler'))->toThrow(InventoryException::class, __('inventory::inventory.costs.errors.method_who'))
+        ->and(fn () => $this->costs->setMethod(CostMethod::LastPrice, $accountant, '  '))->toThrow(InventoryException::class, __('inventory::inventory.costs.errors.method_reason'))
+        ->and($this->costs->method())->toBe(CostMethod::Average);
+
+    $this->costs->setMethod(CostMethod::LastPrice, $accountant, 'Matches the supplier invoices');
+    expect($this->costs->method())->toBe(CostMethod::LastPrice);
+    $log = Activity::query()->where('event', 'cost_method_changed')->sole();
+    expect($log->causer_id)->toBe($accountant->id)
+        ->and($log->properties->all())->toMatchArray(['old' => 'average', 'new' => 'last_price', 'reason' => 'Matches the supplier invoices']);
+});
+
+it('shows the Stock costing page to the accountant, who can change the method there; a manager can only look', function () {
+    $accountant = User::factory()->forBranch($this->branch)->create();
+    $accountant->assignRole(Role::Accountant->value);
+    Filament::setCurrentPanel(Filament::getPanel('admin'));
+
+    $this->actingAs($this->manager);
+    Livewire::test(StockCostingPage::class)->assertOk()->assertFormFieldIsDisabled('method')
+        ->set('data.method', 'last_price')->set('data.reason', 'Try')->call('save')->assertForbidden();
+    expect($this->costs->method())->toBe(CostMethod::Average);
+
+    $this->actingAs($accountant);
+    Livewire::test(StockCostingPage::class)
+        ->set('data.method', 'last_price')->call('save')->assertHasErrors(['data.reason'])
+        ->set('data.reason', 'Matches the invoices')->call('save')->assertHasNoErrors()
+        ->assertSee('Matches the invoices');
+    expect($this->costs->method())->toBe(CostMethod::LastPrice);
 });

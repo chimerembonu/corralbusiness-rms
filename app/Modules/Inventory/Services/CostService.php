@@ -3,12 +3,14 @@
 namespace App\Modules\Inventory\Services;
 
 use App\Modules\Inventory\Enums\CostChangeSource;
+use App\Modules\Inventory\Enums\CostMethod;
 use App\Modules\Inventory\Exceptions\InventoryException;
 use App\Modules\Inventory\Models\Ingredient;
 use App\Modules\Inventory\Models\IngredientCostChange;
 use App\Modules\Inventory\Models\Purchase;
+use App\Modules\Settings\Services\SettingsService;
+use App\Modules\Staff\Enums\Role;
 use App\Modules\Staff\Models\User;
-use App\Support\Features\FeatureService;
 use App\Support\Money\Money;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -16,15 +18,19 @@ use Illuminate\Support\Facades\DB;
 /**
  * Ingredient costs (Complete Edition E5.2).
  *
- * With "Average cost for stock" switched on (Settings → Features), the weighted average as IAS 2 allows:
- * after each delivery the cost per unit becomes
+ * The method is the restaurant's choice (CostMethod), made at setup and changeable by the owner or the
+ * accountant on Settings → Stock costing. Average (the default, as IAS 2 allows): after each delivery the
+ * cost per unit becomes
  *   (stock before × cost before + delivered × price paid) ÷ (stock before + delivered);
- * when there was no stock (or less than none, after sales ran it below zero), the price paid. Switched off
- * (the default), the cost is simply the last price paid. Either way every change is kept (the purchase
- * price history), and a change by hand needs a reason.
+ * when there was no stock (or less than none, after sales ran it below zero), the price paid. Latest price:
+ * the cost is simply the last price paid. Either way every change is kept (the purchase price history), and
+ * a change by hand needs a reason. A change of method applies from the next delivery.
  */
 class CostService
 {
+    /** Restaurant-wide setting holding the CostMethod value. */
+    public const SETTING = 'inventory.cost_method';
+
     /** The new average cost per unit (pesewas) after receiving $quantity at $pricePaid. */
     public static function average(float $onHandBefore, Money $costBefore, float $quantity, Money $pricePaid): Money
     {
@@ -47,10 +53,48 @@ class CostService
         return $new;
     }
 
-    /** Is "Average cost for stock" switched on? Off = last price paid. */
+    /** Does this restaurant value stock at the weighted average (else the latest price paid)? */
     public function averaging(): bool
     {
-        return app(FeatureService::class)->isOn('average_cost');
+        return $this->method() === CostMethod::Average;
+    }
+
+    public function method(): CostMethod
+    {
+        return CostMethod::tryFrom((string) app(SettingsService::class)->get(self::SETTING)) ?? CostMethod::default();
+    }
+
+    /** The owner and the accountant decide how stock is valued (owner's decision, 8 Nov 2026). */
+    public static function canChooseMethod(?User $user): bool
+    {
+        return $user !== null && $user->hasAnyRole([Role::Owner->value, Role::Accountant->value]);
+    }
+
+    /**
+     * Sets the method for the whole restaurant. Later changes need the owner or the accountant and a reason;
+     * the setup wizard passes $atSetup. Every choice is kept in the history.
+     *
+     * @throws InventoryException
+     */
+    public function setMethod(CostMethod $method, ?User $by, ?string $reason = null, bool $atSetup = false): void
+    {
+        $reason = trim((string) $reason);
+        if (! $atSetup) {
+            if (! self::canChooseMethod($by)) {
+                throw new InventoryException(__('inventory::inventory.costs.errors.method_who'));
+            }
+            if ($method === $this->method()) {
+                return;
+            }
+            if ($reason === '') {
+                throw new InventoryException(__('inventory::inventory.costs.errors.method_reason'));
+            }
+        }
+        $old = $this->method();
+        app(SettingsService::class)->set(self::SETTING, $method->value, tenantWide: true);
+        activity('inventory')->event('cost_method_changed')->causedBy($by)
+            ->withProperties(['old' => $atSetup ? null : $old->value, 'new' => $method->value, 'reason' => $reason ?: null, 'at_setup' => $atSetup])
+            ->log('cost_method_changed');
     }
 
     /** A cost changed by hand: a reason is required, and the change is kept. */

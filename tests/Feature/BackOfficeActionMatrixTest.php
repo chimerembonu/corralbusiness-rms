@@ -2,9 +2,12 @@
 
 use App\Modules\Customers\Filament\Resources\Customers\Pages\EditCustomer;
 use App\Modules\Customers\Services\CustomerService;
+use App\Modules\Inventory\Enums\CostMethod;
+use App\Modules\Inventory\Services\CostService;
 use App\Modules\Orders\Support\TillSettings;
 use App\Modules\Settings\Filament\Pages\FeaturesPage;
 use App\Modules\Settings\Filament\Pages\LicencePage;
+use App\Modules\Settings\Filament\Pages\StockCostingPage;
 use App\Modules\Settings\Filament\Pages\TillSettingsPage;
 use App\Modules\Staff\Enums\Role;
 use App\Modules\Staff\Filament\Resources\Staff\Pages\CreateStaff;
@@ -20,7 +23,7 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
  * Back-office action guard (E9.6 review L1): every role presses the sensitive back-office buttons added in
  * the Complete Edition, each in a fresh app, and the outcome is compared with who is approved to do it.
  * The checks on managers themselves (security settings, the retention period, who becomes a manager) are
- * the owner's alone (E9.6 review M1, M2).
+ * the owner's alone (E9.6 review M1, M2). How stock is valued is the owner's or the accountant's (8 Nov 2026).
  */
 function backOfficeActionApproved(): array
 {
@@ -33,6 +36,7 @@ function backOfficeActionApproved(): array
         'remove a customer\'s details' => ['owner', 'manager'],
         'give someone the manager role' => ['owner'],
         'reset another manager\'s PIN' => ['owner'],
+        'choose how stock is valued' => ['owner', 'accountant'],
     ];
 }
 
@@ -94,6 +98,11 @@ it('lets only approved roles press back-office buttons', function (string $actio
                 Livewire::test(CreateStaff::class)->fillForm(['name' => 'New manager', 'roles' => [Role::Manager->value], 'is_active' => true])->call('create');
 
                 return User::query()->where('name', 'New manager')->first()?->hasRole(Role::Manager->value) ?? false;
+            })(),
+            'choose how stock is valued' => (function () {
+                Livewire::test(StockCostingPage::class)->set('data.method', CostMethod::LastPrice->value)->set('data.reason', 'Probe')->call('save');
+
+                return app(CostService::class)->method() === CostMethod::LastPrice;
             })(),
             'reset another manager\'s PIN' => (function () use ($otherManager) {
                 Livewire::test(EditStaff::class, ['record' => $otherManager->getRouteKey()])->callAction('resetPin', data: ['new_pin' => '5555']);

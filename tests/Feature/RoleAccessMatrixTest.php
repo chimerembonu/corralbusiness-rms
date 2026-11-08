@@ -73,7 +73,7 @@ it('lets each role open exactly the pages it should', function () {
         'report' => app(DayCloseService::class)->report(now()->subDay()->toDateString(), $branch->id)]);
     // Every feature that is switched off by default is switched on, so its pages are checked too (E9.6 review M3).
     installTestLicence('business');
-    foreach (['recipes', 'average_cost'] as $feature) {
+    foreach (['recipes'] as $feature) {
         app(FeatureService::class)->set($feature, true, $owner);
     }
     $stockTake = app(StockTakeService::class)->start($owner);

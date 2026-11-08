@@ -2,6 +2,8 @@
 
 namespace App\Modules\Settings\Services;
 
+use App\Modules\Inventory\Enums\CostMethod;
+use App\Modules\Inventory\Services\CostService;
 use App\Modules\Kitchen\Models\Station;
 use App\Modules\Pos\Models\Till;
 use App\Modules\Printing\Models\Printer;
@@ -74,7 +76,7 @@ class SetupService
     /**
      * Creates everything. $data keys:
      *  restaurant, branch, address?, phone?, tin?, owner_name, email, password, pin,
-     *  taxes? [code => basis points], prices_include_tax?, receipt_header?, receipt_footer?, show_server?,
+     *  taxes? [code => basis points], prices_include_tax?, cost_method? (CostMethod value), receipt_header?, receipt_footer?, show_server?,
      *  tills? [names], stations? [names] (the first is the default kitchen station),
      *  printers? [[name, driver, address, paper_width?, tills? [till indexes], stations? [station indexes], drawer?]]
      *
@@ -114,6 +116,8 @@ class SetupService
                     if (array_key_exists('prices_include_tax', $data)) {
                         $this->taxes->setPricesIncludeTax((bool) $data['prices_include_tax']);
                     }
+                    // How stock is valued: the owner's (or accountant's) choice, kept in the history (8 Nov 2026).
+                    app(CostService::class)->setMethod(CostMethod::tryFrom((string) ($data['cost_method'] ?? '')) ?? CostMethod::default(), $owner, atSetup: true);
                     $this->taxes->forgetCache();
 
                     $receipt = [

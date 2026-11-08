@@ -287,6 +287,11 @@
         "owner",
         "manager"
     ],
+    "admin/stock-costing": [
+        "owner",
+        "manager",
+        "accountant"
+    ],
     "admin/stock-movements": [
         "owner",
         "manager",

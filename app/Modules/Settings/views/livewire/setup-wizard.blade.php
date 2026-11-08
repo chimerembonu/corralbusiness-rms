@@ -90,6 +90,17 @@
                     @endforeach
                     @error('pricesIncludeTax') <span class="text-sm text-rose-300">{{ $message }}</span> @enderror
                 </fieldset>
+                <fieldset class="flex flex-col gap-2">
+                    <legend class="{{ $label }} mb-1">{{ $w('taxes.cost_question') }}</legend>
+                    <p class="mb-1 text-sm text-slate-400">{{ $w('taxes.cost_help') }}</p>
+                    @foreach (\App\Modules\Inventory\Enums\CostMethod::cases() as $method)
+                        <label class="flex min-h-12 items-start gap-3 rounded-xl bg-slate-800 px-4 py-3" wire:key="cost-{{ $method->value }}">
+                            <input type="radio" wire:model="costMethod" value="{{ $method->value }}" class="mt-1 h-5 w-5 shrink-0">
+                            <span><span class="font-semibold">{{ $method->label() }}</span><br><span class="text-sm text-slate-400">{{ $method->about() }}</span></span>
+                        </label>
+                    @endforeach
+                    @error('costMethod') <span class="text-sm text-rose-300">{{ $message }}</span> @enderror
+                </fieldset>
                 @break
 
             @case('receipt')
@@ -277,6 +288,8 @@
                     <dt class="text-slate-400">{{ $w('fields.owner_name') }}</dt><dd>{{ $ownerName }} · {{ $email }}</dd>
                     <dt class="text-slate-400">{{ $w('steps.taxes') }}</dt>
                     <dd>{{ collect($rates)->map(fn ($r, $c) => ($taxNames[$c] ?? $c).' '.$r.' %')->implode(', ') }} · {{ $w('taxes.inclusive_'.($pricesIncludeTax ?: 'no')) }}</dd>
+                    <dt class="text-slate-400">{{ $w('taxes.cost_short') }}</dt>
+                    <dd>{{ \App\Modules\Inventory\Enums\CostMethod::tryFrom($costMethod)?->label() }}</dd>
                     <dt class="text-slate-400">{{ $w('review.tills') }}</dt><dd>{{ implode(', ', $tills) }}</dd>
                     <dt class="text-slate-400">{{ $w('tills.stations_heading') }}</dt><dd>{{ implode(', ', $stations) }}</dd>
                     <dt class="text-slate-400">{{ $w('steps.printers') }}</dt>

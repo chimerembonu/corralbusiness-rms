@@ -215,10 +215,22 @@ return [
             'import' => 'Spreadsheet import',
         ],
         'columns' => ['when' => 'When', 'what' => 'What', 'paid' => 'Price paid', 'cost' => 'Cost', 'by' => 'By'],
+        'methods' => [
+            'average' => [
+                'name' => 'Average cost (recommended)',
+                'about' => 'After every delivery, the stock already on the shelf and the new delivery are averaged by quantity. This is the "weighted average" method that IAS 2 (the standard Ghana follows) allows, and the one most accountants expect.',
+            ],
+            'last_price' => [
+                'name' => 'Latest price paid',
+                'about' => 'Each delivery sets the cost to what was just paid. Simple to check against invoices; when food is bought and used within days, the stock value comes close to the "first in, first out" method. Food cost jumps when prices change.',
+            ],
+        ],
         'errors' => [
             'reason' => 'Please give a reason for changing the cost.',
             'negative' => 'A cost cannot be below zero.',
             'same' => 'That is already the cost.',
+            'method_reason' => 'Please give a reason for changing the method (your accountant will want to know).',
+            'method_who' => 'Only the owner or the accountant can change how stock is valued.',
         ],
     ],
 ];

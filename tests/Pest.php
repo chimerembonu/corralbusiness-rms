@@ -149,7 +149,7 @@ function walkSetup(array $overrides = []): Testable
         ->set('ownerName', $v['ownerName'])->set('email', $v['email'])
         ->set('password', $v['password'])->set('password_confirmation', $v['password'])->set('pin', $v['pin'])->set('pin_confirmation', $v['pin'])
         ->call('next')->assertHasNoErrors()->assertSet('step', 'taxes')
-        ->set('rates', $v['rates'])->set('pricesIncludeTax', $v['pricesIncludeTax'])
+        ->set('rates', $v['rates'])->set('pricesIncludeTax', $v['pricesIncludeTax'])->set('costMethod', $v['costMethod'] ?? 'average')
         ->call('next')->assertHasNoErrors()->assertSet('step', 'receipt')
         ->assertSet('receiptHeader', "{$v['restaurant']}\n{$v['address']}\n{$v['phone']}") // filled in from the restaurant screen
         ->call('next')->assertSet('step', 'tills')

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Settings\Livewire;
 
+use App\Modules\Inventory\Enums\CostMethod;
 use App\Modules\Printing\Enums\PrinterDriverType;
 use App\Modules\Printing\Exceptions\PrintFailedException;
 use App\Modules\Printing\Services\PrinterDiscovery;
@@ -14,6 +15,7 @@ use App\Support\Tax\TaxIdentificationNumber;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -82,6 +84,9 @@ class SetupWizard extends Component
     public array $rates = [];
 
     public string $pricesIncludeTax = '';
+
+    /** How stock is valued (CostMethod); the recommended method is chosen already. */
+    public string $costMethod = 'average';
 
     // Receipt
     public string $receiptHeader = '';
@@ -336,6 +341,7 @@ class SetupWizard extends Component
             'pin' => $this->pin,
             'taxes' => array_map(fn ($percent) => (int) round(((float) $percent) * 100), $this->rates),
             'prices_include_tax' => $this->pricesIncludeTax === 'yes',
+            'cost_method' => $this->costMethod,
             'receipt_header' => $this->receiptHeader,
             'receipt_footer' => $this->receiptFooter,
             'show_server' => $this->showServer,
@@ -388,7 +394,8 @@ class SetupWizard extends Component
                 'pin' => ['required', 'digits_between:'.config('rms.pin.min_length', 4).','.config('rms.pin.max_length', 6), 'confirmed'],
             ], ['pin.digits_between' => __('settings::settings.setup.errors.pin')], ['ownerName' => $a('owner_name'), 'email' => $a('email'), 'password' => $a('password'), 'pin' => $a('pin')]),
             'taxes' => $this->validate(
-                ['rates' => ['array'], 'rates.*' => ['required', 'numeric', 'min:0', 'max:100', 'decimal:0,2'], 'pricesIncludeTax' => ['required', 'in:yes,no']],
+                ['rates' => ['array'], 'rates.*' => ['required', 'numeric', 'min:0', 'max:100', 'decimal:0,2'], 'pricesIncludeTax' => ['required', 'in:yes,no'],
+                    'costMethod' => ['required', Rule::enum(CostMethod::class)]],
                 ['pricesIncludeTax.required' => __('settings::settings.setup.errors.prices_include_tax')],
                 ['rates.*' => $a('rate')],
             ),

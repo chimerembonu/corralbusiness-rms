@@ -1,5 +1,7 @@
 <?php
 
+use App\Modules\Inventory\Enums\CostMethod;
+use App\Modules\Inventory\Services\CostService;
 use App\Modules\Menu\Models\Item;
 use App\Modules\Pos\Models\Till;
 use App\Modules\Settings\Livewire\SetupWizard;
@@ -43,8 +45,8 @@ it('sets up the restaurant, owner, taxes, receipt, tills, menu and staff in one 
     ]);
     $staff = setupCsv('staff', [['Yaw Asante', '024 100 0003', 'waiter', '2001', 'Waiter', '', '']]);
 
-    walkSetup(['menuFile' => $menu, 'staffFile' => $staff])
-        ->assertSee('Mama Efua Chop Bar')->assertSee('Front counter, Bar')
+    walkSetup(['menuFile' => $menu, 'staffFile' => $staff, 'costMethod' => 'last_price'])
+        ->assertSee('Mama Efua Chop Bar')->assertSee('Front counter, Bar')->assertSee('Latest price paid')
         ->call('finish')->assertHasNoErrors()->assertSet('step', 'done')
         ->assertSee('Mama Efua Chop Bar is ready')->assertSee('Menu: 2 new')->assertSee('Staff: 1 new')
         ->assertSet('password', '')->assertSet('pin', '');
@@ -67,6 +69,7 @@ it('sets up the restaurant, owner, taxes, receipt, tills, menu and staff in one 
             ->and($settings->get('receipt.header'))->toContain('12 Oxford St, Osu')
             ->and($settings->get('receipt.footer'))->toContain('delete them')
             ->and($settings->get('setup.completed_at'))->not->toBeNull()
+            ->and(app(CostService::class)->method())->toBe(CostMethod::LastPrice)
             ->and(Till::query()->orderBy('code')->pluck('name', 'code')->all())->toBe(['T1' => 'Front counter', 'T2' => 'Bar'])
             ->and(Item::query()->pluck('name')->sort()->values()->all())->toBe(['Jollof Rice', 'Sobolo'])
             ->and(User::query()->where('name', 'Yaw Asante')->sole()->hasRole('waiter'))->toBeTrue();
