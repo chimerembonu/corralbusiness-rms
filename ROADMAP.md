@@ -109,7 +109,7 @@ Every feature is **off by default**. A restaurant switches it on in **Settings �
 
 ### E10 — Packaging and launch
 - [ ] **E10.1 The box.** A mini-PC image that installs itself and opens the setup wizard on first start.
-- [ ] **E10.2 The download.** Installers for Ubuntu, Windows and Mac.
+- [ ] **E10.2 The download.** Installers for Ubuntu, Windows and Mac. *Ubuntu and Mac done 8 Nov: one command (`curl … install.sh | sudo bash`, on a Mac without sudo) downloads the code, generates every key and password, picks a free port, starts everything and shows the setup address and code (on a Mac it opens the setup page itself). On Ubuntu the app also follows a new address from the router by itself (`scripts/address.sh`, every minute) and shows its links on the server's own screen. After the wizard, a "Getting started" list on the back-office home page leads the owner through menu, staff, printers, tables, a practice sale, the first backup and the licence. Rehearsed from nothing on the Mac (Docker Desktop). Windows: still the manual steps in docs/STORE-SERVER.md §2b.*
 - [ ] **E10.3 Illustrated install guide** and short training videos. 👤 *You record or approve.*
 - [ ] **E10.4 Sales side**: plans and prices, licence sales through Corral Cloud, support process. 👤
 - [ ] **E10.5 Independent penetration test** (S7) and fixes.
