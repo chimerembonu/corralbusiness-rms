@@ -51,6 +51,11 @@
         "manager",
         "accountant"
     ],
+    "admin/day-closes/{record}": [
+        "owner",
+        "manager",
+        "accountant"
+    ],
     "admin/dining-tables": [
         "owner",
         "manager"
@@ -63,8 +68,16 @@
         "owner",
         "manager"
     ],
-    "admin/extra-recipes": [],
-    "admin/extra-recipes/{record}/edit": [],
+    "admin/extra-recipes": [
+        "owner",
+        "manager",
+        "inventory"
+    ],
+    "admin/extra-recipes/{record}/edit": [
+        "owner",
+        "manager",
+        "inventory"
+    ],
     "admin/features": [
         "owner",
         "manager"
@@ -154,6 +167,10 @@
         "owner",
         "manager"
     ],
+    "admin/printers/{record}/edit": [
+        "owner",
+        "manager"
+    ],
     "admin/profile": [
         "owner",
         "manager",
@@ -187,9 +204,21 @@
         "owner",
         "manager"
     ],
-    "admin/recipes": [],
-    "admin/recipes/{record}/edit": [],
-    "admin/reports/food-cost": [],
+    "admin/recipes": [
+        "owner",
+        "manager",
+        "inventory"
+    ],
+    "admin/recipes/{record}/edit": [
+        "owner",
+        "manager",
+        "inventory"
+    ],
+    "admin/reports/food-cost": [
+        "owner",
+        "manager",
+        "accountant"
+    ],
     "admin/reports/items": [
         "owner",
         "manager",
@@ -200,7 +229,12 @@
         "manager",
         "accountant"
     ],
-    "admin/reports/recipe-usage": [],
+    "admin/reports/recipe-usage": [
+        "owner",
+        "manager",
+        "inventory",
+        "accountant"
+    ],
     "admin/reports/sales": [
         "owner",
         "manager",
@@ -432,6 +466,7 @@
         "accountant"
     ],
     "setup": [],
+    "setup/templates/{type}": [],
     "staff/cheat-sheet": [
         "owner",
         "manager"

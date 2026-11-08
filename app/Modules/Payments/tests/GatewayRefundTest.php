@@ -161,7 +161,7 @@ it('says "refund by hand" when Paystack refuses, and a manager confirms it was g
         ->and($refund->fresh()->done_by_hand_by_id)->toBe($this->manager->id)
         ->and($refund->fresh()->done_by_hand_note)->toBe('Cash from the drawer');
     Livewire::test(PaymentProvidersPage::class)->assertSee('No refunds waiting');
-    expect(fn () => app(GatewayRefundService::class)->markDoneByHand($refund->fresh(), $this->manager))->toThrow(PaymentException::class, 'does not need');
+    expect(fn () => app(GatewayRefundService::class)->markDoneByHand($refund->fresh(), $this->manager, 'again'))->toThrow(PaymentException::class, 'does not need');
 
     // Paystack itself giving up later (needs the customer's bank details) also lands on the managers' list.
     $refund->forceFill(['status' => RefundStatus::Sent, 'next_check_at' => null])->save();
@@ -203,4 +203,31 @@ it('shows the cashier where the money is going, and lets a manager confirm a ref
 
     expect($refund->fresh()->status)->toBe(RefundStatus::DoneByHand)
         ->and($refund->fresh()->done_by_hand_note)->toBe('Sent from the restaurant MoMo phone');
+});
+
+it('takes a cash refund by hand out of the till\'s drawer, so cash-up still balances (E9.6 review F5)', function () {
+    $payment = paidByPrompt($this, 'payswitch');
+    $this->actingAs($this->cashier);
+    $cash = app(CashService::class);
+    $session = $cash->current($this->cashier, $this->branch->id);
+    $before = $cash->expected($session);
+
+    $screen = Livewire::test(OrdersList::class)->call('open', $this->order->id)
+        ->call('startRefund', $payment->id)->set('refund.reason', 'Wrong order')->call('confirmRefund')->call('approve', '2468');
+    $refund = GatewayRefund::query()->sole();
+
+    // Mobile Money needs its reference; cash needs nothing more.
+    $screen->call('confirmDoneByHand', $refund->id, 'momo')->call('approve', '2468')->assertSee('reference of the Mobile Money');
+    expect($refund->fresh()->status)->toBe(RefundStatus::ByHand);
+    $screen->call('confirmDoneByHand', $refund->id, 'cash')->call('approve', '2468')->assertSee('marked as given back by hand');
+
+    $refund = $refund->fresh();
+    expect($refund->status)->toBe(RefundStatus::DoneByHand)->and($refund->done_by_hand_method)->toBe('cash')
+        ->and($refund->cash_movement_id)->not->toBeNull()
+        ->and($cash->expected($session->fresh())->amount)->toBe($before->amount - $refund->amount->amount);
+
+    // A card number is never accepted in the note (E9.6 review F11).
+    $refund->forceFill(['status' => RefundStatus::ByHand])->save();
+    expect(fn () => app(GatewayRefundService::class)->markDoneByHand($refund, $this->manager, 'card 4111 1111 1111 1111', 'other'))
+        ->toThrow(PaymentException::class, 'Never type a card number');
 });

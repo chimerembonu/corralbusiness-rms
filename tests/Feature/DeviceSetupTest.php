@@ -49,7 +49,7 @@ it('shows the steps for this kind of device, the fingerprint, and checks before 
 
 it('only ever sends a device on to a page of this server', function () {
     config(['rms.https.enabled' => true, 'rms.https.port' => 8443]);
-    foreach (['//evil.example/x', 'https://evil.example', '/\\evil.example', '/device-setup?next=/x'] as $next) {
+    foreach (['//evil.example/x', 'https://evil.example', '/\\evil.example', "/\t/evil.example", "/\n/evil.example", '/device-setup?next=/x'] as $next) {
         $this->get('http://192.168.8.10/device-setup?next='.urlencode($next))->assertSee('"https:\/\/192.168.8.10:8443\/"', false)->assertDontSee('evil.example');
     }
 });

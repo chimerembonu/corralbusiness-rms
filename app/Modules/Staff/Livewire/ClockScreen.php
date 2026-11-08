@@ -48,7 +48,7 @@ class ClockScreen extends Component
         return Tenancy::branch() ? app(TimeClockService::class)->whoIsIn() : new Collection;
     }
 
-    public function punch(string $pin, PinAuthenticator $auth, TimeClockService $clock, RosterService $roster, StoreTenantResolver $store): void
+    public function punch(#[\SensitiveParameter] string $pin, PinAuthenticator $auth, TimeClockService $clock, RosterService $roster, StoreTenantResolver $store): void
     {
         $this->message = $this->detail = $this->error = null;
         $tenant = $store->tenant();

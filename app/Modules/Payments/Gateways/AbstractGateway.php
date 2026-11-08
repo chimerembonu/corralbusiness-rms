@@ -39,7 +39,7 @@ abstract class AbstractGateway implements PaymentGateway
         return 'RMS'.Str::upper((string) Str::ulid());
     }
 
-    public function submitOtp(string $reference, ?string $providerReference, string $otp): GatewayResponse
+    public function submitOtp(string $reference, ?string $providerReference, #[\SensitiveParameter] string $otp): GatewayResponse
     {
         throw UnsupportedByGateway::capability($this->key(), GatewayCapability::MomoPrompt);
     }

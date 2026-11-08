@@ -83,6 +83,7 @@ class LicencePage extends Page
             'days_left' => $service->daysLeft(),
             'read_only_from' => $licence ? $service->readOnlyFrom($licence)->translatedFormat('j F Y, H:i') : null,
             'warning' => $service->warning(),
+            'clock_behind' => $service->clockBehind()?->translatedFormat('j F Y, H:i'),
             'restaurant_id' => app(TenantContext::class)->tenantId(),
         ];
     }

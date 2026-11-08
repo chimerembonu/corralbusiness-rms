@@ -7,6 +7,7 @@ use App\Modules\Settings\Services\SettingsService;
 use App\Modules\Staff\Models\User;
 use App\Support\Tenancy\TenantContext;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\DB;
 use Throwable;
 
 /**
@@ -169,11 +170,45 @@ class LicenceService
         return array_filter((array) config('licence.public_keys', []), fn ($key) => is_string($key) && $key !== '');
     }
 
-    /** The server's clock, but never earlier than the day the licence was issued (a clock set back far). */
+    /**
+     * The server's clock, but never earlier than the day the licence was issued, nor than the newest entry in
+     * the history (audit log): setting the clock back does not make a licence last longer (E9.6 review L4).
+     */
     private function now(Licence $licence): CarbonImmutable
     {
         $now = CarbonImmutable::now();
+        $latest = $this->latestSeen();
+        if ($latest && $latest->gt($now)) {
+            $now = $latest;
+        }
 
         return $now->lt($licence->issued) ? $licence->issued : $now;
+    }
+
+    /** When the clock says earlier than the newest history entry by more than a day: the clock was set back. */
+    public function clockBehind(): ?CarbonImmutable
+    {
+        $latest = $this->latestSeen();
+
+        return $latest && $latest->gt(CarbonImmutable::now()->addDay()) ? $latest : null;
+    }
+
+    private ?CarbonImmutable $latestSeen = null;
+
+    private bool $latestSeenRead = false;
+
+    private function latestSeen(): ?CarbonImmutable
+    {
+        if (! $this->latestSeenRead) {
+            $this->latestSeenRead = true;
+            try {
+                $at = DB::table('activity_log')->orderByDesc('id')->value('created_at');
+                $this->latestSeen = $at ? CarbonImmutable::parse($at) : null;
+            } catch (Throwable) {
+                $this->latestSeen = null;
+            }
+        }
+
+        return $this->latestSeen;
     }
 }

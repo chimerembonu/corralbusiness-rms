@@ -38,7 +38,7 @@ class GatewayPaymentService
     ) {}
 
     /** Send a payment request to the customer's phone. Returns the transaction to watch. */
-    public function startMomoPrompt(Order $order, MomoProvider $network, string $phone, Money $amount, User $by, ?Money $tip = null): GatewayTransaction
+    public function startMomoPrompt(Order $order, MomoProvider $network, #[\SensitiveParameter] string $phone, Money $amount, User $by, ?Money $tip = null): GatewayTransaction
     {
         if (! $this->features->isOn('momo_prompt')) {
             throw new PaymentException(__('payments::payments.gateway.errors.feature_off'));
@@ -92,7 +92,7 @@ class GatewayPaymentService
     }
 
     /** Some networks (e.g. Telecel) answer with a voucher code the customer reads from their phone. */
-    public function submitOtp(GatewayTransaction $transaction, string $otp): GatewayTransaction
+    public function submitOtp(GatewayTransaction $transaction, #[\SensitiveParameter] string $otp): GatewayTransaction
     {
         if ($transaction->status !== GatewayStatus::NeedsOtp) {
             return $transaction;
@@ -176,6 +176,11 @@ class GatewayPaymentService
     {
         // If the provider tells us what was actually paid and it is not what we asked for, a manager decides.
         $expected = $transaction->amount->add($transaction->tip)->amount;
+        // The same for a payment in another currency (E9.6 review): never counted as cedis.
+        $currency = $response->details['currency'] ?? null;
+        if ($response->status === GatewayStatus::Succeeded && is_string($currency) && $currency !== '' && strtoupper($currency) !== strtoupper((string) config('rms.currency', 'GHS'))) {
+            $response = new GatewayResponse(GatewayStatus::NeedsAttention, $response->providerReference, __('payments::payments.gateway.currency_mismatch', ['currency' => $currency]));
+        }
         if ($response->status === GatewayStatus::Succeeded && isset($response->details['amount']) && (int) $response->details['amount'] !== $expected) {
             $response = new GatewayResponse(GatewayStatus::NeedsAttention, $response->providerReference, __('payments::payments.gateway.amount_mismatch', [
                 'paid' => money(Money::of((int) $response->details['amount'])), 'asked' => money(Money::of($expected)),

@@ -183,4 +183,4 @@ Good to know:
 - The server renews its own certificate every two years, by itself (weekly check). Devices never need to be set up again.
 - If the server's address changes, run `sudo ./scripts/https.sh on` again. Devices keep working without new setup.
 - `sudo ./scripts/https.sh status` shows whether it is on and when the certificate ends; `sudo ./scripts/https.sh off` goes back to plain http (the certificate is kept).
-- A **replacement server** makes its own new certificate, so each device is set up once more. To avoid that, copy the folder `docker/certs` from the old server to the new one before running `https.sh on`.
+- A **replacement server** makes its own new certificate, so each device is set up once more. To avoid that, copy the folders `docker/certs` and `docker/ca` from the old server to the new one before running `https.sh on`.

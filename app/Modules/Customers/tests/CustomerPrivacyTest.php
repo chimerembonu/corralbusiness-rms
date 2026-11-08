@@ -6,15 +6,20 @@ use App\Modules\Customers\Models\Customer;
 use App\Modules\Customers\Models\CustomerAddress;
 use App\Modules\Customers\Services\CustomerPrivacyService;
 use App\Modules\Customers\Services\CustomerService;
+use App\Modules\Kitchen\Models\Station;
 use App\Modules\Orders\Enums\OrderStatus;
 use App\Modules\Orders\Enums\OrderType;
 use App\Modules\Orders\Models\Order;
+use App\Modules\Orders\Services\DeliveryService;
 use App\Modules\Orders\Services\OrderService;
 use App\Modules\Orders\Support\TillSettings;
+use App\Modules\Printing\Models\Printer;
+use App\Modules\Printing\Services\PrintService;
 use App\Modules\Settings\Filament\Pages\TillSettingsPage;
 use App\Modules\Settings\Models\Setting;
 use App\Modules\Staff\Enums\Role;
 use App\Modules\Staff\Models\User;
+use App\Support\Audit\AuditChain;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -160,4 +165,42 @@ it('removes details after the retention period, each night, only when the restau
         ->and($recent->fresh()->name)->toBe('Kwame');       // seen recently
     $entry = Activity::query()->where('description', 'customer_anonymised')->first();
     expect($entry->causer_id)->toBeNull()->and($entry->properties['reason'])->toContain('12 months');
+});
+
+it('leaves no copy of the details anywhere: outbox, kitchen tickets, print copies, split bills, orders typed by hand (E9.6 review)', function () {
+    $this->actingAs($this->manager);
+    Station::create(['name' => 'Grill', 'code' => 'grill', 'sort_order' => 1, 'is_default' => true]);
+    Printer::create(['name' => 'Pass', 'driver' => 'browser', 'prints_kitchen_tickets' => true, 'prints_receipts' => true]);
+
+    $order = orders()->open(OrderType::Delivery, $this->manager);
+    orders()->addItem($order, $this->menu['coke']);
+    orders()->addItem($order, $this->menu['water']);
+    app(DeliveryService::class)->setDetails($order->fresh(), 'Ama Serwaa', '0241234567', 'House 12, Osu', null, null, $this->manager);
+    $this->customers->attach($order->fresh(), $this->ama, $this->manager);
+    orders()->sendToKitchen($order->fresh(), $this->manager);
+    $split = orders()->split($order->fresh(), [$order->fresh()->items()->first()->id], $this->manager);
+    app(PrintService::class)->printReceipt($order->fresh());
+    // A takeaway someone typed her phone on, never linked to her record.
+    $typed = orders()->open(OrderType::Takeaway, $this->manager);
+    $typed->forceFill(['customer_name' => 'Ama Serwaa', 'customer_phone' => '+233 24 123 4567'])->saveQuietly();
+    foreach ([$order, $split, $typed] as $o) {
+        $o->fresh()->forceFill(['status' => 'paid'])->saveQuietly();
+    }
+    expect($split->fresh()->customer_id)->toBe($this->ama->id);
+
+    app(CustomerPrivacyService::class)->anonymise($this->ama->fresh(), $this->manager, 'She asked');
+
+    $left = [];
+    foreach (['outbox', 'print_jobs', 'kitchen_tickets', 'orders', 'activity_log', 'customers', 'customer_addresses'] as $table) {
+        foreach (DB::table($table)->get() as $row) {
+            $text = json_encode($row);
+            if (preg_match('/0241234567|123 4567|Ama Serwaa|Osu/', $text)) {
+                $left[] = $table;
+            }
+        }
+    }
+    app(AuditChain::class)->seal(); // as the nightly check and the History check page do
+    expect($left)->toBe([])
+        ->and(DB::table('outbox')->where('event_type', 'customers.anonymised')->count())->toBe(1)
+        ->and(app(AuditChain::class)->check()['problems'])->toBe([]);
 });

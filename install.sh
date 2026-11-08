@@ -90,6 +90,15 @@ if [ ! -f .env ]; then
 else
     say "Keeping the existing .env."
 fi
+# A setup code for the browser wizard, also on an older .env that has none (the wizard refuses to open without one).
+if ! grep -q '^RMS_SETUP_CODE=[0-9]' .env; then
+    CODE="$(tr -dc '0-9' </dev/urandom | head -c 6)"
+    if grep -q '^RMS_SETUP_CODE=' .env; then
+        sed -i "s|^RMS_SETUP_CODE=.*|RMS_SETUP_CODE=$CODE|" .env
+    else
+        printf '\n# (set by install) the code the browser setup wizard asks for\nRMS_SETUP_CODE=%s\n' "$CODE" >> .env
+    fi
+fi
 # The restaurant network the app searches for printers on (the app cannot see it from inside Docker).
 LAN_NET="$(ip -4 -o addr show 2>/dev/null | awk -v ip="$LAN_IP" '{split($4, a, "/"); if (a[1] == ip) print $4}' | head -1)"
 if [ -n "$LAN_NET" ]; then

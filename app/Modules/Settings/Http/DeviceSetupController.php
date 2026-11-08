@@ -49,7 +49,8 @@ class DeviceSetupController
     /** Only a path on this server: never somewhere else (no open redirect). */
     private function safePath(string $next): string
     {
-        if ($next === '' || $next[0] !== '/' || str_starts_with($next, '//') || str_contains($next, '\\') || str_starts_with($next, '/device-setup')) {
+        // Control characters too: browsers drop a tab or newline, so "/\t/evil.com" would become "//evil.com" (E9.6 review L1).
+        if ($next === '' || $next[0] !== '/' || str_starts_with($next, '//') || str_contains($next, '\\') || preg_match('/[\x00-\x20\x7F]/', $next) || str_starts_with($next, '/device-setup')) {
             return '/';
         }
 

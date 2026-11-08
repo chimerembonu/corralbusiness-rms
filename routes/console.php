@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Printing\Models\PrintJob;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -23,3 +24,6 @@ Schedule::command('rms:customers:clean-up')->dailyAt('03:15');
 // Tamper-evident audit log (Complete Edition E9.4): new entries are sealed into the chain each minute, and the whole chain is checked nightly.
 Schedule::command('rms:audit:seal')->everyMinute()->withoutOverlapping();
 Schedule::command('rms:audit:check')->dailyAt('03:45');
+
+// Finished print jobs (copies of receipts and kitchen tickets) are removed after 30 days (E9.6 review F2).
+Schedule::command('model:prune', ['--model' => [PrintJob::class]])->dailyAt('03:30');

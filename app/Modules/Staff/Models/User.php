@@ -67,7 +67,13 @@ class User extends Authenticatable implements FilamentUser, HasAppAuthentication
 
     public function saveAppAuthenticationSecret(#[SensitiveParameter] ?string $secret): void
     {
+        $had = $this->hasTwoStepSignIn();
         $this->forceFill(['app_authentication_secret' => $secret])->save();
+        if ($had !== filled($secret)) {
+            // The secret itself is never logged (E9.6 review F8): only that it was set up or switched off.
+            activity('staff')->performedOn($this)->causedBy(auth()->user())->event($secret ? 'two_step_set_up' : 'two_step_switched_off')
+                ->log($secret ? 'two_step_set_up' : 'two_step_switched_off');
+        }
     }
 
     /** The name shown in the authenticator app, e.g. "Efua (efua@example.com)". */
@@ -107,7 +113,7 @@ class User extends Authenticatable implements FilamentUser, HasAppAuthentication
     }
 
     /** Setting ->pin = '1234' hashes it and prepares the lookup key. */
-    public function setPinAttribute(?string $pin): void
+    public function setPinAttribute(#[SensitiveParameter] ?string $pin): void
     {
         if ($pin === null || $pin === '') {
             $this->attributes['pin'] = null;
@@ -127,7 +133,7 @@ class User extends Authenticatable implements FilamentUser, HasAppAuthentication
         return $this->pin !== null;
     }
 
-    public function verifyPin(string $pin): bool
+    public function verifyPin(#[SensitiveParameter] string $pin): bool
     {
         return $this->pin !== null && Hash::check($pin, $this->pin);
     }

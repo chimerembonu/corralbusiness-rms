@@ -12,6 +12,7 @@ class CreateStaff extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
+        StaffResource::assertRolesAllowed($this->form->getRawState()['roles'] ?? []);
         $pin = $this->form->getRawState()['new_pin'] ?? null;
         if (filled($pin)) {
             StaffResource::assertPinFree((string) $pin);

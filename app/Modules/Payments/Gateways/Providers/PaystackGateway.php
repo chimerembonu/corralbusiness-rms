@@ -76,7 +76,7 @@ class PaystackGateway extends AbstractGateway
         return $this->chargeResponse($response);
     }
 
-    public function submitOtp(string $reference, ?string $providerReference, string $otp): GatewayResponse
+    public function submitOtp(string $reference, ?string $providerReference, #[\SensitiveParameter] string $otp): GatewayResponse
     {
         return $this->chargeResponse($this->api()->post('/charge/submit_otp', ['otp' => $otp, 'reference' => $providerReference ?? $reference]));
     }

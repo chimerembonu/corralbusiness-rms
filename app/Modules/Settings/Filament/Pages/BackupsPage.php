@@ -87,6 +87,7 @@ class BackupsPage extends Page
                 try {
                     $service = app(BackupService::class);
                     $safety = $service->restore($service->resolve($arguments['file']));
+                    self::logged('backup_restored', ['file' => basename((string) $arguments['file']), 'safety_copy' => basename($safety)]);
                     Notification::make()->success()->title(__('settings::settings.backups.restored', ['file' => $arguments['file'], 'safety' => basename($safety)]))->persistent()->send();
                 } catch (RuntimeException $e) {
                     Notification::make()->danger()->title(FriendlyError::message($e))->persistent()->send();
@@ -113,6 +114,7 @@ class BackupsPage extends Page
                     }
                     $safety = app(BackupService::class)->restore($path, $data['password'] ?? null);
                     @unlink($path);
+                    self::logged('backup_restored', ['file' => basename((string) $data['file']), 'uploaded' => true, 'safety_copy' => basename($safety)]);
                     Notification::make()->success()->title(__('settings::settings.backups.restored', ['file' => basename($data['file']), 'safety' => basename($safety)]))->persistent()->send();
                 } catch (RuntimeException $e) {
                     Notification::make()->danger()->title(FriendlyError::message($e))->persistent()->send();
@@ -128,8 +130,18 @@ class BackupsPage extends Page
             ->action(function (array $arguments) {
                 abort_unless(auth()->user()->hasRole(Role::Owner->value), 403);
                 @unlink(app(BackupService::class)->resolve((string) ($arguments['file'] ?? '')));
+                self::logged('backup_deleted', ['file' => basename((string) ($arguments['file'] ?? ''))]);
                 Notification::make()->success()->title(__('settings::settings.backups.deleted'))->send();
             });
+    }
+
+    /**
+     * Written to the history (E9.6 review F8). After a restore it goes into the restored database, so the
+     * history of the copy brought back says when and by whom.
+     */
+    private static function logged(string $what, array $details): void
+    {
+        activity('settings')->causedBy(auth()->user())->event($what)->withProperties($details)->log($what);
     }
 
     protected function getHeaderActions(): array

@@ -20,6 +20,13 @@ use Illuminate\Support\Str;
  *
  * Personal details removed on purpose (customer privacy, E9.3) go through redact(): the removal is listed in
  * audit_redactions, and the audit entry recording the removal carries a fingerprint of that list.
+ *
+ * Each entry also has a second fingerprint, core_hash, that leaves out the personal details of customer,
+ * address and order entries, and the link covers both (E9.6 review H1). A removal of personal details changes
+ * only the first, so even a forged removal record cannot hide a changed amount, reason or person. The check
+ * also tests every printed Z-report code it can find, so a rebuilt chain shows up without anyone typing a
+ * code. What it cannot see: someone with full access to the server who deletes the very newest entries
+ * (after the last Z report) and resets the end of the chain; the next Z report's code is the safeguard.
  */
 final class AuditChain
 {
@@ -28,6 +35,17 @@ final class AuditChain
     public const GENESIS = '0000000000000000000000000000000000000000000000000000000000000000';
 
     private const BATCH = 500;
+
+    /** Personal fields (customer privacy, E9.3): the only fields a recorded removal may change. */
+    public const PERSONAL_KEYS = ['name', 'phone', 'phone_digits', 'email', 'tin', 'notes', 'tags', 'address', 'label',
+        'customer_name', 'customer_phone', 'delivery_address', 'delivery_notes'];
+
+    /** Entries about these may have personal details removed; nothing else ever is. */
+    private const REDACTABLE_SUBJECTS = [
+        'App\\Modules\\Customers\\Models\\Customer', 'App\\Modules\\Customers\\Models\\CustomerAddress', 'App\\Modules\\Orders\\Models\\Order'];
+
+    /** The audit entries that record a removal (CustomerPrivacyService). */
+    private const REDACTION_ENTRIES = ['customer_anonymised', 'order_details_cleaned_up'];
 
     /** Seal every entry not sealed yet. @return int how many were sealed */
     public function seal(): int
@@ -42,8 +60,9 @@ final class AuditChain
                 foreach ($rows as $row) {
                     $seq++;
                     $content = self::contentHash($row, $seq);
-                    $hash = self::link($hash, $content);
-                    DB::table('activity_log')->where('id', $row->id)->update(['chain_seq' => $seq, 'content_hash' => $content, 'chain_hash' => $hash]);
+                    $core = self::coreHash($row, $seq);
+                    $hash = self::link($hash, $content, $core);
+                    DB::table('activity_log')->where('id', $row->id)->update(['chain_seq' => $seq, 'content_hash' => $content, 'core_hash' => $core, 'chain_hash' => $hash]);
                 }
                 if ($rows->isNotEmpty()) {
                     DB::table('audit_chain')->where('id', $head->id)->update(['last_seq' => $seq, 'last_hash' => $hash, 'updated_at' => now()]);
@@ -113,11 +132,13 @@ final class AuditChain
                         $problems[] = ['seq' => $expected, 'id' => null, 'kind' => 'missing', 'to' => $seq - 1];
                         $previous = null; // the link before a gap cannot be checked
                     }
-                    if ($previous !== null && self::link($previous, (string) $row->content_hash) !== $row->chain_hash) {
+                    if ($previous !== null && self::link($previous, (string) $row->content_hash, (string) $row->core_hash) !== $row->chain_hash) {
                         $problems[] = ['seq' => $seq, 'id' => (int) $row->id, 'kind' => 'link'];
                     }
                     $current = self::contentHash($row, $seq);
-                    if ($current !== $row->content_hash && ! self::redactedTo((string) $row->content_hash, $current, $redactions[(int) $row->id] ?? [])) {
+                    $changed = self::coreHash($row, $seq) !== $row->core_hash // never excused: a removal only touches personal details
+                        || ($current !== $row->content_hash && ! self::redactedTo((string) $row->content_hash, $current, $redactions[(int) $row->id] ?? []));
+                    if ($changed) {
                         $problems[] = ['seq' => $seq, 'id' => (int) $row->id, 'kind' => 'changed'];
                     }
                     $previous = $row->chain_hash;
@@ -129,6 +150,11 @@ final class AuditChain
         $head = $this->head();
         if ((int) $head->last_seq !== $expected - 1 || ($checked > 0 && $previous !== null && $previous !== $head->last_hash)) {
             $problems[] = ['seq' => $expected, 'id' => null, 'kind' => 'end', 'to' => (int) $head->last_seq];
+        }
+        foreach ($this->printedCodes() as $number => $code) {
+            if ($this->codeMatches($code) === false) {
+                $problems[] = ['seq' => null, 'id' => null, 'kind' => 'z_code', 'to' => $number];
+            }
         }
         $unsealed = DB::table('activity_log')->whereNull('chain_seq')->count();
 
@@ -219,9 +245,15 @@ final class AuditChain
     {
         $byEntry = [];
         foreach (DB::table('audit_redactions')->orderBy('created_at')->orderBy('id')->get()->groupBy('redaction_activity_id') as $activityId => $rows) {
-            $properties = $activityId ? self::decode(DB::table('activity_log')->where('id', $activityId)->value('properties')) : [];
+            $entry = $activityId ? DB::table('activity_log')->where('id', $activityId)->first() : null;
+            $properties = $entry ? self::decode($entry->properties) : [];
             $list = $rows->map(fn ($r) => ['activity_id' => (int) $r->activity_id, 'old_content_hash' => $r->old_content_hash, 'new_content_hash' => $r->new_content_hash])->all();
-            if (! $activityId || ($properties['redactions'] ?? null) !== self::redactionDigest($list)) {
+            // Accepted only from a sealed removal entry, written after every entry it lists, about customers or orders.
+            $listed = DB::table('activity_log')->whereIn('id', array_column($list, 'activity_id'))->get(['id', 'chain_seq', 'subject_type']);
+            $genuine = $entry && $entry->chain_seq !== null && $entry->log_name === 'customers'
+                && in_array($entry->description, self::REDACTION_ENTRIES, true)
+                && $listed->every(fn ($r) => $r->chain_seq !== null && (int) $r->chain_seq < (int) $entry->chain_seq && self::redactable($r->subject_type));
+            if (! $genuine || ($properties['redactions'] ?? null) !== self::redactionDigest($list)) {
                 $problems[] = ['seq' => null, 'id' => $activityId ? (int) $activityId : null, 'kind' => 'redaction'];
 
                 continue;
@@ -259,9 +291,57 @@ final class AuditChain
         return ($lock ? $query->lockForUpdate() : $query)->first();
     }
 
-    private static function link(string $previous, string $content): string
+    private static function link(string $previous, string $content, string $core): string
     {
-        return hash('sha256', $previous.'|'.$content);
+        return hash('sha256', $previous.'|'.$content.'|'.$core);
+    }
+
+    private static function redactable(?string $subjectType): bool
+    {
+        return in_array($subjectType, self::REDACTABLE_SUBJECTS, true);
+    }
+
+    /** History codes printed on Z reports, by day-close number (any restaurant on this server). @return array<string, string> */
+    private function printedCodes(): array
+    {
+        if (! DB::getSchemaBuilder()->hasTable('day_closes')) {
+            return [];
+        }
+        $codes = [];
+        foreach (DB::table('day_closes')->whereNotNull('report')->orderBy('closed_at')->get(['number', 'report']) as $close) {
+            $code = self::decode($close->report)['history_code'] ?? null;
+            if (is_string($code) && $code !== '') {
+                $codes[(string) $close->number] = $code;
+            }
+        }
+
+        return $codes;
+    }
+
+    /** Fingerprint without the personal details of customer, address and order entries (unchanged by a removal). */
+    private static function coreHash(object $row, int $seq): string
+    {
+        if (! self::redactable($row->subject_type)) {
+            return self::contentHash($row, $seq);
+        }
+        $core = clone $row;
+        $core->attribute_changes = json_encode(self::withoutPersonal(self::decode($row->attribute_changes)));
+        $core->properties = json_encode(self::withoutPersonal(self::decode($row->properties)));
+
+        return hash('sha256', 'core|'.self::contentHash($core, $seq));
+    }
+
+    private static function withoutPersonal(array $data): array
+    {
+        foreach ($data as $key => $value) {
+            if (is_array($value)) {
+                $data[$key] = self::withoutPersonal($value);
+            } elseif (in_array($key, self::PERSONAL_KEYS, true) && $value !== null) {
+                $data[$key] = '*';
+            }
+        }
+
+        return $data;
     }
 
     /** Fingerprint of an entry as stored (read straight from the table, so it is the same every time). */

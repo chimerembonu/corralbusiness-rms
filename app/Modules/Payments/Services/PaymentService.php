@@ -153,9 +153,11 @@ class PaymentService
         if ($limit === 0) {
             return false;
         }
-        $order = $payment->order()->first();
+        // Tips count too: they go back to the customer with the payment (E9.6 review).
+        $already = (int) Payment::query()->where('order_id', $payment->order_id)->where('status', PaymentStatus::Refunded->value)
+            ->get(['amount', 'tip'])->sum(fn (Payment $p) => $p->amount->amount + $p->tip->amount);
 
-        return (int) $order?->refunded_total?->amount + $payment->amount->amount > $limit;
+        return $already + $payment->amount->amount + $payment->tip->amount > $limit;
     }
 
     /**

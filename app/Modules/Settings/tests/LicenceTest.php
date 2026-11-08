@@ -238,6 +238,17 @@ it('counts branches against the licence', function () {
     expect($this->licence->overBranchLimit())->toBeFalse()->and($this->licence->canAddBranch())->toBeTrue();
 });
 
+it('does not let a licence last longer when the server clock is set back (E9.6 review L4)', function () {
+    installTestLicence('pro', ['expires' => now()->addDays(10)->toDateString()]);
+    activity('orders')->log('sold something'); // the history has seen today
+    expect($this->licence->daysLeft())->toBe(10);
+
+    $this->travelTo(now()->subDays(30)); // someone winds the clock back a month
+    app()->forgetScopedInstances();
+    $service = app(LicenceService::class);
+    expect($service->daysLeft())->toBe(10)->and($service->clockBehind())->not->toBeNull();
+});
+
 it('makes keys, issues codes and installs them from the command line', function () {
     $dir = sys_get_temp_dir().'/rms-licence-'.uniqid();
     $keyFile = "{$dir}/signing.key";
@@ -259,8 +270,11 @@ it('makes keys, issues codes and installs them from the command line', function 
     expect($this->licence->current()->plan)->toBe('pro')->and($this->licence->current()->extras)->toBe(['payroll'])
         ->and($this->licence->current()->expires->toDateString())->toBe('2027-11-30');
 
-    expect(Artisan::call('rms:licence-issue', ['--key' => $keyFile, '--restaurant' => 'X', '--plan' => 'gold', '--expires' => '2027-01-01']))->toBe(1)
-        ->and(Artisan::call('rms:licence-issue', ['--key' => $keyFile, '--restaurant' => 'X', '--plan' => 'pro', '--expires' => '2027-01-01', '--extras' => 'teleport']))->toBe(1);
+    expect(Artisan::call('rms:licence-issue', ['--key' => $keyFile, '--restaurant' => 'X', '--plan' => 'pro', '--expires' => '2027-01-01']))->toBe(1) // no --tenant (E9.6 review L4)
+        ->and(Artisan::output())->toContain('--tenant')
+        ->and(Artisan::call('rms:licence-issue', ['--key' => $keyFile, '--restaurant' => 'Demo', '--plan' => 'pro', '--expires' => '2027-01-01', '--any-restaurant' => true]))->toBe(0)
+        ->and(Artisan::call('rms:licence-issue', ['--key' => $keyFile, '--restaurant' => 'X', '--plan' => 'gold', '--expires' => '2027-01-01', '--tenant' => 'x']))->toBe(1)
+        ->and(Artisan::call('rms:licence-issue', ['--key' => $keyFile, '--restaurant' => 'X', '--plan' => 'pro', '--expires' => '2027-01-01', '--extras' => 'teleport', '--tenant' => 'x']))->toBe(1);
 
     @unlink($keyFile);
     @rmdir($dir);

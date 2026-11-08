@@ -12,12 +12,12 @@ use InvalidArgumentException;
  */
 final class PinHasher
 {
-    public static function lookup(?string $tenantId, string $pin): string
+    public static function lookup(?string $tenantId, #[\SensitiveParameter] string $pin): string
     {
         return hash_hmac('sha256', ($tenantId ?? 'global').'|'.$pin, (string) config('app.key'));
     }
 
-    public static function validate(string $pin): string
+    public static function validate(#[\SensitiveParameter] string $pin): string
     {
         $min = (int) config('rms.pin.min_length', 4);
         $max = (int) config('rms.pin.max_length', 6);

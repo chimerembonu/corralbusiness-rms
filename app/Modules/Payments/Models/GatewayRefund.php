@@ -16,7 +16,7 @@ class GatewayRefund extends BusinessModel
     use Auditable;
 
     protected $fillable = ['branch_id', 'gateway_transaction_id', 'payment_id', 'gateway', 'reference', 'provider_reference', 'amount', 'status',
-        'message', 'reason', 'approved_by_id', 'done_by_hand_by_id', 'done_by_hand_note', 'attempts', 'checks', 'next_check_at', 'completed_at'];
+        'message', 'reason', 'approved_by_id', 'done_by_hand_by_id', 'done_by_hand_note', 'done_by_hand_method', 'cash_movement_id', 'attempts', 'checks', 'next_check_at', 'completed_at'];
 
     protected $attributes = ['status' => 'queued', 'attempts' => 0, 'checks' => 0];
 

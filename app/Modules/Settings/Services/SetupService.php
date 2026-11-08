@@ -51,14 +51,24 @@ class SetupService
     }
 
     /** The setup code the installer printed, if one is required (config rms.setup.code). */
+    /** A store server always needs the code (E9.6 review L5); on a developer's computer it may be left out. */
     public function codeRequired(): bool
+    {
+        return $this->hasCode() || app()->isProduction();
+    }
+
+    public function hasCode(): bool
     {
         return (string) config('rms.setup.code') !== '';
     }
 
     public function codeMatches(string $typed): bool
     {
-        return ! $this->codeRequired() || hash_equals((string) config('rms.setup.code'), preg_replace('/\s+/', '', $typed) ?? '');
+        if (! $this->hasCode()) {
+            return ! app()->isProduction();
+        }
+
+        return hash_equals((string) config('rms.setup.code'), preg_replace('/\s+/', '', $typed) ?? '');
     }
 
     /**

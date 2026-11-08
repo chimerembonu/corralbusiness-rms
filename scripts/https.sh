@@ -14,7 +14,8 @@
 # its own small "certificate authority" (CA) once, and signs its own certificate with it. Each till, tablet and
 # phone trusts that CA once (open http://<server>/device-setup on it). The CA can only vouch for private network
 # addresses and *.local names (name constraints), so even if it were stolen it could not imitate a real website.
-# Files: docker/certs/public (ca.crt, server.crt – safe to share) and docker/certs/private (keys – root only).
+# Files: docker/certs/public (ca.crt, server.crt – safe to share), docker/certs/private (the server's key – root
+# only) and docker/ca (the certificate authority's key – root only, never given to any container).
 # ---------------------------------------------------------------------------
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -31,12 +32,20 @@ while [ $# -gt 0 ]; do
         *) die "Unknown option $1" ;;
     esac
 done
+if [ -n "$IP" ] && ! printf '%s' "$IP" | grep -Eq '^([0-9]{1,3}\.){3}[0-9]{1,3}$'; then
+    die "--ip must be an address like 192.168.8.10"
+fi
 
 command -v openssl >/dev/null || die "openssl is missing. Run: sudo apt-get install -y openssl"
 [ -f .env ] || die "No .env here. Run ./install.sh first."
 
 CERTS=docker/certs
 PUB="$CERTS/public"; PRIV="$CERTS/private"
+CA_DIR=docker/ca   # outside docker/certs, which nginx can read: a broken-into web container cannot make certificates
+if [ -f "$PRIV/ca.key" ]; then   # made by an earlier version, inside the folder nginx can read
+    mkdir -p "$CA_DIR" && chmod 700 "$CA_DIR"
+    if [ -f "$CA_DIR/ca.key" ]; then rm -f "$PRIV/ca.key"; else mv "$PRIV/ca.key" "$CA_DIR/ca.key"; fi
+fi
 SERVER_DAYS=800   # Apple devices refuse server certificates valid for more than 825 days
 CA_DAYS=3650
 
@@ -57,11 +66,11 @@ lan_ip() {
 }
 
 make_ca() {
-    [ -f "$PRIV/ca.key" ] && [ -f "$PUB/ca.crt" ] && return
+    [ -f "$CA_DIR/ca.key" ] && [ -f "$PUB/ca.crt" ] && return
     say "Making the restaurant's own certificate authority (once)…"
     local name; name="$(hostname -s 2>/dev/null || echo store)"
     openssl req -x509 -newkey rsa:3072 -nodes -sha256 -days "$CA_DAYS" \
-        -keyout "$PRIV/ca.key" -out "$PUB/ca.crt" \
+        -keyout "$CA_DIR/ca.key" -out "$PUB/ca.crt" \
         -subj "/O=Corral Systems/OU=CorralBusiness RMS/CN=CorralBusiness RMS – $name" \
         -addext "basicConstraints=critical,CA:TRUE,pathlen:0" \
         -addext "keyUsage=critical,keyCertSign,cRLSign" \
@@ -80,15 +89,16 @@ extendedKeyUsage=serverAuth
 subjectAltName=IP:$ip,DNS:rms.local,DNS:${name}.local,DNS:localhost,IP:127.0.0.1
 CFG
     openssl req -newkey rsa:2048 -nodes -sha256 -keyout "$PRIV/server.key" -out "$PRIV/server.csr" -subj "/CN=rms.local" 2>/dev/null  # the address itself is in subjectAltName; the CN must stay inside the name constraints
-    openssl x509 -req -in "$PRIV/server.csr" -CA "$PUB/ca.crt" -CAkey "$PRIV/ca.key" -CAcreateserial \
+    openssl x509 -req -in "$PRIV/server.csr" -CA "$PUB/ca.crt" -CAkey "$CA_DIR/ca.key" -CAcreateserial \
         -out "$PUB/server.crt" -days "$SERVER_DAYS" -sha256 -extfile "$cfg" 2>/dev/null
-    rm -f "$cfg" "$PRIV/server.csr" "$PUB/ca.srl" "$PRIV/ca.srl"
+    rm -f "$cfg" "$PRIV/server.csr" "$PUB/ca.srl" "$PRIV/ca.srl" "$CA_DIR/ca.srl"
     printf '%s\n' "$ip" > "$PRIV/server.ip"
 }
 
 lock_down() {
     chmod 755 "$CERTS" "$PUB"; chmod 644 "$PUB"/*.crt
     chmod 700 "$PRIV"; chmod 600 "$PRIV"/*
+    chmod 700 "$CA_DIR"; chmod 600 "$CA_DIR"/*
 }
 
 port_suffix() {
@@ -106,7 +116,7 @@ restart() {
 case "$ACTION" in
     on)
         ip="$(lan_ip)"; [ -n "$ip" ] || die "Could not work out this computer's network address. Use --ip 192.168.x.x"
-        mkdir -p "$PUB" "$PRIV"
+        mkdir -p "$PUB" "$PRIV" "$CA_DIR"
         make_ca
         if [ ! -f "$PUB/server.crt" ] || [ "$(cat "$PRIV/server.ip" 2>/dev/null)" != "$ip" ]; then make_server_cert "$ip"; fi
         lock_down

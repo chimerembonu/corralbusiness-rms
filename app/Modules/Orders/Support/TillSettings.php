@@ -50,6 +50,9 @@ final class TillSettings
 
     public const CUSTOMER_RETENTION_MONTHS = 'customers.retention_months'; // restaurant-wide: customers' details are removed after this long without a visit (E9.3); 0 = kept
 
+    /** The shortest retention period allowed (E9.6 review M2), so a typo such as "1" cannot wipe nearly every customer overnight. */
+    public const MIN_CUSTOMER_RETENTION_MONTHS = 6;
+
     public function __construct(private readonly SettingsService $settings) {}
 
     /** @return array<string, mixed> */
@@ -102,7 +105,9 @@ final class TillSettings
     /** Restaurant-wide (customers belong to the whole restaurant, not one branch). */
     public function customerRetentionMonths(): int
     {
-        return max(0, (int) $this->settings->get(self::CUSTOMER_RETENTION_MONTHS, 0, null));
+        $months = max(0, (int) $this->settings->get(self::CUSTOMER_RETENTION_MONTHS, 0, null));
+
+        return $months > 0 ? max($months, self::MIN_CUSTOMER_RETENTION_MONTHS) : 0;
     }
 
     public function get(string $key, ?string $branchId = null): mixed

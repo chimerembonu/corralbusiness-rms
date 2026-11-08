@@ -11,9 +11,11 @@ use App\Modules\Payments\Jobs\SendGatewayRefund;
 use App\Modules\Payments\Models\GatewayRefund;
 use App\Modules\Payments\Models\GatewayTransaction;
 use App\Modules\Payments\Models\Payment;
+use App\Modules\Payments\Services\CashService;
 use App\Modules\Settings\Models\Branch;
 use App\Modules\Staff\Enums\Permission;
 use App\Modules\Staff\Models\User;
+use App\Support\Security\CardNumberGuard;
 use App\Support\Tenancy\Tenancy;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -104,27 +106,57 @@ class GatewayRefundService
         }
     }
 
-    /** A manager confirms the customer got the money back another way (cash, or MoMo sent from the restaurant's phone). */
-    public function markDoneByHand(GatewayRefund $refund, User $manager, ?string $note = null): GatewayRefund
+    /**
+     * A manager confirms the customer got the money back another way:
+     *  - "cash": taken from the open till of $atTill (the person at the till), recorded as a pay-out from that
+     *    drawer, so cash-up still balances (E9.6 review F5);
+     *  - "momo": sent from the restaurant's own phone; the note must hold its reference;
+     *  - "other": anything else, described in the note.
+     */
+    public function markDoneByHand(GatewayRefund $refund, User $manager, ?string $note = null, string $method = 'other', ?User $atTill = null): GatewayRefund
     {
         if (! $manager->can(Permission::OrdersRefund->value)) {
             throw new PaymentException(__('payments::payments.refunds.errors.manager'));
         }
+        if (! in_array($method, ['cash', 'momo', 'other'], true)) {
+            throw new PaymentException(__('payments::payments.refunds.errors.method'));
+        }
+        $note = filled($note) ? mb_substr(trim($note), 0, 255) : null;
+        if ($method !== 'cash' && $note === null) {
+            throw new PaymentException(__('payments::payments.refunds.errors.note_'.$method));
+        }
+        if (CardNumberGuard::containsCardNumber($note)) {
+            throw new PaymentException(__('payments::payments.errors.card_number'));
+        }
 
-        return DB::transaction(function () use ($refund, $manager, $note) {
+        return DB::transaction(function () use ($refund, $manager, $note, $method, $atTill) {
             $locked = GatewayRefund::query()->whereKey($refund->id)->lockForUpdate()->firstOrFail();
             if (! $locked->status->needsHand()) {
                 throw new PaymentException(__('payments::payments.refunds.errors.not_by_hand'));
             }
+            $movement = null;
+            if ($method === 'cash') {
+                $cash = app(CashService::class);
+                $person = $atTill ?? $manager;
+                $session = $cash->current($person, $locked->branch_id)
+                    ?? throw new PaymentException(__('payments::payments.refunds.errors.no_till'));
+                $order = $locked->payment()->first()?->order()->first();
+                $movement = $cash->payOut($session, $locked->amount,
+                    __('payments::payments.refunds.cash_reason', ['order' => $order ? '#'.$order->displayNumber() : '']),
+                    $person, $locked->reference, $manager);
+            }
             $locked->forceFill([
                 'status' => RefundStatus::DoneByHand,
                 'done_by_hand_by_id' => $manager->id,
-                'done_by_hand_note' => filled($note) ? mb_substr(trim($note), 0, 255) : null,
+                'done_by_hand_note' => $note,
+                'done_by_hand_method' => $method,
+                'cash_movement_id' => $movement?->id,
                 'message' => __('payments::payments.refunds.done_by_hand_message', ['name' => $manager->name]),
                 'completed_at' => now(),
                 'next_check_at' => null,
             ])->save();
-            activity('payments')->performedOn($locked)->causedBy($manager)->withProperties(['note' => $locked->done_by_hand_note])->log('gateway_refund_done_by_hand');
+            activity('payments')->performedOn($locked)->causedBy($manager)
+                ->withProperties(['note' => $locked->done_by_hand_note, 'method' => $method, 'cash_movement_id' => $movement?->id])->log('gateway_refund_done_by_hand');
 
             return $locked;
         });

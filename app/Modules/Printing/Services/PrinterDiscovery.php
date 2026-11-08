@@ -85,7 +85,8 @@ class PrinterDiscovery
             throw new PrintFailedException(__('printing::printing.discovery.bad_address', ['address' => $address]));
         }
         $printer = new Printer([
-            'name' => trim((string) ($details['name'] ?? '')) ?: $address,
+            // Printed on the page: plain text, short (E9.6 review L3).
+            'name' => mb_substr(trim((string) preg_replace('/[\x00-\x1F\x7F]+/', ' ', (string) ($details['name'] ?? ''))), 0, 40) ?: $address,
             'driver' => $driver,
             'address' => $address,
             'paper_width' => (int) ($details['paper_width'] ?? 80) === 58 ? 58 : 80,
@@ -100,9 +101,15 @@ class PrinterDiscovery
         }
     }
 
+    /** Receipt printers listen on 9100 (a few boxes with several printers use 9101–9109). */
+    public const MIN_PORT = 9100;
+
+    public const MAX_PORT = 9109;
+
     /**
-     * A network printer is a private-network IPv4 address with an optional port; a USB printer is a print
-     * queue name. Nothing else is accepted, so the server cannot be pointed at the internet.
+     * A network printer is a private-network IPv4 address with an optional printer port; a USB printer is a
+     * print queue name. Nothing else is accepted, so the server cannot be pointed at the internet, or at other
+     * services inside the restaurant (E9.6 review L3).
      */
     public static function validAddress(PrinterDriverType $driver, string $address): bool
     {
@@ -111,7 +118,7 @@ class PrinterDiscovery
         return match ($driver) {
             PrinterDriverType::Network => (bool) preg_match('/^(\d{1,3}(?:\.\d{1,3}){3})(?::(\d{1,5}))?$/', $address, $m)
                 && self::isPrivate($m[1])
-                && (! isset($m[2]) || ((int) $m[2] >= 1 && (int) $m[2] <= 65535)),
+                && (! isset($m[2]) || ((int) $m[2] >= self::MIN_PORT && (int) $m[2] <= self::MAX_PORT)),
             PrinterDriverType::Usb => (bool) preg_match('/^[A-Za-z0-9_.\-]{1,64}$/', $address),
             PrinterDriverType::Browser => $address === '',
         };

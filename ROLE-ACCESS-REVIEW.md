@@ -53,6 +53,12 @@ The full page-by-page list is `tests/Fixtures/role-access.json`.
 
 Also fixed while doing this: **role changes did not reach an installed store server** (updates only updated the database structure, not who-can-do-what). The server now re-applies the roles every time it starts (`docker/entrypoint.sh`), so these decisions — and any future ones — arrive with the next update.
 
+## Added by the Complete Edition review (8 November 2026, SECURITY-REVIEW-3.md)
+
+- **Owner only:** Till settings → Security (idle locks, two managers for big refunds and day close), the customer retention period, and giving someone the owner or manager role (or resetting another manager's PIN). Managers see these greyed out.
+- Recipes and extra recipes: Owner, Manager, Inventory. Food cost (sales and margins): Owner, Manager, Accountant. Recipe usage (quantities and stock cost only): Owner, Manager, Inventory, Accountant.
+- New guard `tests/Feature/BackOfficeActionMatrixTest.php`: every role presses the 8 sensitive back-office buttons of the Complete Edition.
+
 ## How to check this yourself at the restaurant (10 minutes)
 
 1. Create one test staff member per role in **Back office → Staff** (or use the demo PINs).

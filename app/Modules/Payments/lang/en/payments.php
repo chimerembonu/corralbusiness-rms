@@ -125,6 +125,7 @@ return [
             'attention_none' => 'Nothing needs attention.',
             'when' => 'When', 'order' => 'Order', 'amount' => 'Amount', 'provider' => 'Provider', 'reference' => 'Reference', 'why' => 'Why',
         ],
+        'currency_mismatch' => 'The provider says this was paid in :currency, not cedis. A manager must check it with the provider.',
         'amount_mismatch' => 'The provider reports a different amount (:paid) from what was asked (:asked).',
     ],
     'refunds' => [
@@ -146,6 +147,7 @@ return [
         'gave_up' => ':provider could not be reached for three days. Give the customer the money back by hand.',
         'demo' => 'Practice refund: no real money moved.',
         'done_by_hand_message' => 'Given back by hand, confirmed by :name.',
+        'cash_reason' => 'Refund given back in cash, order :order',
         'paystack' => [
             'pending' => 'Paystack is sending the money back.',
             'processed' => 'Paystack sent the money back. It can take up to 10 working days to reach the customer.',
@@ -154,21 +156,27 @@ return [
         ],
         'till' => [
             'sent' => 'Refunded. :amount is going back to :phone through :provider.',
-            'by_hand' => 'Refunded on the till. Now give the customer :amount back by hand (cash, or send it to :phone), then tap "Done by hand".',
+            'by_hand' => 'Refunded on the till. Now give the customer :amount back by hand: cash from this till, or Mobile Money sent to :phone. Then tap the button that says how.',
             'done' => 'Thank you. The refund is marked as given back by hand.',
             'done_button' => 'Done by hand',
+            'done_cash' => 'Gave cash from this till',
+            'done_momo' => 'Sent by Mobile Money',
             'approval' => 'Confirm :amount was given back to the customer by hand',
-            'note' => 'How was it given back? (optional, e.g. cash, or the MoMo reference)',
+            'note' => 'For Mobile Money: the reference of the money sent back',
         ],
         'page' => [
             'heading' => 'Refunds to give back by hand',
-            'help' => 'These refunds could not go back through the payment provider. Give the customer the money back (cash, or Mobile Money from the restaurant\'s phone), then a manager taps "Done by hand" on the order at the till.',
+            'help' => 'These refunds could not go back through the payment provider. Give the customer the money back (cash, or Mobile Money from the restaurant\'s phone), then a manager confirms it on the order at the till ("Gave cash from this till" or "Sent by Mobile Money").',
             'none' => 'No refunds waiting.',
             'payment' => 'Payment',
         ],
         'errors' => [
             'manager' => 'Only a manager can confirm a refund given back by hand.',
             'not_by_hand' => 'This refund does not need to be given back by hand.',
+            'method' => 'Choose how the money was given back.',
+            'note_momo' => 'Type the reference of the Mobile Money sent back.',
+            'note_other' => 'Write how the money was given back.',
+            'no_till' => 'Open this till first (count the float): the cash is taken from its drawer.',
         ],
     ],
     'matching' => [

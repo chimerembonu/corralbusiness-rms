@@ -28,7 +28,7 @@ class PinAuthenticator
      *
      * @throws PinLockedException|InvalidPinException
      */
-    public function attempt(string $pin, string $throttleKey, Tenant|string|null $tenant = null): User
+    public function attempt(#[\SensitiveParameter] string $pin, string $throttleKey, Tenant|string|null $tenant = null): User
     {
         $tenantId = $tenant instanceof Tenant ? $tenant->getKey() : ($tenant ?? $this->context->tenantId());
         $limiterKey = $this->limiterKey($tenantId, $throttleKey);
@@ -78,7 +78,7 @@ class PinAuthenticator
      *
      * @throws PinLockedException|InvalidPinException|ManagerPinRequiredException
      */
-    public function authorize(string $pin, Permission|string $permission, string $throttleKey, Tenant|string|null $tenant = null, ?string $branchId = null): User
+    public function authorize(#[\SensitiveParameter] string $pin, Permission|string $permission, string $throttleKey, Tenant|string|null $tenant = null, ?string $branchId = null): User
     {
         $permission = $permission instanceof Permission ? $permission->value : $permission;
         $user = $this->attempt($pin, $throttleKey, $tenant);
@@ -115,7 +115,7 @@ class PinAuthenticator
         return max(RateLimiter::availableIn($this->limiterKey($tenantId, $throttleKey)), $deviceKey ? RateLimiter::availableIn($deviceKey) : 0);
     }
 
-    private function findByPin(string $pin, ?string $tenantId): ?User
+    private function findByPin(#[\SensitiveParameter] string $pin, ?string $tenantId): ?User
     {
         return User::query()
             ->withoutGlobalScope(TenantScope::class)

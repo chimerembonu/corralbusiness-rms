@@ -7,15 +7,19 @@ use App\Modules\Menu\Services\MenuService;
 use App\Modules\Orders\Enums\OrderType;
 use App\Modules\Orders\Services\OrderService;
 use App\Modules\Payments\Models\CashierSession;
+use App\Modules\Payments\Models\DayClose;
 use App\Modules\Payments\Services\CashService;
+use App\Modules\Payments\Services\DayCloseService;
 use App\Modules\Payments\Services\PaymentService;
 use App\Modules\Pos\Models\Till;
 use App\Modules\Pos\Services\CurrentTill;
 use App\Modules\Pos\Services\TrainingMode;
+use App\Modules\Printing\Models\Printer;
 use App\Modules\Printing\Models\PrintJob;
 use App\Modules\Settings\Models\Tenant;
 use App\Modules\Staff\Enums\Role;
 use App\Modules\Staff\Models\User;
+use App\Support\Features\FeatureService;
 use App\Support\Money\Money;
 use App\Support\Tenancy\Tenancy;
 use Filament\Facades\Filament;
@@ -63,12 +67,21 @@ it('lets each role open exactly the pages it should', function () {
     $open = $orders->open(OrderType::Takeaway, $owner);
     $orders->addItem($open, $item, null, 1, [], null, $owner);
     $customer = Customer::query()->first() ?? Customer::create(['name' => 'Probe Customer', 'phone' => '0200000099']);
+    // Pages that need a record the demo does not have (E9.6 review M3: they were silently skipped).
+    Printer::query()->exists() || Printer::create(['name' => 'Probe printer', 'driver' => 'browser', 'prints_receipts' => true]);
+    DayClose::query()->exists() || DayClose::create(['number' => 1, 'business_date' => now()->subDay()->toDateString(), 'closed_at' => now()->subDay(), 'closed_by_id' => $owner->id,
+        'report' => app(DayCloseService::class)->report(now()->subDay()->toDateString(), $branch->id)]);
+    // Every feature that is switched off by default is switched on, so its pages are checked too (E9.6 review M3).
+    installTestLicence('business');
+    foreach (['recipes', 'average_cost'] as $feature) {
+        app(FeatureService::class)->set($feature, true, $owner);
+    }
     $stockTake = app(StockTakeService::class)->start($owner);
     $job = PrintJob::query()->first();
 
     $params = [
         'order' => $open->id, 'session' => CashierSession::query()->first()?->id, 'job' => $job?->id,
-        'customer' => $customer->id, 'stockTake' => $stockTake->id,
+        'customer' => $customer->id, 'stockTake' => $stockTake->id, 'type' => 'menu',
     ];
     $receiptOrder = $paid->id;
 
@@ -160,6 +173,8 @@ it('lets each role open exactly the pages it should', function () {
                 $errors[] = "{$roleName} {$uri}: {$cell}";
             }
             if ($cell === 'NOFIXTURE') {
+                $errors[] = "{$uri}: no record to open it with - add one above, so the page is checked";
+
                 continue;
             }
             $in = $cell === '200' || ($cell === '302>/pos/cash' && str_ends_with($uri, '/pay'));

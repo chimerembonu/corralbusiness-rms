@@ -222,6 +222,9 @@ it('searches the network the installer wrote down, or this computer\'s own netwo
         ->and(PrinterDiscovery::validAddress(PrinterDriverType::Network, '10.1.2.3:9100'))->toBeTrue()
         ->and(PrinterDiscovery::validAddress(PrinterDriverType::Network, '41.66.1.1'))->toBeFalse()
         ->and(PrinterDiscovery::validAddress(PrinterDriverType::Network, '192.168.8.50:99999'))->toBeFalse()
+        ->and(PrinterDiscovery::validAddress(PrinterDriverType::Network, '192.168.8.50:9105'))->toBeTrue()
+        ->and(PrinterDiscovery::validAddress(PrinterDriverType::Network, '192.168.8.1:22'))->toBeFalse()   // not a printer port (E9.6 review L3)
+        ->and(PrinterDiscovery::validAddress(PrinterDriverType::Network, '192.168.8.1:3306'))->toBeFalse()
         ->and(PrinterDiscovery::validAddress(PrinterDriverType::Usb, 'RMS_USB_1'))->toBeTrue()
         ->and(PrinterDiscovery::validAddress(PrinterDriverType::Usb, 'a; rm -rf /'))->toBeFalse();
 });

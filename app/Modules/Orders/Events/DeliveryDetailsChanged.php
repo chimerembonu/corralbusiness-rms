@@ -11,10 +11,10 @@ class DeliveryDetailsChanged extends OrderEvent
 
     protected function extraPayload(): array
     {
+        // No name, phone or address: the outbox is kept and later synced; the order itself holds them (E9.6 review F1).
         return [
-            'customer_name' => $this->order->customer_name,
-            'customer_phone' => $this->order->customer_phone,
-            'delivery_address' => $this->order->delivery_address,
+            'customer_id' => $this->order->customer_id,
+            'has_address' => filled($this->order->delivery_address),
             'delivery_fee' => $this->order->delivery_fee->amount,
         ];
     }

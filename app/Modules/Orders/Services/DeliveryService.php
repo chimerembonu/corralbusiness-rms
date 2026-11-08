@@ -28,7 +28,7 @@ class DeliveryService
      * default (Till settings); any other figure is a price edit and needs someone with that permission
      * as $by or $approvedBy (manager PIN) — security review M4.
      */
-    public function setDetails(Order $order, string $customerName, string $phone, string $address, ?string $notes = null, ?Money $fee = null, ?User $by = null, ?User $approvedBy = null): Order
+    public function setDetails(Order $order, #[\SensitiveParameter] string $customerName, #[\SensitiveParameter] string $phone, #[\SensitiveParameter] string $address, ?string $notes = null, ?Money $fee = null, ?User $by = null, ?User $approvedBy = null): Order
     {
         $this->assertDelivery($order);
         if (! $order->isActive()) { // paid or closed: the total must not move any more

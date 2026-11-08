@@ -506,6 +506,7 @@ class OrderService
                 'service_charge_waived' => $order->service_charge_waived,
             ]);
             $new->branch_id = $order->branch_id;
+            $new->customer_id = $order->customer_id; // so the customer's privacy rights reach the split-off bill too (E9.6 review F3)
             $new->split_from_id = $order->id;
             $new->is_training = (bool) $order->is_training; // a practice bill stays practice when split (security review M5)
             $new->bill_printed_at = $order->bill_printed_at; // the customer has seen these lines on a bill already (H5)

@@ -6,6 +6,7 @@ use App\Modules\Settings\Livewire\SetupWizard;
 use App\Modules\Settings\Models\Branch;
 use App\Modules\Settings\Models\TaxComponent;
 use App\Modules\Settings\Models\Tenant;
+use App\Modules\Settings\Services\BackupService;
 use App\Modules\Settings\Services\SettingsService;
 use App\Modules\Settings\Services\SetupService;
 use App\Modules\Settings\Services\TaxService;
@@ -13,6 +14,7 @@ use App\Modules\Staff\Models\User;
 use App\Modules\Staff\Services\PinAuthenticator;
 use App\Support\Errors\UserFacingException;
 use App\Support\Tenancy\Tenancy;
+use Livewire\Exceptions\MethodNotFoundException;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 
@@ -124,15 +126,39 @@ it('asks for the installer\'s setup code first when one is set, and slows down g
     $wizard->set('code', '482 913')->call('unlock')->assertSet('unlocked', true)->assertSet('step', 'restaurant');
 });
 
+it('never gives the backup password before the setup code, and closes for good once set up (E9.6 review M1)', function () {
+    config(['rms.setup.code' => '482913']);
+    $password = app(BackupService::class)->password();
+
+    $stranger = Livewire::test(SetupWizard::class)->assertDontSee($password);
+    expect(fn () => $stranger->call('backupPassword'))->toThrow(MethodNotFoundException::class);
+    $stranger->assertDontSee($password);
+
+    // A page left open from before the restaurant existed: nothing on it works any more.
+    $old = Livewire::test(SetupWizard::class)->set('code', '482913')->call('unlock')->assertSet('step', 'restaurant');
+    config(['rms.setup.code' => '']); // someone else finishes setup meanwhile
+    walkSetup()->call('finish');
+    auth()->logout();
+    $old->call('searchPrinters')->assertNotFound();
+});
+
+it('refuses to open on a store server that has no setup code (E9.6 review L5)', function () {
+    config(['rms.setup.code' => '']);
+    app()->detectEnvironment(fn () => 'production');
+
+    Livewire::test(SetupWizard::class)->assertSet('unlocked', false)
+        ->set('code', '')->call('unlock')->assertSee('no setup code')->assertSet('unlocked', false)->assertSet('step', 'welcome');
+});
+
 it('cannot be tricked into skipping screens or running twice', function () {
     expect(fn () => Livewire::test(SetupWizard::class)->set('step', 'review'))->toThrow(CannotUpdateLockedPropertyException::class)
         ->and(fn () => Livewire::test(SetupWizard::class)->set('unlocked', true))->toThrow(CannotUpdateLockedPropertyException::class);
 
-    // Two people finishing at the same moment: the second is told the server is already set up.
+    // Two people finishing at the same moment: the second wizard is closed (E9.6 review: its buttons no longer run).
     $first = walkSetup();
     $second = walkSetup(['email' => 'kofi@example.com']);
     $first->call('finish')->assertSet('step', 'done');
-    $second->call('finish')->assertRedirect(route('home'));
+    $second->call('finish')->assertNotFound();
     expect(Tenant::query()->count())->toBe(1);
 
     expect(fn () => app(SetupService::class)->complete(['restaurant' => 'X', 'branch' => 'Y', 'owner_name' => 'Z', 'email' => 'z@example.com', 'password' => 'secret-pass-1', 'pin' => '9999']))

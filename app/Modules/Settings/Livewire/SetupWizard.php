@@ -133,24 +133,35 @@ class SetupWizard extends Component
         $this->stations = [__('settings::settings.setup.tills.default_station')];
     }
 
-    /** Every button press: once the restaurant exists the wizard is closed (except the final "done" screen). */
+    /**
+     * Every button press: once the restaurant exists the wizard is closed, except the final "done" screen for the
+     * owner just signed in. A redirect alone would still run the button's method (E9.6 review M1), so it stops here.
+     */
     public function hydrate(): void
     {
-        if ($this->step !== 'done' && ! app(SetupService::class)->isOpen()) {
-            $this->redirect(route('home'));
-        }
+        $open = app(SetupService::class)->isOpen();
+        abort_unless($open || ($this->step === 'done' && auth()->check()), 404);
     }
 
     public function unlock(SetupService $setup): void
     {
-        $key = 'setup-code:'.request()->ip();
-        if (RateLimiter::tooManyAttempts($key, 5)) {
-            $this->error = __('settings::settings.setup.errors.code_wait', ['seconds' => RateLimiter::availableIn($key)]);
+        if (! $setup->hasCode()) {
+            $this->error = __('settings::settings.setup.errors.no_code');
 
             return;
         }
+        // 5 wrong codes a minute per device, and 30 an hour from all devices together (E9.6 review L5).
+        $key = 'setup-code:'.request()->ip();
+        foreach ([$key => 5, 'setup-code:all' => 30] as $limit => $max) {
+            if (RateLimiter::tooManyAttempts($limit, $max)) {
+                $this->error = __('settings::settings.setup.errors.code_wait', ['seconds' => RateLimiter::availableIn($limit)]);
+
+                return;
+            }
+        }
         if (! $setup->codeMatches($this->code)) {
             RateLimiter::hit($key, 60);
+            RateLimiter::hit('setup-code:all', 3600);
             $this->error = __('settings::settings.setup.errors.code_wrong');
 
             return;
@@ -349,9 +360,10 @@ class SetupWizard extends Component
         $this->step = 'done';
     }
 
-    public function backupPassword(): string
+    /** Shown only on the backup and last screens, after the setup code (E9.6 review M1: it was a public method). */
+    private function backupPassword(): ?string
     {
-        return app(BackupService::class)->password();
+        return $this->unlocked && in_array($this->step, ['backup', 'done'], true) ? app(BackupService::class)->password() : null;
     }
 
     private function validateStep(string $step): void
@@ -401,7 +413,7 @@ class SetupWizard extends Component
             ),
             'backup' => $this->validate(
                 ['backupWritten' => ['accepted'], 'backupCheck' => ['required', function ($attr, $value, $fail) {
-                    if (! hash_equals(substr($this->backupPassword(), -4), trim((string) $value))) {
+                    if (! hash_equals(substr(app(BackupService::class)->password(), -4), trim((string) $value))) {
                         $fail(__('settings::settings.setup.errors.backup_check'));
                     }
                 }]],
@@ -462,6 +474,7 @@ class SetupWizard extends Component
             'position' => array_search($this->step, self::STEPS, true),
             'taxNames' => collect(GhanaTaxDefaults::components())->pluck('name', 'code')->all(),
             'drivers' => ['network' => PrinterDriverType::Network->label(), 'usb' => PrinterDriverType::Usb->label()],
+            'backupPassword' => $this->backupPassword(),
         ]);
     }
 }

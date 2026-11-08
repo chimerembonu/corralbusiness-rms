@@ -66,9 +66,12 @@
                             <span class="font-bold">{{ $providerRefund->status->label() }} · {{ money($providerRefund->amount) }}</span>
                             <span class="block">{{ $providerRefund->message }}</span>
                             @if ($providerRefund->status->needsHand() && $canRefund)
-                                <div class="mt-2 flex gap-2">
-                                    <input type="text" wire:model="handNotes.{{ $providerRefund->id }}" maxlength="255" placeholder="{{ __('payments::payments.refunds.till.note') }}" class="h-11 min-w-0 flex-1 rounded-lg border-0 bg-slate-800 px-3 text-sm text-slate-100 placeholder:text-slate-500">
-                                    <button type="button" wire:click="confirmDoneByHand(@js($providerRefund->id))" class="h-11 shrink-0 rounded-lg bg-amber-400 px-3 text-sm font-bold text-slate-950 hover:bg-amber-300">{{ __('payments::payments.refunds.till.done_button') }}</button>
+                                <div class="mt-2 grid gap-2">
+                                    <button type="button" wire:click="confirmDoneByHand(@js($providerRefund->id), 'cash')" class="h-12 rounded-lg bg-amber-400 px-3 text-sm font-bold text-slate-950 hover:bg-amber-300">{{ __('payments::payments.refunds.till.done_cash') }}</button>
+                                    <div class="flex gap-2">
+                                        <input type="text" wire:model="handNotes.{{ $providerRefund->id }}" maxlength="255" placeholder="{{ __('payments::payments.refunds.till.note') }}" class="h-12 min-w-0 flex-1 rounded-lg border-0 bg-slate-800 px-3 text-sm text-slate-100 placeholder:text-slate-500">
+                                        <button type="button" wire:click="confirmDoneByHand(@js($providerRefund->id), 'momo')" class="h-12 shrink-0 rounded-lg bg-amber-400 px-3 text-sm font-bold text-slate-950 hover:bg-amber-300">{{ __('payments::payments.refunds.till.done_momo') }}</button>
+                                    </div>
                                 </div>
                             @endif
                         </div>

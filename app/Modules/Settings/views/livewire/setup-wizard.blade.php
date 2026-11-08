@@ -256,7 +256,7 @@
             @case('backup')
                 <h2 class="text-xl font-bold">{{ $w('steps.backup') }}</h2>
                 <p class="text-slate-300">{{ $w('backup.body') }}</p>
-                <p class="select-all break-all rounded-2xl bg-slate-800 px-4 py-4 text-center font-mono text-2xl tracking-wider text-emerald-300">{{ $this->backupPassword() }}</p>
+                <p class="select-all break-all rounded-2xl bg-slate-800 px-4 py-4 text-center font-mono text-2xl tracking-wider text-emerald-300">{{ $backupPassword }}</p>
                 <label class="flex min-h-12 items-center gap-3 rounded-xl bg-slate-800 px-4">
                     <input type="checkbox" wire:model="backupWritten" class="h-5 w-5">
                     <span>{{ $w('fields.backup_written') }}</span>

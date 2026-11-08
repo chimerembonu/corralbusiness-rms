@@ -37,6 +37,7 @@ return [
         'bad_time' => 'Enter times as HH:MM.',
         'bad_role' => 'Unknown role.',
         'pin_in_use' => 'That PIN is already used by someone else. Choose another.',
+        'owner_gives_role' => 'Only the owner can give someone the :role role.',
         'cannot_deactivate_self' => 'You cannot deactivate your own account.',
     ],
     'clock' => [

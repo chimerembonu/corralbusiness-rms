@@ -6,6 +6,7 @@ use App\Modules\Orders\Enums\OrderType;
 use App\Modules\Orders\Support\TillSettings;
 use App\Modules\Settings\Services\SettingsService;
 use App\Modules\Staff\Enums\Permission;
+use App\Modules\Staff\Enums\Role;
 use App\Support\Filament\MoneyInput;
 use App\Support\Tenancy\Tenancy;
 use BackedEnum;
@@ -36,6 +37,15 @@ class TillSettingsPage extends Page
     public static function canAccess(): bool
     {
         return auth()->user()?->can(Permission::SettingsManage->value) ?? false;
+    }
+
+    /**
+     * Security and the customer retention period are the owner's (E9.6 review M1, M2): they are the checks on
+     * managers themselves, so a manager may see them but not switch them off.
+     */
+    public static function ownerControls(): bool
+    {
+        return auth()->user()?->hasRole(Role::Owner->value) ?? false;
     }
 
     public static function getNavigationGroup(): ?string
@@ -114,15 +124,22 @@ class TillSettingsPage extends Page
                 TagsInput::make('pay_out_reasons')->label($t('pay_out_reasons'))->placeholder($t('add_reason')),
                 Toggle::make('require_session')->label($t('require_session'))->inline(false)->columnSpanFull(),
             ]),
-            Section::make($t('security'))->columns(2)->schema([
-                TextInput::make('till_lock_minutes')->label($t('till_lock_minutes'))->numeric()->integer()->minValue(0)->maxValue(240)->suffix($t('minutes'))->helperText($t('till_lock_help')),
-                TextInput::make('back_office_idle_minutes')->label($t('back_office_idle_minutes'))->numeric()->integer()->minValue(0)->maxValue(720)->suffix($t('minutes'))->helperText($t('back_office_idle_help')),
-                MoneyInput::make('second_approval_refund_above')->label($t('second_approval_refund_above'))->helperText($t('second_approval_refund_help')),
-                Toggle::make('second_approval_day_close')->label($t('second_approval_day_close'))->helperText($t('second_approval_day_close_help'))->inline(false),
-            ]),
+            Section::make($t('security'))->columns(2)->description(self::ownerControls() ? null : $t('owner_only'))
+                ->disabled(! self::ownerControls())->schema([
+                    TextInput::make('till_lock_minutes')->label($t('till_lock_minutes'))->numeric()->integer()->minValue(0)->maxValue(240)->suffix($t('minutes'))->helperText($t('till_lock_help')),
+                    TextInput::make('back_office_idle_minutes')->label($t('back_office_idle_minutes'))->numeric()->integer()->minValue(0)->maxValue(720)->suffix($t('minutes'))->helperText($t('back_office_idle_help')),
+                    MoneyInput::make('second_approval_refund_above')->label($t('second_approval_refund_above'))->helperText($t('second_approval_refund_help')),
+                    Toggle::make('second_approval_day_close')->label($t('second_approval_day_close'))->helperText($t('second_approval_day_close_help'))->inline(false),
+                ]),
             Section::make(__('customers::customers.navigation_group'))->columns(2)->schema([
                 TextInput::make('loyalty_points')->label(__('customers::customers.loyalty.setting'))->numeric()->minValue(0)->helperText(__('customers::customers.loyalty.setting_help')),
                 TextInput::make('customer_retention_months')->label(__('customers::customers.privacy.retention_setting'))->numeric()->integer()->minValue(0)->maxValue(240)
+                    ->disabled(! self::ownerControls())
+                    ->rule(fn () => function (string $attribute, mixed $value, \Closure $fail) {
+                        if ((int) $value > 0 && (int) $value < TillSettings::MIN_CUSTOMER_RETENTION_MONTHS) {
+                            $fail(__('customers::customers.privacy.retention_minimum', ['months' => TillSettings::MIN_CUSTOMER_RETENTION_MONTHS]));
+                        }
+                    })
                     ->suffix(__('customers::customers.privacy.months'))->helperText(__('customers::customers.privacy.retention_help')),
             ]),
         ])->statePath('data');
@@ -147,11 +164,16 @@ class TillSettingsPage extends Page
         $settings->set(TillSettings::CASH_PAY_OUT_REASONS, array_values($data['pay_out_reasons'] ?? []));
         $settings->set(TillSettings::CASH_REQUIRE_SESSION, (bool) ($data['require_session'] ?? false));
         $settings->set(TillSettings::LOYALTY_POINTS_PER_CEDI, (int) ($data['loyalty_points'] ?? 0));
-        $settings->set(TillSettings::TILL_LOCK_MINUTES, max(0, (int) ($data['till_lock_minutes'] ?? 0)));
-        $settings->set(TillSettings::BACK_OFFICE_IDLE_MINUTES, max(0, (int) ($data['back_office_idle_minutes'] ?? 0)));
-        $settings->set(TillSettings::SECOND_APPROVAL_REFUND_ABOVE, max(0, (int) ($data['second_approval_refund_above'] ?? 0)));
-        $settings->set(TillSettings::SECOND_APPROVAL_DAY_CLOSE, (bool) ($data['second_approval_day_close'] ?? false));
-        $settings->set(TillSettings::CUSTOMER_RETENTION_MONTHS, max(0, (int) ($data['customer_retention_months'] ?? 0)), tenantWide: true);
+
+        // Checked here as well as on screen: a disabled field is not sent, but a hand-made request could be.
+        if (self::ownerControls()) {
+            $settings->set(TillSettings::TILL_LOCK_MINUTES, max(0, (int) ($data['till_lock_minutes'] ?? 0)));
+            $settings->set(TillSettings::BACK_OFFICE_IDLE_MINUTES, max(0, (int) ($data['back_office_idle_minutes'] ?? 0)));
+            $settings->set(TillSettings::SECOND_APPROVAL_REFUND_ABOVE, max(0, (int) ($data['second_approval_refund_above'] ?? 0)));
+            $settings->set(TillSettings::SECOND_APPROVAL_DAY_CLOSE, (bool) ($data['second_approval_day_close'] ?? false));
+            $months = max(0, (int) ($data['customer_retention_months'] ?? 0));
+            $settings->set(TillSettings::CUSTOMER_RETENTION_MONTHS, $months > 0 ? max($months, TillSettings::MIN_CUSTOMER_RETENTION_MONTHS) : 0, tenantWide: true);
+        }
 
         Notification::make()->success()->title(__('settings::settings.till.saved'))->send();
     }

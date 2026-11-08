@@ -41,7 +41,7 @@ trait AsksForManagerPin
     }
 
     /** Called by the keypad with the manager's PIN. */
-    public function approve(string $pin, PinAuthenticator $auth): void
+    public function approve(#[\SensitiveParameter] string $pin, PinAuthenticator $auth): void
     {
         if (! $this->approval) {
             return;

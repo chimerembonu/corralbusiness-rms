@@ -68,7 +68,7 @@ class PinLogin extends Component
         $this->tillId = null;
     }
 
-    public function login(string $pin, PinAuthenticator $auth, StoreTenantResolver $store): void
+    public function login(#[\SensitiveParameter] string $pin, PinAuthenticator $auth, StoreTenantResolver $store): void
     {
         $this->error = null;
         $this->lockedFor = 0;

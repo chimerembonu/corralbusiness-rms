@@ -61,6 +61,7 @@ return [
         'second_approval_refund_help' => 'Counted per order (all its refunds together). A second, different manager types their PIN after the first. 0 = one manager is enough.',
         'second_approval_day_close' => 'Closing the day needs two managers',
         'second_approval_day_close_help' => 'A second, different manager confirms the Z report. Owners count as managers.',
+        'owner_only' => 'Only the owner can change these settings.',
     ],
     'features' => [
         'title' => 'Features',
@@ -113,6 +114,7 @@ return [
     'licence' => [
         'title' => 'Licence',
         'your_licence' => 'Your licence',
+        'clock_behind' => 'The server\'s clock is behind: the history already has entries from :date. Set the clock right (the licence counts from the newest date it has seen), or call Corral Systems.',
         'none_help' => 'No licence is installed. The tills and back office work as normal; the extra features stay off until Corral Systems gives you a licence code.',
         'status_label' => 'Status',
         'status' => [
@@ -291,6 +293,7 @@ return [
             'already_done' => 'This server is already set up. Sign in to the back office instead.',
             'email_taken' => 'A login with the email :email already exists.',
             'code_wrong' => 'That setup code is not right. Check it and try again.',
+            'no_code' => 'This server has no setup code yet. On the server, run: sudo ./install.sh again (it prints a code), or set up the restaurant with: php artisan rms:setup',
             'code_wait' => 'Too many wrong codes. Wait :seconds seconds and try again.',
             'tin' => 'That is not a Ghana TIN. Use the GRA TIN (one letter and 10 digits) or a Ghana Card number (GHA-123456789-0).',
             'pin' => 'The PIN must be 4 to 6 digits.',
@@ -452,7 +455,8 @@ return [
             'link' => 'Entry no. :seq does not follow the one before it (something was slipped in or rebuilt).',
             'missing' => 'Entries no. :seq to :to are missing (removed).',
             'end' => 'The last entries (from no. :seq to :to) are missing (removed).',
-            'redaction' => 'A record of removed personal details (entry :id) was changed.',
+            'redaction' => 'A record of removed personal details (entry :id) was changed or is not genuine.',
+            'z_code' => 'The history check code printed on Z report :to no longer matches: the history was rebuilt since that day.',
         ],
     ],
     'device' => [

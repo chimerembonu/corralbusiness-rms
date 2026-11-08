@@ -30,6 +30,9 @@
         @if ($s['warning'])
             <p style="margin-top:.75rem;font-size:.9rem;font-weight:600;color:#b45309;" role="alert">{{ $s['warning'] }}</p>
         @endif
+        @if ($s['clock_behind'])
+            <p style="margin-top:.75rem;font-size:.9rem;font-weight:600;color:#b45309;" role="alert">{{ $l('clock_behind', ['date' => $s['clock_behind']]) }}</p>
+        @endif
         <p style="margin-top:.75rem;font-size:.8rem;opacity:.65;">{{ $l('restaurant_id', ['id' => $s['restaurant_id']]) }}</p>
     </x-filament::section>
 

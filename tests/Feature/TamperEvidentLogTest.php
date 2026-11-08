@@ -3,6 +3,7 @@
 use App\Modules\Customers\Services\CustomerPrivacyService;
 use App\Modules\Customers\Services\CustomerService;
 use App\Modules\Orders\Enums\OrderType;
+use App\Modules\Orders\Models\Order;
 use App\Modules\Orders\Services\OrderService;
 use App\Modules\Payments\Services\CashService;
 use App\Modules\Payments\Services\DayCloseService;
@@ -103,9 +104,9 @@ it('prints the chain code on the Z report, and an old code no longer matches onc
     DB::table('activity_log')->update(['chain_seq' => null, 'content_hash' => null, 'chain_hash' => null]);
     DB::table('audit_chain')->update(['last_seq' => 0, 'last_hash' => AuditChain::GENESIS]);
     $this->chain->seal();
-    expect($this->chain->check()['problems'])->toBe([]);
-    // ...but the code printed on the Z report gives it away.
-    expect($this->chain->codeMatches($code))->toBeFalse();
+    // ...but the code printed on the Z report gives it away: the nightly check tests it by itself (E9.6 review).
+    expect(kinds($this->chain->check()))->toBe(['z_code'])
+        ->and($this->chain->codeMatches($code))->toBeFalse();
     $this->artisan('rms:audit:check', ['--code' => $code])->expectsOutputToContain('does NOT match')->assertFailed();
 });
 
@@ -128,6 +129,31 @@ it('still checks clean after customers\' details are removed on purpose, but not
         'new_content_hash' => (fn () => self::contentHash($fresh, 1))->call($this->chain), 'redaction_activity_id' => DB::table('audit_redactions')->value('redaction_activity_id'),
         'created_at' => now(), 'updated_at' => now()]);
     expect(kinds($this->chain->check()))->toContain('redaction')->toContain('changed');
+});
+
+it('cannot be fooled by a forged removal record that excuses a changed amount (E9.6 review H1)', function () {
+    activity('payments')->withProperties(['amount' => 5000])->log('refund');
+    $this->chain->seal();
+    $code = $this->chain->code();
+
+    // Someone with database access only changes a sealed refund amount, then fakes a "details removed" record for it.
+    $row = DB::table('activity_log')->where('description', 'refund')->first();
+    DB::table('activity_log')->where('id', $row->id)->update(['properties' => json_encode(['amount' => 100])]);
+    $fresh = DB::table('activity_log')->where('id', $row->id)->first();
+    $list = [['activity_id' => (int) $row->id, 'old_content_hash' => $row->content_hash,
+        'new_content_hash' => (fn () => self::contentHash($fresh, (int) $row->chain_seq))->call($this->chain)]];
+    $fake = DB::table('activity_log')->insertGetId(['log_name' => 'customers', 'description' => 'customer_anonymised',
+        'properties' => json_encode(['redactions' => AuditChain::redactionDigest($list)]), 'created_at' => now(), 'updated_at' => now()]);
+    $this->chain->storeRedactions($list, $fake, null);
+    $this->chain->seal();
+
+    // A payment entry can never have details "removed", and the amount is in the second fingerprint anyway.
+    expect(kinds($this->chain->check()))->toContain('changed')->toContain('redaction')
+        ->and($this->chain->codeMatches($code))->toBeTrue(); // the old code still matches: the check itself finds it
+
+    // Even dressed up as an order entry, only personal details may differ.
+    DB::table('activity_log')->where('id', $row->id)->update(['subject_type' => (new Order)->getMorphClass()]);
+    expect(kinds($this->chain->check()))->toContain('changed');
 });
 
 it('shows the owner the History check page, with a check now and a printed-code test', function () {

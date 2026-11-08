@@ -112,18 +112,19 @@ class OrdersList extends Component
     }
 
     /** A refund the provider could not send back: a manager confirms the customer got the money another way. */
-    public function confirmDoneByHand(string $refundId): void
+    public function confirmDoneByHand(string $refundId, string $method = 'momo'): void
     {
         $refund = GatewayRefund::query()->forBranch()->findOrFail($refundId);
-        $this->askManager(Permission::OrdersRefund, 'doneByHandApproved', [$refundId, (string) ($this->handNotes[$refundId] ?? '')],
+        $method = $method === 'cash' ? 'cash' : 'momo';
+        $this->askManager(Permission::OrdersRefund, 'doneByHandApproved', [$refundId, (string) ($this->handNotes[$refundId] ?? ''), $method],
             __('payments::payments.refunds.till.approval', ['amount' => money($refund->amount)]));
     }
 
-    /** Only reachable through approve() with a manager PIN. */
-    protected function doneByHandApproved(User $manager, string $refundId, string $note): void
+    /** Only reachable through approve() with a manager PIN. Cash comes out of this till's drawer (E9.6 review F5). */
+    protected function doneByHandApproved(User $manager, string $refundId, string $note, string $method = 'momo'): void
     {
         try {
-            app(GatewayRefundService::class)->markDoneByHand(GatewayRefund::query()->forBranch()->findOrFail($refundId), $manager, $note);
+            app(GatewayRefundService::class)->markDoneByHand(GatewayRefund::query()->forBranch()->findOrFail($refundId), $manager, $note, $method, auth()->user());
             unset($this->handNotes[$refundId]);
             $this->notice = __('payments::payments.refunds.till.done');
         } catch (RuntimeException $e) {
