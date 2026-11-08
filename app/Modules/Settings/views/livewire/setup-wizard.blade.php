@@ -26,7 +26,8 @@
     @endif
 
     {{-- Keyed by step: each screen gets fresh inputs, so a box can never stay bound to the previous screen's field. --}}
-    <section wire:key="step-{{ $step }}" class="flex flex-col gap-5 rounded-3xl border border-slate-800 bg-slate-900 p-6">
+    {{-- A new screen starts at its top (install rehearsal, 8 Nov 2026: on a phone "Next" left you at the bottom). --}}
+    <section wire:key="step-{{ $step }}" x-data x-init="window.scrollTo({ top: 0 })" class="flex flex-col gap-5 rounded-3xl border border-slate-800 bg-slate-900 p-6">
         @switch($step)
             @case('welcome')
                 <h2 class="text-xl font-bold">{{ $w('welcome.heading') }}</h2>

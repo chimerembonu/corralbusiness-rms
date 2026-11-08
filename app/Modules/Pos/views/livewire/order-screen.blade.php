@@ -125,6 +125,10 @@
             @endforeach
         </nav>
         <div class="min-h-0 flex-1 overflow-y-auto p-3">
+            @if ($this->catalog->isEmpty())
+                {{-- A new restaurant before its menu is loaded (install rehearsal, 8 Nov 2026). --}}
+                <p class="mx-auto mt-10 max-w-md rounded-2xl bg-slate-900 p-6 text-center text-slate-300 ring-1 ring-slate-800">{{ __('pos::pos.order.no_menu') }}</p>
+            @endif
             <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
                 @foreach ($this->currentCategory?->items ?? [] as $item)
                     <button type="button" wire:click="tapItem('{{ $item->id }}')" class="flex min-h-24 flex-col justify-between rounded-2xl bg-slate-900 p-3 text-left ring-1 ring-slate-800 hover:ring-emerald-500 active:bg-slate-800">

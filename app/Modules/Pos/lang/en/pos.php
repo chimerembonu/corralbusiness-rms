@@ -103,6 +103,7 @@ return [
         'table' => 'Table',
         'takeaway' => 'Takeaway',
         'empty' => 'Tap items on the right to add them.',
+        'no_menu' => 'There is no menu yet. A manager can add dishes in Back office → Menu, or load the whole menu from Excel in Back office → Settings → Import data.',
         'subtotal' => 'Subtotal',
         'discount' => 'Discount',
         'tax' => 'Tax',

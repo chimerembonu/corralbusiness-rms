@@ -63,6 +63,23 @@ return [
         'second_approval_day_close_help' => 'A second, different manager confirms the Z report. Owners count as managers.',
         'owner_only' => 'Only the owner can change these settings.',
     ],
+    'getting_started' => [
+        'title' => 'Getting started',
+        'help' => 'What is left before your first real day. Steps tick themselves off. Still to do: :left.',
+        'optional' => 'if you need it',
+        'done' => 'done', 'to_do' => 'to do',
+        'from_excel' => 'From Excel',
+        'hide' => 'Hide this list',
+        'steps' => [
+            'menu' => ['name' => 'Add your menu', 'how' => 'Dishes, drinks and prices. Type them in, or fill in the Excel template and load it in one go.', 'go' => 'Menu'],
+            'staff' => ['name' => 'Add your staff and their PINs', 'how' => 'Each person gets a role (cashier, waiter, kitchen…) and a 4–6 digit PIN for the tills.', 'go' => 'Staff'],
+            'printers' => ['name' => 'Set up the receipt and kitchen printers', 'how' => 'Switch them on, then add them here and print a test page. Without a printer, receipts can still be printed from the till\'s browser.', 'go' => 'Printers'],
+            'tables' => ['name' => 'Draw your tables', 'how' => 'For dine-in: add your tables and arrange them like the room.', 'go' => 'Floor plan'],
+            'practice' => ['name' => 'Make a practice sale', 'how' => 'On a till, tap "Start training mode" and take an order from start to payment: practice sales never count.', 'go' => 'Open a till'],
+            'backup' => ['name' => 'Make your first backup', 'how' => 'One is made every night by itself; make one now and copy it to a USB stick to be sure it works.', 'go' => 'Backups'],
+            'licence' => ['name' => 'Enter your licence code', 'how' => 'Needed for the extra features (Mobile Money prompts, recipes, and more). Corral Systems sends it after setup.', 'go' => 'Licence'],
+        ],
+    ],
     'costing' => [
         'title' => 'Stock costing',
         'help' => 'How your ingredients are valued: this sets stock value, food cost and gross margin in the reports. The owner or the accountant chooses.',
