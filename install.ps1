@@ -6,8 +6,8 @@
 #   Or double-click install.cmd in a copy of the code (USB stick or downloaded ZIP).
 #
 # Options (after install.cmd or "powershell -ExecutionPolicy Bypass -File install.ps1"), or as settings
-# before the one-line form ($env:RMS_BRANCH = 'complete-edition'):
-#   -Branch NAME   which version to download (default main; the Complete Edition: complete-edition)
+# before the one-line form ($env:RMS_BRANCH = 'main'):
+#   -Branch NAME   which version to download (default main, the full version)
 #   -Port N        the web port (default 80, or 8080 when something else already uses 80)
 #   -Dir PATH      where to install (default C:\CorralBusiness-RMS)
 #

@@ -17,13 +17,7 @@ CorralBusiness – RMS runs on one small computer inside the restaurant. Tills, 
 curl -fsSL https://raw.githubusercontent.com/chimerembonu/corralbusiness-rms/main/install.sh | sudo bash
 ```
 
-   For the Complete Edition (until it joins the pilot version), use this line instead:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/chimerembonu/corralbusiness-rms/complete-edition/install.sh | sudo bash -s -- --branch complete-edition
-```
-
-   For encrypted connections from the start, add `--https` at the very end (section 11).
+   For encrypted connections from the start, use `| sudo bash -s -- --https` at the end instead (section 11).
 3. When it finishes it shows an address and a 6-digit **setup code**, for example `http://192.168.8.10/setup` and `482913`. (They also appear on the mini PC's own screen, under its login prompt.)
 4. Open that address on any computer, tablet or phone on the restaurant network, type the setup code and follow the setup screens: restaurant and TIN, owner login, taxes and stock costing, receipt, tills and kitchen stations, printers (tap **Look for printers**, then **Print a test page** on each and tick which tills and stations it prints for), menu and staff from Excel (optional), and the backup password (write it down). At the end you are signed in to the back office.
 
@@ -54,12 +48,6 @@ curl -fsSL https://raw.githubusercontent.com/chimerembonu/corralbusiness-rms/mai
 
 ```powershell
 irm https://raw.githubusercontent.com/chimerembonu/corralbusiness-rms/main/install.ps1 | iex
-```
-
-   For the Complete Edition (until it joins the pilot version), run this instead:
-
-```powershell
-$env:RMS_BRANCH = 'complete-edition'; irm https://raw.githubusercontent.com/chimerembonu/corralbusiness-rms/complete-edition/install.ps1 | iex
 ```
 
    No internet on that PC? Copy the project folder from a USB stick and **double-click `install.cmd`** in it.

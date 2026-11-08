@@ -4,7 +4,7 @@ CorralBusiness – RMS talks to payment providers through one rulebook (`Payment
 
 **For the owner (non-technical):** to add a provider, open Claude Code in the project folder and paste:
 
-> Read CLAUDE.md and docs/ADDING-A-PAYMENT-PROVIDER.md. Add **[provider name]** as a payment provider, following every step in that guide. Its developer documentation is at **[link]**. Use Http::fake for tests; never call the real service from tests. Run the full test suite and commit on the complete-edition branch.
+> Read CLAUDE.md and docs/ADDING-A-PAYMENT-PROVIDER.md. Add **[provider name]** as a payment provider, following every step in that guide. Its developer documentation is at **[link]**. Use Http::fake for tests; never call the real service from tests. Run the full test suite, commit on a new branch from main and open a pull request.
 
 Once it is merged, the restaurant sees the new provider on **Settings → Connections** (to fill in its keys and press **Test connection**) and on **Settings → Payment providers** (to choose it as the default). Nothing else changes.
 
@@ -68,7 +68,7 @@ Set up the provider on a test server in **test mode**, press **Test connection**
 
 ### 6. Run everything and commit
 
-`php artisan test` must pass in full, including the role guards. Commit on the `complete-edition` branch.
+`php artisan test` must pass in full, including the role guards. Commit on a new branch from `main` and open a pull request (main is protected).
 
 ---
 

@@ -10,7 +10,7 @@
 #   (with sudo on Ubuntu).
 #
 # Options:  --https          encrypted connections on the restaurant network (Complete Edition E9.1)
-#           --branch NAME    which version to download (default main; the Complete Edition: complete-edition)
+#           --branch NAME    which version to download (default main, the full version)
 #           --port N         the web port (default 80, or 8080 when something else already uses 80)
 #           --dir PATH       where to install (default /opt/corralbusiness-rms, on a Mac ~/CorralBusiness-RMS)
 #

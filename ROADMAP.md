@@ -7,7 +7,7 @@ Written 4 November 2026. Tick each box as it is done. Goes with PLAN.md (the "wh
 - **You** do the steps marked 👤: buying things, accounts with other companies, decisions, and checks at the restaurant.
 
 **The prompt for any build step** (replace the step number):
-> Read CLAUDE.md, PLAN.md and ROADMAP.md. Work on the complete-edition branch. Do step **E1.2** exactly as ROADMAP.md describes. Write tests that prove it works, run the full test suite, commit and push. End with what works now, what's next, and anything you need from me.
+> Read CLAUDE.md, PLAN.md and ROADMAP.md. Work on a new branch from main and open a pull request. Do step **E1.2** exactly as ROADMAP.md describes. Write tests that prove it works, run the full test suite, commit and push. End with what works now, what's next, and anything you need from me.
 
 ---
 
@@ -40,11 +40,11 @@ Written 4 November 2026. Tick each box as it is done. Goes with PLAN.md (the "wh
 | A9 | Optional: **private remote link** (Tailscale) so the owner can see reports from anywhere. Prompt: "Add optional Tailscale remote access to install.sh and docs/STORE-SERVER.md, owner's phone only, never open the router" | Claude + 👤 | By 12 Nov | Owner opens reports on mobile data |
 | A10 | **Go-live checklist** (PROMPTS.md "Go-live"), then **go live on 13 November** | 👤 + Claude | 13 Nov | First real day traded |
 | A11 | **Two days of shadowing**; fixes go out through `scripts/update.sh` (backs up first) | 👤 + Claude | 13–14 Nov | No open urgent problems |
-| A12 | After **two calm weeks** (about 27 Nov): lift the freeze and start bringing Complete Edition stages into the pilot, each switched off until you turn it on | Claude | ~27 Nov | Pilot running on the merged code |
+| A12 | ~~After two calm weeks, bring the Complete Edition into the pilot~~ **Done early, 8 Nov (owner's decision):** merged into `main` before go-live, every new feature off | Claude | 8 Nov | Pilot starts on the merged code |
 
 ---
 
-## Part B — The Complete Edition (complete-edition branch)
+## Part B — The Complete Edition (on `main` since 8 Nov; built on the complete-edition branch until then)
 
 Every feature is **off by default**. A restaurant switches it on in **Settings → Features** once its connection works.
 

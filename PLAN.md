@@ -66,7 +66,11 @@ DoD
 
 ---
 
-## Two tracks from 4 November 2026 (owner's decisions)
+## One version from 8 November 2026 (owner's decision)
+
+The two tracks below were joined on 8 November 2026, before go-live: the Complete Edition was merged into `main`, every new feature switched off, so the pilot starts on the same code that is sold. New work goes to `main` through tested pull requests; until about 27 November, changes to the pilot's everyday screens are fixes only.
+
+## Two tracks from 4 November 2026 (owner's decisions, joined on 8 November)
 
 **Track A — the pilot** goes live on **13 November** on the current version (Phases 0–3). `main` is the pilot's code: until two weeks after go-live it only takes fixes the pilot needs.
 
