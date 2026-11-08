@@ -59,3 +59,7 @@ jobs:
       # One process on purpose: the backup tests share a folder and clash when run in parallel.
       - name: Run all tests
         run: php artisan test
+
+      - name: Windows installer checks (install.ps1, in PowerShell)
+        shell: pwsh
+        run: ./tests/Installer/InstallPs1Checks.ps1

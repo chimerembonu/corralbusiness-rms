@@ -48,11 +48,24 @@ curl -fsSL https://raw.githubusercontent.com/chimerembonu/corralbusiness-rms/mai
 3. When it finishes, the setup page opens in the browser by itself; the setup code is shown in Terminal. Everything else is as on Ubuntu. If another program already uses the usual web port (80), the installer picks 8080 and shows the address with `:8080`.
 4. In Docker Desktop → Settings → General, tick **Start Docker Desktop when you sign in**, so the app comes back after a restart. Backup copies for a USB stick go to the `usb-copies` folder inside `~/CorralBusiness-RMS`.
 
-**Windows:**
-1. Install **Docker Desktop** (docker.com) and start it. It asks to enable WSL 2; say yes and restart.
-2. Get the code: download it from GitHub (Code → Download ZIP) and unzip it to a folder such as `C:\rms`, or copy the folder from a USB stick.
-3. Make a copy of `.env.docker.example` called `.env` in that folder and fill in the lines marked "set by install": any long random text for the passwords and keys, `APP_KEY=base64:` followed by 32 random bytes in base64, `APP_URL` and `RMS_BIND_IP` set to the computer's Wi-Fi address (`ipconfig`), a 6-digit `RMS_SETUP_CODE`, and `RMS_USB_DIR=` followed by a folder of your own (for example `C:\rms-usb`) for backup copies. *(A one-click Windows installer is planned; until then Corral Systems support can do this step.)*
-4. Open PowerShell in the folder and run `docker compose up -d --build`, then open `http://<the address>/setup`.
+**Windows 10/11 (one command):**
+1. Install **Docker Desktop** from docker.com and start it. It asks to enable WSL 2; say yes and restart, then open Docker Desktop once.
+2. Click Start, type **PowerShell**, open it and run:
+
+```powershell
+irm https://raw.githubusercontent.com/chimerembonu/corralbusiness-rms/main/install.ps1 | iex
+```
+
+   For the Complete Edition (until it joins the pilot version), run this instead:
+
+```powershell
+$env:RMS_BRANCH = 'complete-edition'; irm https://raw.githubusercontent.com/chimerembonu/corralbusiness-rms/complete-edition/install.ps1 | iex
+```
+
+   No internet on that PC? Copy the project folder from a USB stick and **double-click `install.cmd`** in it.
+3. Windows asks once for permission to let the tills reach this PC (firewall): click **Yes**. When it finishes, the setup page opens in the browser by itself and the setup code is shown in the PowerShell window. Everything else is as on Ubuntu.
+4. In Docker Desktop → Settings → General, tick **Start Docker Desktop when you sign in**, and set the PC never to sleep (Settings → System → Power). Backup copies for a USB stick go to `C:\CorralBusiness-RMS\usb-copies`.
+5. To update later, or if the router gave the PC a new address, run the same line again (or double-click `install.cmd` in `C:\CorralBusiness-RMS`): it makes a backup first, then gets the new version and keeps your data and settings.
 
 Printers: network printers work exactly as on Ubuntu. USB printers on a Mac or Windows: use connection "Browser" on the till they are plugged into.
 

@@ -13,7 +13,13 @@ On the restaurant's Ubuntu 24.04 computer:
 curl -fsSL https://raw.githubusercontent.com/chimerembonu/corralbusiness-rms/main/install.sh | sudo bash
 ```
 
-Then open the address it shows (`http://<server>/setup`), type the setup code and follow the setup screens. Mac, Windows, printers, backups and HTTPS: [docs/STORE-SERVER.md](docs/STORE-SERVER.md).
+On a Mac (Docker Desktop): the same line without `sudo`. On Windows (Docker Desktop), in PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/chimerembonu/corralbusiness-rms/main/install.ps1 | iex
+```
+
+Then open the address it shows (`http://<server>/setup`), type the setup code and follow the setup screens. Printers, backups, HTTPS and the details: [docs/STORE-SERVER.md](docs/STORE-SERVER.md).
 
 ## Local development (Mac)
 
