@@ -23,3 +23,6 @@ docs
 !README.md
 docker/certs
 docker/ca
+
+# Backup copies on a Mac or Windows store server (install.sh, RMS_USB_DIR): never in the image
+usb-copies

@@ -146,7 +146,11 @@ if [ ! -f .env ]; then
     say "Creating the settings file (.env): keys and passwords are generated once and kept…"
     cp .env.docker.example .env
     PORT="${WANT_PORT:-80}"
-    if [ -z "$WANT_PORT" ] && port_busy 80; then
+    # Docker Desktop on a Mac may not open ports below 1024 to other devices on the network: use 8080 and 8443.
+    if [ "$PLATFORM" = mac ] && [ -z "$WANT_PORT" ]; then
+        PORT=8080
+        while port_busy "$PORT"; do PORT=$((PORT + 1)); done
+    elif [ -z "$WANT_PORT" ] && port_busy 80; then
         PORT=8080
         while port_busy "$PORT"; do PORT=$((PORT + 1)); done
         warn "Port 80 is already used by another program on this computer, so CorralBusiness – RMS uses port $PORT."
@@ -164,6 +168,7 @@ if [ ! -f .env ]; then
     envset RMS_BACKUP_PASSWORD "$(rand 24)"
     envset RMS_SETUP_CODE "$(digits)"
     if [ "$PLATFORM" = mac ]; then
+        envset RMS_HTTPS_PORT 8443
         # A Mac has no /media folder for USB sticks: backup copies go to a folder here instead.
         mkdir -p "$TARGET/usb-copies"
         envset RMS_USB_DIR "$TARGET/usb-copies"
@@ -206,8 +211,10 @@ SCHEME=http; [ "$(envget RMS_HTTPS)" = "on" ] && SCHEME=https
 
 # 4. Start ---------------------------------------------------------------------
 say "Building and starting CorralBusiness – RMS (the first time takes 5–15 minutes)…"
-docker compose build --pull
-docker compose up -d --remove-orphans
+docker compose build --pull || die "Building failed. Check the internet connection and free disk space (at least 10 GB), then run the installer again."
+if ! docker compose up -d --remove-orphans; then
+    die "The app could not start. If the message above says a port is not available, another program uses it: run the installer again with --port 8090 (or stop that program)."
+fi
 say "Waiting for the app to come up…"
 for _ in $(seq 1 100); do
     if docker compose exec -T app php artisan about --only=environment >/dev/null 2>&1; then break; fi

@@ -8,55 +8,57 @@ CorralBusiness – RMS runs on one small computer inside the restaurant. Tills, 
 - A network cable from the mini PC to the router. Wi-Fi works, but a cable is more reliable.
 - Receipt printers: network (Ethernet) printers are easiest. USB printers plug into the mini PC.
 
-## 2. Install on the Ubuntu mini PC (about 10 minutes)
+## 2. Install on the Ubuntu mini PC (one command, about 15 minutes)
 
-The code lives in a private GitHub repository (github.com/chimerembonu/corralbusiness-rms), so the mini PC needs either a GitHub login or a copy of the code on a USB stick.
-
-**With a GitHub login:**
-1. Plug the mini PC into the router with a cable and switch it on.
-2. Open a terminal (Ctrl + Alt + T) and run these three commands, one at a time:
+1. Plug the mini PC into the router with a cable and switch it on. Switch the receipt and kitchen printers on too: network printers plugged into the router, USB printers into the mini PC.
+2. Open a terminal (Ctrl + Alt + T), type this one line and press Enter (it asks for the computer's password):
 
 ```bash
-sudo apt-get install -y gh git
+curl -fsSL https://raw.githubusercontent.com/chimerembonu/corralbusiness-rms/main/install.sh | sudo bash
 ```
+
+   For the Complete Edition (until it joins the pilot version), use this line instead:
 
 ```bash
-gh auth login
+curl -fsSL https://raw.githubusercontent.com/chimerembonu/corralbusiness-rms/complete-edition/install.sh | sudo bash -s -- --branch complete-edition
 ```
+
+   For encrypted connections from the start, add `--https` at the very end (section 11).
+3. When it finishes it shows an address and a 6-digit **setup code**, for example `http://192.168.8.10/setup` and `482913`. (They also appear on the mini PC's own screen, under its login prompt.)
+4. Open that address on any computer, tablet or phone on the restaurant network, type the setup code and follow the setup screens: restaurant and TIN, owner login, taxes and stock costing, receipt, tills and kitchen stations, printers (tap **Look for printers**, then **Print a test page** on each and tick which tills and stations it prints for), menu and staff from Excel (optional), and the backup password (write it down). At the end you are signed in to the back office.
+
+There is nothing else to type or fill in: the installer makes every password and key itself, finds the restaurant network for the printer search, prepares USB printers, sets Docker to start after a power cut, and moves the app by itself if the router later gives the mini PC a new address.
+
+**No internet at the restaurant?** Copy the project folder to a USB stick on any computer with internet, plug it into the mini PC, open a terminal in that folder and run `sudo ./install.sh` (Docker still needs internet once; a pre-installed box avoids that).
+
+Run the installer again at any time; it keeps your data and settings.
+
+## 2b. Mac or Windows instead of Ubuntu
+
+The same package runs on a Mac or a Windows 10/11 PC through Docker Desktop. It is fine for a demo or a small restaurant; Ubuntu is still the recommended choice because it needs less memory, restarts by itself after a power cut and costs nothing.
+
+**Mac (one command):**
+1. Install **Docker Desktop** from docker.com and open it once (accept its questions).
+2. Open Terminal and run:
 
 ```bash
-gh repo clone chimerembonu/corralbusiness-rms /opt/corralbusiness-rms && cd /opt/corralbusiness-rms && sudo ./install.sh
+curl -fsSL https://raw.githubusercontent.com/chimerembonu/corralbusiness-rms/main/install.sh | bash
 ```
 
-**With a USB stick:** copy the project folder from the Mac to the stick, plug it into the mini PC, open a terminal in that folder and run `sudo ./install.sh`.
+3. When it finishes, the setup page opens in the browser by itself; the setup code is shown in Terminal. Everything else is as on Ubuntu. If another program already uses the usual web port (80), the installer picks 8080 and shows the address with `:8080`.
+4. In Docker Desktop → Settings → General, tick **Start Docker Desktop when you sign in**, so the app comes back after a restart. Backup copies for a USB stick go to the `usb-copies` folder inside `~/CorralBusiness-RMS`.
 
-3. Switch the receipt and kitchen printers on first: network printers plugged into the router, USB printers into the mini PC. The installer prepares USB printers by itself.
-   The installer then prints the address and a 6-digit **setup code**, for example `http://192.168.8.10/setup` and `482913`.
-4. Open that address on any computer, tablet or phone on the restaurant network, type the setup code and follow the setup screens: restaurant and TIN, owner login, taxes, receipt, tills and kitchen stations, printers (tap **Look for printers**, then **Print a test page** on each and tick which tills and stations it prints for), menu and staff from Excel (optional), and the backup password (write it down). At the end you are signed in to the back office.
+**Windows:**
+1. Install **Docker Desktop** (docker.com) and start it. It asks to enable WSL 2; say yes and restart.
+2. Get the code: download it from GitHub (Code → Download ZIP) and unzip it to a folder such as `C:\rms`, or copy the folder from a USB stick.
+3. Make a copy of `.env.docker.example` called `.env` in that folder and fill in the lines marked "set by install": any long random text for the passwords and keys, `APP_KEY=base64:` followed by 32 random bytes in base64, `APP_URL` and `RMS_BIND_IP` set to the computer's Wi-Fi address (`ipconfig`), a 6-digit `RMS_SETUP_CODE`, and `RMS_USB_DIR=` followed by a folder of your own (for example `C:\rms-usb`) for backup copies. *(A one-click Windows installer is planned; until then Corral Systems support can do this step.)*
+4. Open PowerShell in the folder and run `docker compose up -d --build`, then open `http://<the address>/setup`.
 
-Run `sudo ./install.sh` again at any time; it keeps your data and settings.
-
-## 2b. Windows or Mac instead of Ubuntu
-
-The same Docker package runs on a Windows 10/11 PC or a Mac. It is fine for a demo or a small restaurant; Ubuntu is still the recommended choice for the pilot because it needs less memory, restarts by itself after a power cut and costs nothing.
-
-1. Install **Docker Desktop** (docker.com) and start it. On Windows it asks to enable WSL 2; say yes and restart.
-2. Get the code: install GitHub Desktop or `gh`, sign in, and clone `chimerembonu/corralbusiness-rms` to a folder such as `C:\rms` or `~/rms`. Or copy the folder from a USB stick.
-3. Make a copy of `.env.docker.example` called `.env` in that folder and fill in the lines marked "set by install": any long random text for the passwords and keys, `APP_KEY=base64:` followed by 32 random bytes in base64 (run `openssl rand -base64 32` on a Mac, or use the Mac's value), `APP_URL` and `RMS_BIND_IP` set to the computer's Wi-Fi address (Windows: `ipconfig`; Mac: System Settings → Wi-Fi → Details). Also add a line `RMS_USB_DIR=` followed by a folder of your own (for example `C:\rms-usb` or `/Users/you/rms-usb`); that is where backup copies go, since Windows and Mac have no `/media` folder for USB sticks. On a Mac, Docker Desktop must be allowed to see that folder (Settings → Resources → File sharing).
-4. Open a terminal in the folder (Windows: PowerShell) and run:
-
-```bash
-docker compose up -d --build
-```
-
-5. Open `http://<the address>/setup` in a browser and follow the setup screens (restaurant, owner login, taxes, receipt, tills and kitchen stations, printers, menu and staff from Excel, backup password). On the printers screen, type your router's range in **Restaurant network** (for example `192.168.1.0/24`: the computer's address with the last number replaced by `0/24`), or put it in `.env` as `RMS_PRINTER_SUBNET=` beforehand. If you put a 6-digit `RMS_SETUP_CODE=` in `.env`, the first screen asks for it. Prefer the command line? `docker compose exec app php artisan rms:setup` does the basics instead.
-6. Open `http://<the address>` on the tills. To start again after a reboot, open Docker Desktop (set it to start with the computer) and the app comes back by itself.
-
-Printers: network printers work exactly as on Ubuntu. USB printers on Windows must be shared from Windows and used with connection "Browser" on a till, or plugged into the computer and set up in Docker Desktop's USB sharing (advanced).
+Printers: network printers work exactly as on Ubuntu. USB printers on a Mac or Windows: use connection "Browser" on the till they are plugged into.
 
 ## 3. Give the server a fixed address (do this once)
 
-If the router hands out a new address, the tills lose the link. Fix it in one of two ways:
+If the router hands out a new address, the app follows it by itself within a minute (the new address shows on the mini PC's screen), but the tills still have the old link. So give the server an address that never changes, in one of two ways:
 
 **Easiest: reserve the address on the router.**
 1. On the mini PC run `hostname -I` and note the address (for example 192.168.8.10) and `ip link` for the MAC address.
