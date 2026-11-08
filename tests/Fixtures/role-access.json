@@ -309,6 +309,17 @@
         "manager",
         "cashier"
     ],
+    "device-setup": [
+        "owner",
+        "manager",
+        "cashier",
+        "waiter",
+        "kitchen",
+        "rider",
+        "inventory",
+        "accountant"
+    ],
+    "device-setup/certificate": [],
     "hq": [
         "owner"
     ],

@@ -167,3 +167,20 @@ From the server's terminal the same works with `./scripts/rms rms:import menu me
 - Till: `http://<server>/pos` · Kitchen: `http://<server>/kitchen` · Clock in: `http://<server>/clock` · Back office: `http://<server>/admin`.
 - On a till, open the page, then "Add to home screen" / "Install app" so it opens full-screen.
 - Printing from a till's own Windows printer: add it in Back office → Printers with connection "Browser".
+
+## 11. Secure connection (HTTPS) — optional
+
+Off unless you switch it on. With it on, everything between the tills and the server is encrypted, so nobody else on the Wi-Fi can read PINs, card references or sales.
+
+1. On the server, switch it on (or install with `sudo ./install.sh --https`):
+   `cd /opt/corralbusiness-rms && sudo ./scripts/https.sh on`
+   It makes the restaurant's own certificate the first time and prints its **fingerprint** (a long code).
+2. On **each** till, tablet, phone and computer, once: open `http://<server>/device-setup`, tap **Download certificate**, and follow the steps shown for that device (Android, iPad/iPhone, Windows, Mac, Chromebook, Firefox). If the device shows a fingerprint, it must match the one printed in step 1.
+3. Press **Check again and continue**: the device moves to `https://<server>/…` and shows the padlock. Old bookmarks with `http://` keep working: they pass through the setup page and move on by themselves.
+
+Good to know:
+- The certificate can only vouch for private network addresses (192.168.x.x, 10.x.x.x, 172.16–31.x.x) and `.local` names, so it can never be used to imitate a real website.
+- The server renews its own certificate every two years, by itself (weekly check). Devices never need to be set up again.
+- If the server's address changes, run `sudo ./scripts/https.sh on` again. Devices keep working without new setup.
+- `sudo ./scripts/https.sh status` shows whether it is on and when the certificate ends; `sudo ./scripts/https.sh off` goes back to plain http (the certificate is kept).
+- A **replacement server** makes its own new certificate, so each device is set up once more. To avoid that, copy the folder `docker/certs` from the old server to the new one before running `https.sh on`.

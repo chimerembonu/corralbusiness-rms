@@ -13,12 +13,21 @@
 #   4. Builds and starts everything (web, app, database, realtime, queue, scheduler).
 #   5. Shows the address and setup code of the browser setup wizard (/setup), unless a restaurant already exists.
 # Safe to run again: it keeps the existing .env and data.
+#
+# Encrypted connections (HTTPS, Complete Edition E9.1) are off unless asked for:  sudo ./install.sh --https
+# (or later: sudo ./scripts/https.sh on). Each device then trusts the restaurant's certificate once at /device-setup.
 # ---------------------------------------------------------------------------
 set -euo pipefail
 
 REPO_URL="${RMS_REPO_URL:-https://github.com/chimerembonu/corralbusiness-rms.git}"
 TARGET="${RMS_DIR:-/opt/corralbusiness-rms}"
 BRANCH="${RMS_BRANCH:-main}"
+WANT_HTTPS="${RMS_HTTPS:-off}"
+for arg in "$@"; do
+    case "$arg" in
+        --https) WANT_HTTPS=on ;;
+    esac
+done
 
 say()  { printf '\n\033[1;32m==> %s\033[0m\n' "$*"; }
 warn() { printf '\n\033[1;33m!!  %s\033[0m\n' "$*"; }
@@ -97,6 +106,15 @@ if [ -S /run/cups/cups.sock ]; then
     rm -rf docker/cups && ln -sfn /run/cups docker/cups
 fi
 
+# HTTPS: make the restaurant's certificate and switch it on (only when asked for); renew it weekly.
+if [ "$WANT_HTTPS" = "on" ]; then
+    ./scripts/https.sh on --no-restart
+fi
+if grep -q '^RMS_HTTPS=on' .env; then
+    printf '# CorralBusiness – RMS: renew the HTTPS server certificate when it has under 60 days left\n17 4 * * 1 root cd %s && ./scripts/https.sh renew >/dev/null 2>&1\n' "$TARGET" > /etc/cron.d/corralbusiness-rms-https
+fi
+SCHEME=http; grep -q '^RMS_HTTPS=on' .env && SCHEME=https
+
 # 4. Start ---------------------------------------------------------------------
 say "Building and starting CorralBusiness – RMS (first time takes a few minutes)…"
 docker compose build --pull
@@ -119,11 +137,14 @@ else
     echo "    (Prefer the command line? Run: docker compose exec app php artisan rms:setup)"
 fi
 
-say "Done. Open http://$LAN_IP on any till, tablet or phone on the restaurant Wi-Fi."
-echo "    Back office:  http://$LAN_IP/admin"
-echo "    Till:         http://$LAN_IP/pos"
-echo "    Kitchen:      http://$LAN_IP/kitchen"
-echo "    Clock in:     http://$LAN_IP/clock"
+say "Done. Open $SCHEME://$LAN_IP on any till, tablet or phone on the restaurant Wi-Fi."
+echo "    Back office:  $SCHEME://$LAN_IP/admin"
+echo "    Till:         $SCHEME://$LAN_IP/pos"
+echo "    Kitchen:      $SCHEME://$LAN_IP/kitchen"
+echo "    Clock in:     $SCHEME://$LAN_IP/clock"
+if [ "$SCHEME" = "https" ]; then
+    echo "    Secure connection: on each device, open http://$LAN_IP/device-setup once (it installs the restaurant's certificate)."
+fi
 echo "Give this computer a fixed address on the router (see docs/STORE-SERVER.md) so the links never change."
 echo
 echo "IMPORTANT – your backup password (backups are locked with it):"

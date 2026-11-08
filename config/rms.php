@@ -47,6 +47,15 @@ return [
         'path' => env('REVERB_CLIENT_PATH'),
     ],
 
+    // Encrypted connections on the restaurant network (Complete Edition E9.1), switched on by scripts/https.sh.
+    // The certificate files are made on the store server and mounted read-only (never the keys).
+    'https' => [
+        'enabled' => env('RMS_HTTPS', 'off') === 'on',
+        'port' => (int) env('RMS_HTTPS_PORT', 443),
+        'ca_certificate' => env('RMS_HTTPS_CA', '/etc/rms-certs/ca.crt'),
+        'server_certificate' => env('RMS_HTTPS_CERT', '/etc/rms-certs/server.crt'),
+    ],
+
     'admin_path' => env('RMS_ADMIN_PATH', 'admin'),
     'hq_path' => env('RMS_HQ_PATH', 'hq'),
 

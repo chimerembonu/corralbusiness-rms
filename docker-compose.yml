@@ -23,6 +23,7 @@ x-app: &app
     - storage:/var/www/html/storage
     - ./docker/cups:/run/cups:ro          # host CUPS socket (USB printers); harmless when empty
     - ${RMS_USB_DIR:-/media}:/media      # USB sticks plugged into the server (backup copies); set RMS_USB_DIR on Windows/Mac
+    - ./docker/certs/public:/etc/rms-certs:ro  # HTTPS (E9.1): the restaurant's certificate, for the device setup page (never the keys)
   depends_on:
     db:
       condition: service_healthy
@@ -48,8 +49,13 @@ services:
     restart: unless-stopped
     ports:
       - "${RMS_BIND_IP:?Set RMS_BIND_IP in .env to the server's LAN address (install.sh does this)}:${RMS_HTTP_PORT:-80}:80"
+      - "${RMS_BIND_IP}:${RMS_HTTPS_PORT:-443}:443"   # HTTPS (E9.1); nothing answers here while RMS_HTTPS is off
+    environment:
+      RMS_HTTPS: ${RMS_HTTPS:-off}
+      RMS_HTTPS_PORT: ${RMS_HTTPS_PORT:-443}
     volumes:
       - storage:/var/www/html/storage:ro
+      - ./docker/certs:/etc/nginx/certs:ro           # made by scripts/https.sh; empty while HTTPS was never switched on
     depends_on:
       app:
         condition: service_healthy

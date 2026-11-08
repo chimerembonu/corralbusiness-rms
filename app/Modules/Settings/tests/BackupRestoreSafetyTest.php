@@ -83,7 +83,10 @@ it('still restores a genuine backup with image uploads', function () {
 });
 
 it('tells nginx never to run PHP from the uploads path', function () {
-    $conf = file_get_contents(base_path('docker/nginx/default.conf'));
+    // The app's locations live in one shared file, used by both the plain-http and the HTTPS set-up (E9.1).
+    $conf = file_get_contents(base_path('docker/nginx/app-locations.inc'));
+    expect(file_get_contents(base_path('docker/nginx/default.conf')))->toContain('include /etc/nginx/rms/app-locations.inc;')
+        ->and(file_get_contents(base_path('docker/nginx/https.conf')))->toContain('include /etc/nginx/rms/app-locations.inc;');
     $deny = strpos($conf, 'location ~* ^/storage/.*\.php$ { deny all; }');
     $php = strpos($conf, 'location ~ \.php$');
 

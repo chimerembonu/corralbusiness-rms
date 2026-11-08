@@ -48,6 +48,9 @@ CMD ["php-fpm"]
 # Stage 3: nginx with the compiled front-end baked in, so the web container never depends on files on the host.
 FROM nginx:1.27-alpine AS web
 COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf
+# HTTPS (E9.1): the shared app settings, the HTTPS variant, and the start-up script that picks one.
+COPY docker/nginx/app-locations.inc docker/nginx/php.inc docker/nginx/https.conf /etc/nginx/rms/
+COPY --chmod=755 docker/nginx/30-rms-https.sh /docker-entrypoint.d/30-rms-https.sh
 COPY --from=app /var/www/html/public /var/www/html/public
 # Uploaded images (logos) live on the shared storage volume; nginx reaches them through this link.
 RUN rm -rf /var/www/html/public/storage && ln -s /var/www/html/storage/app/public /var/www/html/public/storage

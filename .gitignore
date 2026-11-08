@@ -26,3 +26,5 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 !/storage/backups/.gitignore
+# HTTPS certificates and keys (scripts/https.sh): made on each server, never shared
+/docker/certs/

@@ -455,4 +455,53 @@ return [
             'redaction' => 'A record of removed personal details (entry :id) was changed.',
         ],
     ],
+    'device' => [
+        'title' => 'Secure connection for this device',
+        'off' => 'This server does not use a secure connection (HTTPS is off), so this device needs nothing.',
+        'continue' => 'Continue',
+        'checking' => 'Checking whether this device already has the restaurant\'s certificate…',
+        'trusted' => 'This device has the restaurant\'s certificate. Opening the secure address…',
+        'trusted_here' => 'This device already uses the secure connection. The steps below are for setting up other devices.',
+        'why' => 'Tills, tablets and phones talk to this server over an encrypted connection, so nobody on the Wi-Fi can read PINs or sales. Each device needs the restaurant\'s own certificate once. It takes about two minutes.',
+        'step_download' => 'Download the restaurant\'s certificate',
+        'download' => 'Download certificate',
+        'fingerprint' => 'Its fingerprint (if your device shows one, it must be exactly this):',
+        'step_trust' => 'Install it on this device',
+        'step_open' => 'Open the secure address',
+        'recheck' => 'Check again and continue',
+        'not_yet' => 'This device does not trust the certificate yet. Finish step 2 (on some devices, close and reopen the browser), then try again.',
+        'ends' => 'The server renews its own certificate automatically; the current one ends :date. Devices never need to do this again.',
+        'devices' => [
+            'android' => ['name' => 'Android tablet or phone', 'steps' => [
+                'Open Settings and search for "CA certificate" (or go to Security → More security settings → Encryption & credentials → Install a certificate).',
+                'Tap "CA certificate", then "Install anyway".',
+                'Choose the file you downloaded (in Downloads: corralbusiness-rms-certificate.crt).',
+                'If asked, unlock with the device PIN. You may see "Network may be monitored": that is normal for a restaurant certificate.',
+            ]],
+            'ios' => ['name' => 'iPad or iPhone', 'steps' => [
+                'Open this page in Safari, tap "Download certificate", then "Allow".',
+                'Open Settings: tap "Profile Downloaded" at the top (or General → VPN & Device Management), then Install and type the passcode.',
+                'Go to Settings → General → About → Certificate Trust Settings and switch on "CorralBusiness RMS".',
+            ]],
+            'windows' => ['name' => 'Windows computer', 'steps' => [
+                'Open the downloaded file and click "Install Certificate…".',
+                'Choose "Local Machine", then "Place all certificates in the following store" → Browse → "Trusted Root Certification Authorities".',
+                'Click Next, Finish, and Yes. Close and reopen the browser.',
+            ]],
+            'mac' => ['name' => 'Mac', 'steps' => [
+                'Open the downloaded file: Keychain Access opens and adds it.',
+                'Double-click "CorralBusiness RMS" in the list, open "Trust", and set "When using this certificate" to "Always Trust".',
+                'Close the window and type your Mac password. Close and reopen the browser.',
+            ]],
+            'chromebook' => ['name' => 'Chromebook', 'steps' => [
+                'Open Settings → Privacy and security → Security → Manage certificates → Authorities.',
+                'Click Import and choose the downloaded file.',
+                'Tick "Trust this certificate for identifying websites" and click OK.',
+            ]],
+            'firefox' => ['name' => 'Firefox (any computer)', 'steps' => [
+                'Firefox keeps its own list: open Settings → Privacy & Security → Certificates → View Certificates → Authorities.',
+                'Click Import, choose the downloaded file, and tick "Trust this CA to identify websites".',
+            ]],
+        ],
+    ],
 ];
