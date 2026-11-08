@@ -98,7 +98,7 @@ return [
             'sms' => ['name' => 'SMS to customers', 'about' => 'Order confirmations, "your order is ready", delivery and reservation messages.'],
             'whatsapp' => ['name' => 'WhatsApp messages', 'about' => 'The same messages by WhatsApp.'],
             'recipes' => ['name' => 'Recipes & food cost', 'about' => 'Each dish uses up its ingredients automatically; see food cost and margin per dish.'],
-            'two_step_sign_in' => ['name' => 'Two-step sign-in for owners and managers', 'about' => 'Owners and managers sign in to the back office with their password plus a 6-digit code from an authenticator app on their phone (works without internet). Each sets it up once on their profile page and keeps the recovery codes safe.'],
+            'two_step_sign_in' => ['name' => 'Two-step sign-in for owners, managers and the accountant', 'about' => 'Owners, managers and the accountant sign in to the back office with their password plus a 6-digit code from an authenticator app on their phone (works without internet). Each sets it up once on their profile page and keeps the recovery codes safe.'],
             'average_cost' => ['name' => 'Average cost for stock', 'about' => 'Values ingredients at the average of what you paid (weighted average, as IAS 2 allows) instead of the last price paid. Ask your accountant before switching; the change applies from the next delivery.'],
             'accounting_export' => ['name' => 'Accountant\'s daily export', 'about' => 'A daily journal of sales, taxes, discounts and payments for your accountant.'],
             'payroll' => ['name' => 'Payroll', 'about' => 'Pay runs with SSNIT and PAYE, payslips and Excel export.'],
@@ -307,7 +307,7 @@ return [
     ],
     'security' => [
         'signed_out_idle' => 'You were signed out after :minutes minutes without use. Please sign in again.',
-        'two_step_needed' => 'Two-step sign-in is switched on for owners and managers. Set it up below (scan the code with an authenticator app) to carry on.',
+        'two_step_needed' => 'Two-step sign-in is switched on for owners, managers and the accountant. Set it up below (scan the code with an authenticator app) to carry on.',
     ],
     'connections' => [
         'title' => 'Connections',

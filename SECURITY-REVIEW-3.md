@@ -105,7 +105,7 @@ Test: `CustomerPrivacyTest` ("leaves no copy of the details anywhere").
 
 ## Decisions for you (owner)
 
-1. **Accountant and two-step sign-in.** Two-step sign-in covers owners and managers. The accountant can export every sales report, so I suggest including them. Say yes and I'll add it.
+1. **Accountant and two-step sign-in.** ✅ *Decided 8 Nov: yes.* With "Two-step sign-in" switched on, the accountant (who can export every sales report) sets it up too, like owners and managers.
 2. **Average cost.** Weighted-average costing is still off by default. Ghana follows IFRS (IAS 2), which allows weighted average or first-in-first-out, not "last price paid". **Ask the accountant**; I suggest switching it on for new restaurants.
 3. The new owner-only rules (security settings, retention, who becomes a manager) are my recommendation from this review. Tell me if a manager must be able to do any of them.
 
@@ -116,7 +116,7 @@ Test: `CustomerPrivacyTest` ("leaves no copy of the details anywhere").
 | 1–5 | Card numbers blocked, backups locked, update stops on failed backup, security log, customer TIN | Done (the card check now also covers refund notes) |
 | 6–10 | DPC registration, GRA e-VAT question, PCI SAQ B, privacy notice, accountant's confirmations | **Waiting on the restaurant and you** |
 | 11 | HTTPS on the store server | Done (E9.1); separate guest Wi-Fi is the restaurant's job |
-| 12 | Two-step sign-in, shorter back-office sessions | Done (E9.2); set-up and switch-off now logged |
+| 12 | Two-step sign-in, shorter back-office sessions | Done (E9.2); now also for the accountant; set-up and switch-off logged |
 | 13 | Customer export, removal, retention clean-up | **Done** (E9.3 + this review: outbox, print copies, split bills, phone matches, fuller export) |
 | 14 | Weighted-average cost, reasons for cost edits | Built; off by default (decision 2) |
 | 15 | Daily accounting journal export | Not yet (E5.4) |

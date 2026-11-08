@@ -57,6 +57,7 @@ Also fixed while doing this: **role changes did not reach an installed store ser
 
 - **Owner only:** Till settings → Security (idle locks, two managers for big refunds and day close), the customer retention period, and giving someone the owner or manager role (or resetting another manager's PIN). Managers see these greyed out.
 - Recipes and extra recipes: Owner, Manager, Inventory. Food cost (sales and margins): Owner, Manager, Accountant. Recipe usage (quantities and stock cost only): Owner, Manager, Inventory, Accountant.
+- Two-step sign-in (when switched on): Owner, Manager and **Accountant** (owner's decision, 8 November 2026).
 - New guard `tests/Feature/BackOfficeActionMatrixTest.php`: every role presses the 8 sensitive back-office buttons of the Complete Edition.
 
 ## How to check this yourself at the restaurant (10 minutes)

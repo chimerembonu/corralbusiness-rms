@@ -91,7 +91,7 @@ it('signs the back office out after the set minutes unused, and keeps it signed 
     expect(session(SignOutIdleBackOffice::LAST_ACTIVITY))->toBeNull();
 });
 
-it('makes owners and managers set up two-step sign-in once it is switched on, and nobody else', function () {
+it('makes owners, managers and the accountant set up two-step sign-in once it is switched on, and nobody else', function () {
     $this->actingAs($this->owner)->get('/admin')->assertOk(); // switched off by default
     app(FeatureService::class)->set('two_step_sign_in', true, $this->owner);
 
@@ -102,10 +102,17 @@ it('makes owners and managers set up two-step sign-in once it is switched on, an
     $this->flushSession(); // a new browser session for the manager
     $this->actingAs($this->manager)->get('/admin')->assertRedirect(filament()->getPanel('admin')->getProfileUrl());
 
+    // The accountant too (owner, 8 Nov 2026): they can export every sales report. Nobody else signs in to the back office for sales.
     $accountant = User::factory()->forBranch($this->branch)->create();
     $accountant->assignRole(Role::Accountant->value);
-    expect(RequireTwoStepSignIn::required($accountant))->toBeFalse()
-        ->and(RequireTwoStepSignIn::required($this->owner))->toBeTrue();
+    $this->flushSession();
+    $this->actingAs($accountant)->get('/admin')->assertRedirect(filament()->getPanel('admin')->getProfileUrl());
+    $this->get(filament()->getPanel('admin')->getProfileUrl())->assertOk()->assertSee('Authenticator app');
+    $storekeeper = User::factory()->forBranch($this->branch)->create();
+    $storekeeper->assignRole(Role::Inventory->value);
+    expect(RequireTwoStepSignIn::required($accountant))->toBeTrue()
+        ->and(RequireTwoStepSignIn::required($this->owner))->toBeTrue()
+        ->and(RequireTwoStepSignIn::required($storekeeper))->toBeFalse();
 
     // Set up: in.
     $this->owner->saveAppAuthenticationSecret((new Google2FA)->generateSecretKey());

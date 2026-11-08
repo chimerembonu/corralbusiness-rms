@@ -11,8 +11,8 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Two-step sign-in for owners and managers (Complete Edition E9.2). With "Two-step sign-in" switched on,
- * an owner or manager who has not set it up yet can only open their profile page (where it is set up) or
+ * Two-step sign-in for owners, managers and the accountant (Complete Edition E9.2; accountant added 8 Nov 2026). With "Two-step sign-in" switched on,
+ * an owner, manager or accountant who has not set it up yet can only open their profile page (where it is set up) or
  * sign out; everything else sends them there. Once set up, the back office asks for the authenticator
  * app's code at every sign-in (Filament's own challenge).
  */
@@ -38,11 +38,14 @@ class RequireTwoStepSignIn
         return redirect()->to($profile);
     }
 
-    /** Must this person use two-step sign-in? Owners and managers, while the feature is switched on. */
+    /** Who must use it: owners, managers, and the accountant, who can export every sales report (owner, 8 Nov 2026). */
+    public const ROLES = [Role::Owner, Role::Manager, Role::Accountant];
+
+    /** Must this person use two-step sign-in? The ROLES above, while the feature is switched on. */
     public static function required(mixed $user): bool
     {
         return method_exists($user, 'hasAnyRole')
-            && $user->hasAnyRole([Role::Owner->value, Role::Manager->value])
+            && $user->hasAnyRole(array_map(fn (Role $r) => $r->value, self::ROLES))
             && app(FeatureService::class)->isOn('two_step_sign_in');
     }
 }

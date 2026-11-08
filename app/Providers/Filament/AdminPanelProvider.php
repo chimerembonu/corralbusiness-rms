@@ -81,7 +81,7 @@ class AdminPanelProvider extends PanelProvider
                 SetTenantFromUser::class,
                 EnforceLicence::class, // reports-only once a licence has ended (E1.2)
                 SignOutIdleBackOffice::class, // signs out after the set minutes unused (E9.2)
-                RequireTwoStepSignIn::class, // owners and managers set up two-step sign-in first, when switched on (E9.2)
+                RequireTwoStepSignIn::class, // owners, managers and the accountant set up two-step sign-in first, when switched on (E9.2)
             ])
             // Licence warning (ending soon, grace period, reports-only) for owner and managers.
             ->renderHook(PanelsRenderHook::CONTENT_START, fn () => view('settings::filament.licence-banner'));
