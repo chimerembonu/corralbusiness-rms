@@ -81,6 +81,7 @@ return [
         'cancelled' => 'Stopped waiting. If the customer still approves, the payment is recorded automatically or flagged for a manager.',
         'needs_attention' => 'The customer paid, but the payment could not be added to the order:',
         'unreachable' => 'The payment provider is not answering right now. Still waiting…',
+        'unsure_sent' => 'The payment provider did not answer in time, so the prompt may already be on the customer\'s phone. Ask them to check it; this screen keeps checking. Do not send another prompt unless you stop waiting first.',
         'unreachable_send' => 'Could not reach the payment provider. Check the internet connection and try again, or take another payment.',
         'errors' => [
             'unsupported' => ':provider does not support :what.',
