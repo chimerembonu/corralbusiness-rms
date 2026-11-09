@@ -4,6 +4,7 @@ namespace App\Providers\Filament;
 
 use App\Modules\Settings\Http\RedirectToSetup;
 use App\Modules\Staff\Filament\Auth\Login;
+use App\Support\Filament\RefuseTillSignIn;
 use App\Support\Filament\RequireTwoStepSignIn;
 use App\Support\Filament\SignOutIdleBackOffice;
 use App\Support\Licence\EnforceLicence;
@@ -78,6 +79,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+                RefuseTillSignIn::class, // a till PIN never opens the back office: password (and two-step code) only (test report H1)
                 SetTenantFromUser::class,
                 EnforceLicence::class, // reports-only once a licence has ended (E1.2)
                 SignOutIdleBackOffice::class, // signs out after the set minutes unused (E9.2)

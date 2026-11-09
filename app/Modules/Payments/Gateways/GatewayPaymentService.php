@@ -17,6 +17,7 @@ use App\Modules\Staff\Models\User;
 use App\Support\Features\FeatureService;
 use App\Support\Money\Money;
 use App\Support\Tenancy\Tenancy;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 use Throwable;
@@ -238,6 +239,13 @@ class GatewayPaymentService
             return $request();
         } catch (Contracts\UnsupportedByGateway $e) {
             throw new PaymentException($e->getMessage());
+        } catch (ConnectionException $e) {
+            // Timed out or the line dropped: a request may have reached the provider before it did, so a
+            // send is never called failed — the status check decides (test report H2; the adapter guide's rule,
+            // enforced here too for any adapter that forgets it).
+            report($e);
+
+            return GatewayResponse::pending(null, __($sending ? 'payments::payments.gateway.unsure_sent' : 'payments::payments.gateway.unreachable'));
         } catch (Throwable $e) {
             report($e);
 

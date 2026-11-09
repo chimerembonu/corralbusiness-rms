@@ -7,6 +7,7 @@ use App\Modules\Orders\Models\Order;
 use App\Modules\Orders\Support\TillSettings;
 use App\Modules\Payments\Enums\MomoProvider;
 use App\Modules\Payments\Enums\PaymentMethod;
+use App\Modules\Payments\Enums\PaymentStatus;
 use App\Modules\Payments\Gateways\Data\GatewayStatus;
 use App\Modules\Payments\Gateways\GatewayManager;
 use App\Modules\Payments\Gateways\GatewayPaymentService;
@@ -100,10 +101,11 @@ class PaymentScreen extends Component
     {
         $due = $this->order->balanceDue();
         if ($this->ways > 1) {
-            $shares = $due->split($this->ways);
-            $paidCount = $this->order->payments->where('status', 'completed')->count();
+            // Share what is LEFT among the people still to pay (test report H5: the balance used to be
+            // divided by the original number every time, so 65.90 three ways asked 32.95, 21.96, 14.64).
+            $paidCount = $this->order->payments->filter(fn ($p) => $p->status === PaymentStatus::Completed)->count();
 
-            return $shares[min($paidCount, $this->ways - 1)];
+            return $due->split(max(1, $this->ways - $paidCount))[0];
         }
 
         return $due;
