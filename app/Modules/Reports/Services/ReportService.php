@@ -120,7 +120,9 @@ class ReportService
     {
         $orderIds = $this->salesOrders($from, $to, $branchId)->pluck('id');
 
-        return OrderItem::query()->withoutGlobalScopes()->whereIn('order_id', $orderIds)->where('status', '!=', OrderItemStatus::Voided->value)->get();
+        return OrderItem::query()->withoutGlobalScopes()->whereIn('order_id', $orderIds)->where('status', '!=', OrderItemStatus::Voided->value)
+            ->whereNull('deleted_at') // removed lines were never sold; withoutGlobalScopes() also drops the soft-delete filter (test report H7)
+            ->get();
     }
 
     /** @return array<int, array{name: string, category: string, quantity: int, gross: int, net: int, share: float}> best sellers first */
