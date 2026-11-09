@@ -343,6 +343,7 @@ return [
         ],
     ],
     'security' => [
+        'back_office_needs_password' => 'The back office needs your email and password, not your till PIN. Your till sign-in has ended; please sign in here.',
         'signed_out_idle' => 'You were signed out after :minutes minutes without use. Please sign in again.',
         'two_step_needed' => 'Two-step sign-in is switched on for owners, managers and the accountant. Set it up below (scan the code with an authenticator app) to carry on.',
     ],
@@ -405,6 +406,7 @@ return [
             'approval_refused' => 'PIN may not approve this',
             'login_failed' => 'Wrong back-office password',
             'login_throttled' => 'Back-office sign-in blocked: too many tries',
+            'till_session_refused' => 'Back office opened with a till PIN: sent to the password sign-in',
         ],
     ],
     'backups' => [

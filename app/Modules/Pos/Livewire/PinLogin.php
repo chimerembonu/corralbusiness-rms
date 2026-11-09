@@ -9,6 +9,7 @@ use App\Modules\Staff\Exceptions\InvalidPinException;
 use App\Modules\Staff\Exceptions\PinLockedException;
 use App\Modules\Staff\Services\PinAuthenticator;
 use App\Support\Errors\FriendlyError;
+use App\Support\Filament\RefuseTillSignIn;
 use App\Support\Livewire\ShowsFriendlyErrors;
 use App\Support\Tenancy\StoreTenantResolver;
 use App\Support\Tenancy\Tenancy;
@@ -102,6 +103,8 @@ class PinLogin extends Component
 
         Auth::login($user);
         session()->regenerate();
+        // A PIN opens the till screens only; the back office still needs the password (and two-step code). Test report H1.
+        session()->put(RefuseTillSignIn::SESSION_KEY, true);
 
         $home = match (true) {
             $user->can(Permission::OrdersCreate->value) => route('pos.home'),
