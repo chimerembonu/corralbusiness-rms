@@ -142,3 +142,18 @@ These need the real hardware; tick each one on the mini PC with the restaurant's
 ## Things not tested here
 
 Real printers and cash drawer, Reverb across several machines, real Paystack/PaySwitch accounts, the Docker stack actually running (the test machine could not download Docker images; the image build itself passes on GitHub), the actual mini PC and Wi-Fi. They are all on the on-site list above.
+
+## Addendum — must-fix items fixed (9 Nov 2026, pull request #3)
+
+| # | Status |
+|---|---|
+| H1 | **Fixed.** A till PIN no longer opens `/admin` or `/hq`; the back office asks for email, password and (when on) the two-step code. Attempts are in the security log. |
+| H2 | **Fixed.** A time-out or Paystack server error while sending a prompt leaves it waiting and checking; a second prompt is refused meanwhile; money that arrives is recorded once. |
+| H5 | **Fixed.** Each share = what is left ÷ people still to pay (tested 2, 3 and 7 ways, to the pesewa). |
+| H6 | **Fixed**, and the same fault on the **payment** keypad (typing a part amount after choosing Mobile Money or card was ignored). Checked in a real browser. |
+| H7 | **Fixed.** Removed lines are out of the tax, item, category and food-cost reports. |
+| H11 | **Fixed**, plus Low 14. Damaged backups are refused before anything is touched; a restore that fails part-way is undone automatically. Checked on MySQL 8. |
+
+Full suite after the fixes: **675 passed** (4,660 checks). Still open, with day-one workarounds above: H3, H4, H8, H9, H10.
+
+Also found while fixing: the backup tests share the real `storage/backups` folder, so they fail when the suite is run **in parallel** (`--parallel`); CI runs them one at a time and passes. Same root cause as Low 11.
