@@ -43,7 +43,13 @@ class BackupService
         }
         $sqlPath = "{$dir}/.tmp-{$stamp}-".getmypid().'.sql';
 
-        $this->dumper()->dump($sqlPath);
+        try {
+            $this->dumper()->dump($sqlPath);
+        } catch (\Throwable $e) {
+            @unlink($sqlPath); // never leave a half-written dump behind (test report, Low 14)
+
+            throw $e;
+        }
 
         $zip = new ZipArchive;
         if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
@@ -57,6 +63,8 @@ class BackupService
             'driver' => DB::connection()->getDriverName(),
             'note' => $note,
             'tables' => count($this->tables()),
+            // Fingerprint of the database file: a restore refuses a backup that was damaged since (test report H11).
+            'sha256' => hash_file('sha256', $sqlPath),
         ], JSON_PRETTY_PRINT));
 
         $uploads = storage_path('app/public');
@@ -105,14 +113,39 @@ class BackupService
 
         $entries = $this->safeEntries($zip);
 
+        // Unpack and check the backup BEFORE touching the database (test report H11: a damaged backup used to
+        // be half-restored, leaving the live database without customers and orders).
+        $tmp = $this->directory().'/.restore-'.now()->format('His').'-'.getmypid();
+        File::ensureDirectoryExists($tmp);
+        $unpacked = $zip->extractTo($tmp, $entries);
+        $zip->close();
+        $sql = "{$tmp}/database.sql";
+        $expected = $manifest['sha256'] ?? null;
+        if (! $unpacked || ! is_file($sql) || (is_string($expected) && ! hash_equals($expected, (string) hash_file('sha256', $sql)))) {
+            File::deleteDirectory($tmp);
+
+            throw new UserFacingException(__('settings::settings.backups.damaged'));
+        }
+
         $safety = $this->create('before restore of '.basename($zipPath));
 
-        $tmp = $this->directory().'/.restore-'.now()->format('His');
-        File::ensureDirectoryExists($tmp);
-        $zip->extractTo($tmp, $entries);
-        $zip->close();
+        try {
+            $this->dumper()->restore($sql);
+        } catch (\Throwable $e) {
+            // Something still went wrong part-way (e.g. an older backup without a fingerprint): put back the
+            // state from just before, so the restaurant is never left with a half-restored database.
+            File::deleteDirectory($tmp);
+            report($e);
+            try {
+                $this->restoreSafetyCopy($safety);
+            } catch (\Throwable $rollback) {
+                report($rollback);
 
-        $this->dumper()->restore("{$tmp}/database.sql");
+                throw new UserFacingException(__('settings::settings.backups.restore_failed_no_rollback', ['file' => basename($safety)]));
+            }
+
+            throw new UserFacingException(__('settings::settings.backups.restore_failed_rolled_back'));
+        }
 
         if (is_dir("{$tmp}/uploads")) {
             File::copyDirectory("{$tmp}/uploads", storage_path('app/public'));
@@ -123,6 +156,27 @@ class BackupService
         Artisan::call('optimize:clear');
 
         return $safety;
+    }
+
+    /** Put the automatic "before restore" copy back after a failed restore. */
+    private function restoreSafetyCopy(string $safety): void
+    {
+        $zip = new ZipArchive;
+        if ($zip->open($safety) !== true) {
+            throw new UserFacingException("Could not open {$safety}");
+        }
+        $zip->setPassword($this->password());
+        $tmp = $this->directory().'/.rollback-'.now()->format('His').'-'.getmypid();
+        File::ensureDirectoryExists($tmp);
+        try {
+            if (! $zip->extractTo($tmp, ['database.sql'])) {
+                throw new UserFacingException("Could not unpack {$safety}");
+            }
+            $zip->close();
+            $this->dumper()->restore("{$tmp}/database.sql");
+        } finally {
+            File::deleteDirectory($tmp);
+        }
     }
 
     /** The password backups are locked with: RMS_BACKUP_PASSWORD, or one derived from APP_KEY when that isn't set. */

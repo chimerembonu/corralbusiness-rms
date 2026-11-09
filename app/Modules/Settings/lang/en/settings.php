@@ -410,6 +410,9 @@ return [
         ],
     ],
     'backups' => [
+        'damaged' => 'This backup is damaged (it changed since it was made), so nothing was restored. Your data is unchanged. Choose another backup.',
+        'restore_failed_rolled_back' => 'The restore failed part-way, so everything was put back as it was just before. Your data is unchanged. Choose another backup.',
+        'restore_failed_no_rollback' => 'The restore failed and the data could not be put back automatically. Restore the backup :file (made just before) now, or call support.',
         'password' => 'Backup password (only for a backup from another server)',
         'password_help' => 'Backups are locked. Leave empty for backups made on this server; for one from another server, type that server\'s backup password.',
         'title' => 'Backups',
