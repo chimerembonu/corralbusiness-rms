@@ -51,18 +51,23 @@ interface PaymentGateway extends ConnectionTester
     public function checkout(ChargeRequest $charge): GatewayResponse;
 
     /**
-     * Send money back for a payment. $refundReference is ours and unique: if the same refund is sent again
-     * (after a time-out, say), the provider must not refund twice — answer Pending and let refundStatus() tell.
-     * Return Succeeded (money sent back), Pending (accepted, processing), Failed (refused, with the reason) or
-     * NeedsAttention (the provider needs a person). Throw if the provider could not be reached: it is tried again.
+     * Send money back for a payment. $refundReference is ours and unique. The same refund may be asked for again
+     * (after a time-out, say): the adapter must make sure the provider never refunds the payment twice — e.g. by
+     * passing our reference if the provider honours one, or by first looking for a refund already made for this
+     * payment and answering with its state instead of sending another (Paystack: test report 9 Nov 2026, H3).
+     * Return Succeeded (money sent back), Pending (accepted or maybe accepted: refundStatus() will tell), Failed
+     * (refused, with the reason) or NeedsAttention (the provider needs a person). Throw only if nothing can have
+     * been sent (e.g. the provider could not be reached at all): it is tried again.
      */
     public function refund(string $reference, ?string $providerReference, Money $amount, string $refundReference): GatewayResponse;
 
     /**
      * How is that refund going? Same answers as refund(), plus Expired when the provider has no refund with
-     * this reference (it never arrived): it is then sent again. Throw if the provider could not be reached.
+     * this reference (it never arrived): it is then sent again (a few times at most). $paymentReference is the
+     * refunded payment's reference at the provider, for providers that list refunds per payment.
+     * Throw if the provider could not be reached.
      */
-    public function refundStatus(string $refundReference, ?string $providerRefundId): GatewayResponse;
+    public function refundStatus(string $refundReference, ?string $providerRefundId, ?string $paymentReference = null): GatewayResponse;
 
     /**
      * The provider's own record of payments between two moments (only with the Statement capability), for the

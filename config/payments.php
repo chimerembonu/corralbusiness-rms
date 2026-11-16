@@ -64,6 +64,8 @@ return [
     // Refunds through a provider (E2.4): if the provider cannot be reached for this long, a person refunds by hand.
     'refunds' => [
         'give_up_sending_after_days' => 3,
+        // A refund is sent to the provider at most this many times; then a manager checks and refunds by hand (test report H3).
+        'max_sends' => 3,
     ],
 
     'http' => ['connect_timeout' => 5, 'timeout' => 15],

@@ -129,19 +129,31 @@ class PaystackGateway extends AbstractGateway
      * Refund API (paystack.com/docs/payments/refunds, checked 5 Nov 2026). Our reference makes it safe to send
      * twice: Paystack answers 409 "already exists" and the status is fetched by reference instead.
      */
+    /**
+     * Create Refund (docs-v2.paystack.com/docs/api/refund, checked 16 Nov 2026) takes the transaction, the amount
+     * and notes — there is no refund reference of ours that Paystack would recognise. So before sending, ask
+     * Paystack whether this payment already has a refund (a first request that timed out may have arrived) and
+     * follow that one instead of sending a second: test report 9 Nov 2026, H3.
+     */
     public function refund(string $reference, ?string $providerReference, Money $amount, string $refundReference): GatewayResponse
     {
-        $response = $this->api()->post('/refund', [
-            'transaction' => $providerReference ?? $reference,
-            'amount' => $amount->amount,
-            'reference' => $refundReference,
-            'merchant_note' => 'CorralBusiness RMS refund '.$refundReference,
-        ]);
-        if ($response->status() === 409) {
-            return GatewayResponse::pending(null, $response->json('message'));
+        $transaction = $providerReference ?? $reference;
+        $existing = $this->refundOf($transaction, null); // throws if Paystack can't be asked: nothing sent, try again
+        if ($existing !== null) {
+            return $this->refundState($existing);
         }
-        if ($response->serverError()) {
-            throw new \RuntimeException('Paystack refund: HTTP '.$response->status()); // not sure it arrived: try again
+
+        try {
+            $response = $this->api()->post('/refund', [
+                'transaction' => $transaction,
+                'amount' => $amount->amount,
+                'merchant_note' => 'CorralBusiness RMS refund '.$refundReference,
+            ]);
+        } catch (ConnectionException) {
+            return GatewayResponse::pending(null, __('payments::payments.refunds.paystack.unsure')); // may have arrived: the status check will tell
+        }
+        if ($response->status() === 409 || $response->serverError()) {
+            return GatewayResponse::pending(null, __('payments::payments.refunds.paystack.unsure'));
         }
         if (! $response->successful() || ! $response->json('status')) {
             return GatewayResponse::failed((string) ($response->json('message') ?? $response->status()));
@@ -150,16 +162,34 @@ class PaystackGateway extends AbstractGateway
         return $this->refundState((array) $response->json('data', []));
     }
 
-    public function refundStatus(string $refundReference, ?string $providerRefundId): GatewayResponse
+    public function refundStatus(string $refundReference, ?string $providerRefundId, ?string $paymentReference = null): GatewayResponse
     {
-        $response = $this->api()->get('/refund', ['reference' => $refundReference]);
-        if (! $response->successful()) {
-            throw new \RuntimeException('Paystack refund status: HTTP '.$response->status());
-        }
-        $refund = collect((array) $response->json('data', []))->first(fn ($r) => strcasecmp((string) ($r['reference'] ?? ''), $refundReference) === 0)
-            ?? collect((array) $response->json('data', []))->first(fn ($r) => $providerRefundId !== null && (string) ($r['id'] ?? '') === $providerRefundId);
+        $refund = $this->refundOf($paymentReference ?? '', $providerRefundId);
 
-        return $refund ? $this->refundState((array) $refund) : new GatewayResponse(GatewayStatus::Expired, null, null);
+        return $refund ? $this->refundState($refund) : new GatewayResponse(GatewayStatus::Expired, null, null);
+    }
+
+    /**
+     * Paystack's refund of a payment: List Refunds filtered by the payment's transaction reference. The one with
+     * our refund id if we know it, otherwise the most recent that did not fail (one refund per payment here).
+     *
+     * @return array<string, mixed>|null
+     */
+    private function refundOf(string $transaction, ?string $providerRefundId): ?array
+    {
+        if ($transaction === '' && $providerRefundId === null) {
+            return null;
+        }
+        $response = $this->api()->get('/refund', array_filter(['reference' => $transaction ?: null, 'perPage' => 50]));
+        if (! $response->successful() || ! $response->json('status')) {
+            throw new \RuntimeException('Paystack refund list: HTTP '.$response->status());
+        }
+        $refunds = collect((array) $response->json('data', []))->filter(fn ($r) => is_array($r));
+        if ($providerRefundId !== null && ($mine = $refunds->first(fn ($r) => (string) ($r['id'] ?? '') === $providerRefundId))) {
+            return $mine;
+        }
+
+        return $refunds->reject(fn ($r) => ($r['status'] ?? null) === 'failed')->sortByDesc(fn ($r) => (int) ($r['id'] ?? 0))->first();
     }
 
     /**

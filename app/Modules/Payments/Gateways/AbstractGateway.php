@@ -59,7 +59,7 @@ abstract class AbstractGateway implements PaymentGateway
         throw UnsupportedByGateway::capability($this->key(), GatewayCapability::Refund);
     }
 
-    public function refundStatus(string $refundReference, ?string $providerRefundId): GatewayResponse
+    public function refundStatus(string $refundReference, ?string $providerRefundId, ?string $paymentReference = null): GatewayResponse
     {
         throw UnsupportedByGateway::capability($this->key(), GatewayCapability::Refund);
     }
