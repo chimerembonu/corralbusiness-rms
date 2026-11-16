@@ -82,3 +82,12 @@ it('lets the cashier add it on the till', function () {
 
     expect($this->order->fresh()->customer_tin)->toBe('GHA-123456789-0');
 });
+
+/* Test report 9 Nov 2026, H4: the receipt web page (opened or printed from the till's browser) left the TIN out. */
+it('shows the customer TIN on the receipt web page too, only when one was given', function () {
+    $this->actingAs($this->cashier);
+    $this->get(route('pos.receipt', $this->order))->assertOk()->assertDontSee('Customer TIN');
+
+    $this->orders->setCustomerTin($this->order, 'c0012345678', $this->cashier);
+    $this->get(route('pos.receipt', $this->order))->assertOk()->assertSeeInOrder(['Customer TIN', 'C0012345678']);
+});

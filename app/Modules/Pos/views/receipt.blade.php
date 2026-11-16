@@ -53,6 +53,8 @@
         @if ($order->openedBy && $settings->showServer)<div class="row"><span>{{ __('pos::pos.receipt.served_by') }}</span><span>{{ $order->openedBy->name }}</span></div>@endif
         @if ($order->table)<div class="row"><span>{{ __('pos::pos.receipt.guests') }}</span><span>{{ $order->covers }}</span></div>@endif
         @if ($order->customer_name)<div class="row"><span>{{ __('pos::pos.orders.who') }}</span><span>{{ $order->customer_name }}</span></div>@endif
+        {{-- The buyer's TIN, as on the printed receipt: GRA needs it on a VAT invoice (test report 9 Nov 2026, H4). --}}
+        @if ($order->customer_tin)<div class="row"><span>{{ __('pos::pos.receipt.customer_tin') }}</span><span class="bold">{{ $order->customer_tin }}</span></div>@endif
         @if ($order->isDelivery())
             <div class="row"><span>{{ __('pos::pos.delivery.phone') }}</span><span>{{ $order->customer_phone }}</span></div>
             <div>{{ __('pos::pos.delivery.address') }}: {{ $order->delivery_address }}</div>
