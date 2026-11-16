@@ -9,6 +9,8 @@ use App\Modules\Kitchen\Services\TicketDocument;
 use App\Modules\Orders\Enums\OrderType;
 use App\Modules\Orders\Models\DiningTable;
 use App\Modules\Orders\Services\OrderService;
+use App\Modules\Printing\Models\Printer;
+use App\Modules\Printing\Models\PrintJob;
 use App\Modules\Staff\Enums\Role;
 use App\Modules\Staff\Models\User;
 use Illuminate\Support\Facades\Broadcast;
@@ -136,4 +138,45 @@ it('authorises the private kitchen channel per branch', function () {
     expect($rule($this->cook, $this->branch->id))->toBeTrue()
         ->and($rule($this->cook, $otherBranch->id))->toBeFalse()
         ->and($rule(User::factory()->forBranch($this->branch)->create(), $this->branch->id))->toBeFalse(); // no kitchen permission
+});
+
+/*
+ * Test report 9 Nov 2026, H8: cancelling (voiding) a sent order left its tickets on the kitchen screen, so
+ * the kitchen could cook food nobody would pay for.
+ */
+it('takes a cancelled order off the kitchen screen and prints a do-not-cook slip', function () {
+    Printer::create(['name' => 'Pass', 'driver' => 'browser', 'prints_kitchen_tickets' => true]);
+    $order = sendDemoOrder($this);
+    expect($this->kitchen->activeTickets())->toHaveCount(1);
+
+    $this->orders->void($order, 'Customer left', $this->manager);
+
+    $ticket = Ticket::sole();
+    expect($this->kitchen->activeTickets())->toHaveCount(0)
+        ->and($ticket->status)->toBe(TicketStatus::Done)
+        ->and($ticket->items->every->is_voided)->toBeTrue();
+
+    $slip = PrintJob::query()->latest('created_at')->get()
+        ->first(fn ($job) => str_contains(json_encode($job->document), 'DO NOT COOK'));
+    expect($slip)->not->toBeNull()->and(json_encode($slip->document))->toContain('Jollof Rice (Large)');
+
+    $this->actingAs($this->cook);
+    Livewire::test(KitchenDisplay::class)->assertDontSee('Jollof Rice (Large)');
+});
+
+it('takes a ticket off the screen when its last line is voided', function () {
+    $order = sendDemoOrder($this);
+    foreach ($order->items as $line) {
+        $this->orders->voidItem($order->fresh(), $line, 'Wrong order', $this->manager, $this->waiter);
+    }
+
+    expect($this->kitchen->activeTickets())->toHaveCount(0);
+});
+
+it('leaves a ticket on the screen while other lines are still to cook', function () {
+    $order = sendDemoOrder($this);
+    $this->orders->voidItem($order, $order->items->firstWhere('name', 'Coca-Cola'), 'Changed mind', $this->manager, $this->waiter);
+
+    expect($this->kitchen->activeTickets())->toHaveCount(1)
+        ->and(Ticket::sole()->items->where('is_voided', false))->toHaveCount(1);
 });

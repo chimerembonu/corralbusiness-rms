@@ -45,6 +45,22 @@ final class TicketDocument
         return $doc->feed(2)->cut();
     }
 
+    /** Slip printed when an order whose ticket was already printed is cancelled: do not cook (test report H8). */
+    public static function cancelSlip(Ticket $ticket): PrintDocument
+    {
+        $ticket->load('items');
+        $where = $ticket->table_name ? __('pos::pos.order.table').' '.$ticket->table_name : OrderType::from($ticket->order_type)->label();
+        $doc = PrintDocument::make(__('kitchen::kitchen.cancel_title', ['number' => $ticket->displayNumber()]));
+        $doc->center()->bold()->big()->text('*** '.__('kitchen::kitchen.cancelled').' ***')->normal()
+            ->center()->bold()->text('#'.$ticket->displayNumber().'  '.$where)->normal()
+            ->center()->text(now()->format('H:i'))->rule('=');
+        foreach ($ticket->items as $item) {
+            $doc->bold()->tall()->text($item->quantity.' x '.$item->name)->normal();
+        }
+
+        return $doc->feed(2)->cut();
+    }
+
     /** Short slip printed when a held course is fired: only the lines that were just released. */
     public static function fireSlip(Ticket $ticket): PrintDocument
     {

@@ -3,6 +3,7 @@
 namespace App\Modules\Kitchen;
 
 use App\Modules\Kitchen\Events\TicketChanged;
+use App\Modules\Kitchen\Listeners\CancelTicketsWhenVoided;
 use App\Modules\Kitchen\Listeners\CreateTicketWhenSent;
 use App\Modules\Kitchen\Listeners\FireHeldCourse;
 use App\Modules\Kitchen\Listeners\FollowOrderToNewTable;
@@ -12,6 +13,7 @@ use App\Modules\Orders\Events\CourseFired;
 use App\Modules\Orders\Events\ItemVoided;
 use App\Modules\Orders\Events\OrderSentToKitchen;
 use App\Modules\Orders\Events\OrderTransferred;
+use App\Modules\Orders\Events\OrderVoided;
 use App\Modules\Orders\Events\TablesMerged;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 
@@ -31,6 +33,7 @@ class KitchenServiceProvider extends ServiceProvider
         OrderSentToKitchen::class => [CreateTicketWhenSent::class],
         CourseFired::class => [FireHeldCourse::class],
         ItemVoided::class => [StrikeVoidedLine::class],
+        OrderVoided::class => [CancelTicketsWhenVoided::class],
         TicketChanged::class => [PrintTicket::class],
         OrderTransferred::class => [FollowOrderToNewTable::class],
         TablesMerged::class => [FollowOrderToNewTable::class],

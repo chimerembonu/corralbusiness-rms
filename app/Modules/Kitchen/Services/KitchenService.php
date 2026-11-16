@@ -128,8 +128,40 @@ class KitchenService
         $items = TicketItem::query()->where('order_item_id', $line->id)->get();
         foreach ($items as $item) {
             $item->forceFill(['is_voided' => true])->save();
-            TicketChanged::dispatch($item->ticket, 'item_voided');
+            $ticket = $item->ticket;
+            // The last line left on the ticket was voided: nothing to cook, take it off the screen.
+            if ($ticket->status !== TicketStatus::Done && ! $ticket->items()->where('is_voided', false)->exists()) {
+                $this->closeCancelled($ticket);
+
+                continue;
+            }
+            TicketChanged::dispatch($ticket, 'item_voided');
         }
+    }
+
+    /**
+     * The whole order was cancelled at the till (test report 9 Nov 2026, H8): strike every line, take its open
+     * tickets off the kitchen screens and print a "do not cook" slip, so the kitchen never cooks food nobody
+     * will pay for. Tickets already done stay in the done list, struck through.
+     */
+    public function cancelOrder(Order $order): void
+    {
+        $tickets = Ticket::query()->where('order_id', $order->id)->get();
+        foreach ($tickets as $ticket) {
+            TicketItem::query()->where('ticket_id', $ticket->id)->update(['is_voided' => true]);
+            if ($ticket->status === TicketStatus::Done) {
+                TicketChanged::dispatch($ticket, 'item_voided');
+
+                continue;
+            }
+            $this->closeCancelled($ticket);
+        }
+    }
+
+    private function closeCancelled(Ticket $ticket): void
+    {
+        $ticket->forceFill(['status' => TicketStatus::Done, 'done_at' => now()])->save();
+        TicketChanged::dispatch($ticket, 'cancelled');
     }
 
     /** @return Collection<int, Ticket> */
