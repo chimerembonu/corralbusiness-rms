@@ -15,8 +15,8 @@ use App\Support\Audit\Activity;
 use App\Support\Money\Money;
 use App\Support\Tenancy\TenantContext;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection as BaseCollection;
 
 /**
@@ -42,15 +42,111 @@ class ReportService
         return $this->paidOrders($from, $to, $branchId)->filter(fn (Order $o) => $o->countsAsSale())->values();
     }
 
+    /**
+     * The same orders as salesOrders(), as a query (the SQL form of Order::countsAsSale()). Reports walk it in
+     * pages instead of loading every order and line at once, so a year of trading fits in memory
+     * (test report 9 Nov 2026, H10: a long date range ran out of memory).
+     */
+    public function salesQuery(string $from, string $to, ?string $branchId = null): Builder
+    {
+        return Order::query()->real()->where('branch_id', $branchId ?? $this->context->branchId())
+            ->whereDate('business_date', '>=', $from)->whereDate('business_date', '<=', $to)
+            ->where(fn (Builder $q) => $q->where('status', OrderStatus::Paid->value)
+                ->orWhere(fn (Builder $q) => $q->where('status', OrderStatus::Refunded->value)->whereNotNull('refund_business_date')
+                    ->whereRaw('date(refund_business_date) <> date(business_date)')));
+    }
+
+    /** Sold lines (not voided, not removed) of the range's sales, as a query. */
+    public function soldLinesQuery(string $from, string $to, ?string $branchId = null): Builder
+    {
+        return OrderItem::query()->withoutGlobalScopes()
+            ->whereIn('order_id', $this->salesQuery($from, $to, $branchId)->select('id'))
+            ->where('status', '!=', OrderItemStatus::Voided->value)
+            ->whereNull('deleted_at'); // removed lines were never sold; withoutGlobalScopes() also drops the soft-delete filter (test report H7)
+    }
+
+    /**
+     * The range's sales as plain rows (money in pesewas as ints), a page at a time. Plain rows, not models:
+     * a year of orders is added up in seconds and in a few MB.
+     *
+     * @return iterable<int, object>
+     */
+    private function eachSale(string $from, string $to, ?string $branchId): iterable
+    {
+        $money = ['total', 'tax_total', 'subtotal', 'discount_total', 'service_charge', 'delivery_fee', 'tip_total', 'covers'];
+        foreach ($this->salesQuery($from, $to, $branchId)->toBase()->select(array_merge(['id', 'business_date', 'type', 'paid_at', 'opened_at'], $money))->lazyById(self::$page) as $row) {
+            foreach ($money as $field) {
+                $row->{$field} = (int) $row->{$field};
+            }
+            $row->business_date = substr((string) $row->business_date, 0, 10);
+
+            yield $row;
+        }
+    }
+
+    /**
+     * Sold lines, a page of orders at a time (one query for the orders' ids, one for their lines): much faster than
+     * paging the lines with the sales query as a sub-query, which the database re-runs for every page.
+     *
+     * @return iterable<int, object> sold lines as plain rows (see soldLinePages())
+     */
+    private function eachSoldLine(string $from, string $to, ?string $branchId): iterable
+    {
+        foreach ($this->soldLinePages($from, $to, $branchId) as $lines) {
+            yield from $lines;
+        }
+    }
+
+    /**
+     * The sold lines of each page of up to 1,000 sales, as plain rows: id, item_id, name (with the size, as on
+     * the receipt), quantity, line_total, tax_total (pesewas), taxable and tax_lines (decoded).
+     *
+     * @return iterable<int, BaseCollection<int, object>>
+     */
+    public function soldLinePages(string $from, string $to, ?string $branchId = null): iterable
+    {
+        foreach ($this->salesQuery($from, $to, $branchId)->select('id')->toBase()->lazyById(self::$page)->chunk(self::$page) as $page) {
+            yield OrderItem::query()->withoutGlobalScopes()->toBase()->whereIn('order_id', $page->pluck('id')->all())
+                ->where('status', '!=', OrderItemStatus::Voided->value)->whereNull('deleted_at')->orderBy('id')
+                ->get(['id', 'item_id', 'name', 'variant_name', 'quantity', 'line_total', 'tax_total', 'taxable', 'tax_lines'])
+                ->map(function (object $l) {
+                    $l->name = $l->variant_name ? "{$l->name} ({$l->variant_name})" : $l->name; // OrderItem::displayName()
+                    $l->quantity = (int) $l->quantity;
+                    $l->line_total = (int) $l->line_total;
+                    $l->tax_total = (int) $l->tax_total;
+                    $l->taxable = (bool) $l->taxable;
+                    $l->tax_lines = is_string($l->tax_lines) ? (json_decode($l->tax_lines, true) ?: []) : [];
+
+                    return $l;
+                });
+        }
+    }
+
+    /** Rows read per page (tests make it tiny to cross many pages). */
+    public static int $page = 1000;
+
+    /** @param  array<string, int>  $totals  adds one order's money fields */
+    private static function addOrder(array &$totals, object $o): void
+    {
+        $totals['orders'] = ($totals['orders'] ?? 0) + 1;
+        $totals['gross'] = ($totals['gross'] ?? 0) + $o->total;
+        $totals['tax'] = ($totals['tax'] ?? 0) + $o->tax_total;
+        $totals['discounts'] = ($totals['discounts'] ?? 0) + $o->discount_total;
+    }
+
     /** @return array<string, mixed> */
     public function summary(string $from, string $to, ?string $branchId = null): array
     {
         $branchId ??= $this->context->branchId();
-        $paid = $this->salesOrders($from, $to, $branchId);
+        $t = ['orders' => 0, 'covers' => 0, 'total' => 0, 'tax_total' => 0, 'subtotal' => 0, 'discount_total' => 0, 'service_charge' => 0, 'delivery_fee' => 0, 'tip_total' => 0];
+        foreach ($this->eachSale($from, $to, $branchId) as $o) {
+            $t['orders']++;
+            foreach (['covers', 'total', 'tax_total', 'subtotal', 'discount_total', 'service_charge', 'delivery_fee', 'tip_total'] as $field) {
+                $t[$field] += $o->{$field};
+            }
+        }
         $refundedOrders = Order::query()->real()->where('branch_id', $branchId)->where('status', OrderStatus::Refunded->value)
             ->whereDate('refund_business_date', '>=', $from)->whereDate('refund_business_date', '<=', $to)->count();
-        $sum = fn (BaseCollection $rows, string $field) => (int) $rows->sum(fn (Order $o) => $o->{$field}->amount);
-
         $voids = Order::query()->real()->where('branch_id', $branchId)->whereDate('business_date', '>=', $from)->whereDate('business_date', '<=', $to)->where('status', OrderStatus::Void->value)->get();
         $refunds = Payment::query()->real()->where('branch_id', $branchId)->where('status', PaymentStatus::Refunded->value)
             ->whereDate('refund_business_date', '>=', $from)->whereDate('refund_business_date', '<=', $to)->get();
@@ -60,39 +156,43 @@ class ReportService
             'from' => $from,
             'to' => $to,
             'days' => $days,
-            'orders' => $paid->count(),
+            'orders' => $t['orders'],
             'orders_void' => $voids->count(),
             'orders_refunded' => $refundedOrders,
-            'covers' => (int) $paid->sum('covers'),
-            'gross_sales' => $sum($paid, 'total'),
-            'net_sales' => $sum($paid, 'total') - $sum($paid, 'tax_total'),
-            'subtotal' => $sum($paid, 'subtotal'),
-            'tax_total' => $sum($paid, 'tax_total'),
-            'discount_total' => $sum($paid, 'discount_total'),
-            'service_charge_total' => $sum($paid, 'service_charge'),
-            'delivery_fee_total' => $sum($paid, 'delivery_fee'),
-            'tip_total' => $sum($paid, 'tip_total'),
+            'covers' => $t['covers'],
+            'gross_sales' => $t['total'],
+            'net_sales' => $t['total'] - $t['tax_total'],
+            'subtotal' => $t['subtotal'],
+            'tax_total' => $t['tax_total'],
+            'discount_total' => $t['discount_total'],
+            'service_charge_total' => $t['service_charge'],
+            'delivery_fee_total' => $t['delivery_fee'],
+            'tip_total' => $t['tip_total'],
             'refund_total' => (int) $refunds->sum(fn (Payment $p) => $p->amount->amount),
             'void_value' => (int) $voids->sum(fn (Order $o) => $o->total->amount),
-            'average_order' => $paid->count() ? intdiv($sum($paid, 'total'), $paid->count()) : 0,
-            'average_per_day' => intdiv($sum($paid, 'total'), $days),
+            'average_order' => $t['orders'] ? intdiv($t['total'], $t['orders']) : 0,
+            'average_per_day' => intdiv($t['total'], $days),
         ];
     }
 
     /** @return array<int, array{date: string, orders: int, gross: int, net: int, tax: int, discounts: int}> */
     public function byDay(string $from, string $to, ?string $branchId = null): array
     {
-        $orders = $this->salesOrders($from, $to, $branchId)->groupBy(fn (Order $o) => $o->business_date->toDateString());
+        $days = [];
+        foreach ($this->eachSale($from, $to, $branchId) as $o) {
+            $days[$o->business_date] ??= [];
+            self::addOrder($days[$o->business_date], $o);
+        }
         $rows = [];
         for ($day = CarbonImmutable::parse($from); $day->lessThanOrEqualTo(CarbonImmutable::parse($to)); $day = $day->addDay()) {
-            $own = $orders->get($day->toDateString(), collect());
+            $own = $days[$day->toDateString()] ?? [];
             $rows[] = [
                 'date' => $day->toDateString(),
-                'orders' => $own->count(),
-                'gross' => (int) $own->sum(fn (Order $o) => $o->total->amount),
-                'net' => (int) $own->sum(fn (Order $o) => $o->total->amount - $o->tax_total->amount),
-                'tax' => (int) $own->sum(fn (Order $o) => $o->tax_total->amount),
-                'discounts' => (int) $own->sum(fn (Order $o) => $o->discount_total->amount),
+                'orders' => $own['orders'] ?? 0,
+                'gross' => $own['gross'] ?? 0,
+                'net' => ($own['gross'] ?? 0) - ($own['tax'] ?? 0),
+                'tax' => $own['tax'] ?? 0,
+                'discounts' => $own['discounts'] ?? 0,
             ];
         }
 
@@ -102,70 +202,98 @@ class ReportService
     /** @return array<int, array{hour: int, label: string, orders: int, gross: int}> every hour that had a sale */
     public function byHour(string $from, string $to, ?string $branchId = null): array
     {
-        $orders = $this->salesOrders($from, $to, $branchId)->groupBy(fn (Order $o) => (int) ($o->paid_at ?? $o->opened_at)->format('G'));
+        $hours = [];
+        foreach ($this->eachSale($from, $to, $branchId) as $o) {
+            $h = (int) substr((string) ($o->paid_at ?? $o->opened_at), 11, 2); // stored in the restaurant's time zone
+            $hours[$h] ??= [];
+            self::addOrder($hours[$h], $o);
+        }
         $rows = [];
         for ($h = 0; $h < 24; $h++) {
-            $own = $orders->get($h, collect());
-            if ($own->isEmpty()) {
+            if (! isset($hours[$h])) {
                 continue;
             }
-            $rows[] = ['hour' => $h, 'label' => sprintf('%02d:00–%02d:00', $h, ($h + 1) % 24), 'orders' => $own->count(), 'gross' => (int) $own->sum(fn (Order $o) => $o->total->amount)];
+            $rows[] = ['hour' => $h, 'label' => sprintf('%02d:00–%02d:00', $h, ($h + 1) % 24), 'orders' => $hours[$h]['orders'], 'gross' => $hours[$h]['gross']];
         }
 
         return $rows;
     }
 
-    /** @return Collection<int, OrderItem> sold lines (not voided) of paid orders */
-    private function soldLines(string $from, string $to, ?string $branchId = null): Collection
+    /**
+     * Sold lines added up per dish (name and size): quantity, gross, net and the dish's first menu item.
+     *
+     * @return array<string, array{item_id: ?string, quantity: int, gross: int, net: int}>
+     */
+    private function linesByDish(string $from, string $to, ?string $branchId): array
     {
-        $orderIds = $this->salesOrders($from, $to, $branchId)->pluck('id');
+        $dishes = [];
+        foreach ($this->eachSoldLine($from, $to, $branchId) as $l) {
+            $name = $l->name;
+            $dishes[$name] ??= ['item_id' => $l->item_id, 'quantity' => 0, 'gross' => 0, 'net' => 0, 'items' => []];
+            $dishes[$name]['quantity'] += $l->quantity;
+            $dishes[$name]['gross'] += $l->line_total;
+            $dishes[$name]['net'] += $l->line_total - $l->tax_total;
+            $dishes[$name]['items'][(string) $l->item_id] = true;
+        }
 
-        return OrderItem::query()->withoutGlobalScopes()->whereIn('order_id', $orderIds)->where('status', '!=', OrderItemStatus::Voided->value)
-            ->whereNull('deleted_at') // removed lines were never sold; withoutGlobalScopes() also drops the soft-delete filter (test report H7)
-            ->get();
+        return $dishes;
     }
 
     /** @return array<int, array{name: string, category: string, quantity: int, gross: int, net: int, share: float}> best sellers first */
     public function byItem(string $from, string $to, ?string $branchId = null): array
     {
-        $lines = $this->soldLines($from, $to, $branchId);
-        $categories = $this->categoryNames($lines);
-        $total = max(1, (int) $lines->sum(fn (OrderItem $l) => $l->line_total->amount));
+        $dishes = $this->linesByDish($from, $to, $branchId);
+        $categories = $this->categoryNames($dishes);
+        $total = max(1, array_sum(array_column($dishes, 'gross')));
 
-        return $lines->groupBy(fn (OrderItem $l) => $l->displayName())->map(fn (BaseCollection $group, string $name) => [
-            'name' => $name,
-            'category' => $categories[$group->first()->item_id] ?? __('reports::reports.other'),
-            'quantity' => (int) $group->sum('quantity'),
-            'gross' => (int) $group->sum(fn (OrderItem $l) => $l->line_total->amount),
-            'net' => (int) $group->sum(fn (OrderItem $l) => $l->line_total->amount - $l->tax_total->amount),
-            'share' => round($group->sum(fn (OrderItem $l) => $l->line_total->amount) / $total * 100, 1),
+        return collect($dishes)->map(fn (array $d, string $name) => [
+            'name' => (string) $name,
+            'category' => $categories[$d['item_id']] ?? __('reports::reports.other'),
+            'quantity' => $d['quantity'],
+            'gross' => $d['gross'],
+            'net' => $d['net'],
+            'share' => round($d['gross'] / $total * 100, 1),
         ])->sortByDesc('gross')->values()->all();
     }
 
     /** @return array<int, array{category: string, quantity: int, gross: int, share: float}> */
     public function byCategory(string $from, string $to, ?string $branchId = null): array
     {
-        $lines = $this->soldLines($from, $to, $branchId);
-        $categories = $this->categoryNames($lines);
-        $total = max(1, (int) $lines->sum(fn (OrderItem $l) => $l->line_total->amount));
+        // Per menu item first (a dish name can span items), then per category.
+        $perItem = [];
+        foreach ($this->eachSoldLine($from, $to, $branchId) as $l) {
+            $perItem[(string) $l->item_id] ??= ['item_id' => $l->item_id, 'quantity' => 0, 'gross' => 0, 'items' => [(string) $l->item_id => true]];
+            $perItem[(string) $l->item_id]['quantity'] += $l->quantity;
+            $perItem[(string) $l->item_id]['gross'] += $l->line_total;
+        }
+        $categories = $this->categoryNames($perItem);
+        $total = max(1, array_sum(array_column($perItem, 'gross')));
+        $rows = [];
+        foreach ($perItem as $p) {
+            $category = $categories[$p['item_id']] ?? __('reports::reports.other');
+            $rows[$category] ??= ['category' => $category, 'quantity' => 0, 'gross' => 0];
+            $rows[$category]['quantity'] += $p['quantity'];
+            $rows[$category]['gross'] += $p['gross'];
+        }
 
-        return $lines->groupBy(fn (OrderItem $l) => $categories[$l->item_id] ?? __('reports::reports.other'))->map(fn (BaseCollection $group, string $category) => [
-            'category' => $category,
-            'quantity' => (int) $group->sum('quantity'),
-            'gross' => (int) $group->sum(fn (OrderItem $l) => $l->line_total->amount),
-            'share' => round($group->sum(fn (OrderItem $l) => $l->line_total->amount) / $total * 100, 1),
-        ])->sortByDesc('gross')->values()->all();
+        return collect($rows)->map(fn (array $r) => $r + ['share' => round($r['gross'] / $total * 100, 1)])->sortByDesc('gross')->values()->all();
     }
 
     /** @return array<int, array{type: string, label: string, orders: int, gross: int, average: int}> */
     public function byType(string $from, string $to, ?string $branchId = null): array
     {
-        return $this->salesOrders($from, $to, $branchId)->groupBy(fn (Order $o) => $o->type->value)->map(fn (BaseCollection $own, string $type) => [
+        $types = [];
+        foreach ($this->eachSale($from, $to, $branchId) as $o) {
+            $types[$o->type] ??= [];
+            self::addOrder($types[$o->type], $o);
+        }
+
+        return collect($types)->map(fn (array $own, string $type) => [
             'type' => $type,
             'label' => OrderType::from($type)->label(),
-            'orders' => $own->count(),
-            'gross' => (int) $own->sum(fn (Order $o) => $o->total->amount),
-            'average' => intdiv((int) $own->sum(fn (Order $o) => $o->total->amount), max(1, $own->count())),
+            'orders' => $own['orders'],
+            'gross' => $own['gross'],
+            'average' => intdiv($own['gross'], max(1, $own['orders'])),
         ])->sortByDesc('gross')->values()->all();
     }
 
@@ -175,26 +303,35 @@ class ReportService
         $branchId ??= $this->context->branchId();
         // Money taken in the range counts here unless it was refunded inside the same range; refunds count on
         // the day they were given (refund_business_date), so a closed day's figures never move (security review L3).
-        $inRange = fn (?Carbon $d) => $d !== null && $d->toDateString() >= $from && $d->toDateString() <= $to;
-        $received = Payment::query()->real()->where('branch_id', $branchId)->whereBetween('received_at', [$from.' 00:00:00', $to.' 23:59:59'])->get();
+        $inRange = fn (?string $d) => $d !== null && substr($d, 0, 10) >= $from && substr($d, 0, 10) <= $to;
+        $columns = ['id', 'method', 'provider', 'status', 'amount', 'tip', 'refund_business_date'];
+        // Plain rows a page at a time: a year of payments no longer has to fit in memory (test report H10).
+        $received = Payment::query()->real()->where('branch_id', $branchId)->whereBetween('received_at', [$from.' 00:00:00', $to.' 23:59:59'])->toBase()->select($columns);
         $refunds = Payment::query()->real()->where('branch_id', $branchId)->where('status', PaymentStatus::Refunded->value)
-            ->whereDate('refund_business_date', '>=', $from)->whereDate('refund_business_date', '<=', $to)->get();
-        $key = fn (Payment $p) => $p->method->value.($p->provider ? ':'.$p->provider->value : '');
-        $taken = $received->filter(fn (Payment $p) => $p->status === PaymentStatus::Completed || ! $inRange($p->refund_business_date));
+            ->whereDate('refund_business_date', '>=', $from)->whereDate('refund_business_date', '<=', $to)->toBase()->select($columns);
 
-        return $received->merge($refunds)->unique('id')->groupBy($key)->map(function (BaseCollection $all, string $method) use ($taken, $refunds, $key) {
-            $own = $taken->filter(fn (Payment $p) => $key($p) === $method);
-            $back = $refunds->filter(fn (Payment $p) => $key($p) === $method);
+        $groups = [];
+        $group = function (object $p) use (&$groups): string {
+            $key = $p->method.($p->provider ? ':'.$p->provider : '');
+            $groups[$key] ??= ['method' => $key, 'label' => (new Payment)->forceFill(['method' => $p->method, 'provider' => $p->provider])->methodLabel(), 'count' => 0, 'total' => 0, 'tips' => 0, 'refunded' => 0];
 
-            return [
-                'method' => $method,
-                'label' => $all->first()->methodLabel(),
-                'count' => $own->count(),
-                'total' => (int) $own->sum(fn (Payment $p) => $p->amount->amount),
-                'tips' => (int) $own->sum(fn (Payment $p) => $p->tip->amount),
-                'refunded' => (int) $back->sum(fn (Payment $p) => $p->amount->amount),
-            ];
-        })->sortByDesc('total')->values()->all();
+            return $key;
+        };
+        foreach ($received->lazyById(self::$page) as $p) {
+            $key = $group($p);
+            // Money taken in the range counts here unless it was refunded inside the same range.
+            if ($p->status === PaymentStatus::Completed->value || ! $inRange($p->refund_business_date)) {
+                $groups[$key]['count']++;
+                $groups[$key]['total'] += (int) $p->amount;
+                $groups[$key]['tips'] += (int) $p->tip;
+            }
+        }
+        // Refunds count on the day they were given (refund_business_date), so a closed day's figures never move (security review L3).
+        foreach ($refunds->lazyById(self::$page) as $p) {
+            $groups[$group($p)]['refunded'] += (int) $p->amount;
+        }
+
+        return collect($groups)->sortByDesc('total')->values()->all();
     }
 
     /** @return array<int, array{name: string, role: string, orders: int, sales: int, average: int, voids: int, payments: int, taken: int, tips: int}> */
@@ -253,13 +390,12 @@ class ReportService
      */
     public function tax(string $from, string $to, ?string $branchId = null): array
     {
-        $lines = $this->soldLines($from, $to, $branchId);
         $components = [];
         $taxableNet = 0;
         $exemptNet = 0;
 
-        foreach ($lines as $line) {
-            $net = $line->line_total->amount - $line->tax_total->amount;
+        foreach ($this->eachSoldLine($from, $to, $branchId) as $line) {
+            $net = $line->line_total - $line->tax_total;
             if (! $line->taxable || empty($line->tax_lines)) {
                 $exemptNet += $net;
 
@@ -273,22 +409,25 @@ class ReportService
             }
         }
 
-        $orders = $this->salesOrders($from, $to, $branchId);
+        $orders = [];
+        foreach ($this->eachSale($from, $to, $branchId) as $o) {
+            self::addOrder($orders, $o);
+        }
 
         return [
             'components' => array_values($components),
             'taxable_net' => $taxableNet,
             'exempt_net' => $exemptNet,
-            'tax_total' => (int) $orders->sum(fn (Order $o) => $o->tax_total->amount),
-            'gross' => (int) $orders->sum(fn (Order $o) => $o->total->amount),
+            'tax_total' => $orders['tax'] ?? 0,
+            'gross' => $orders['gross'] ?? 0,
         ];
     }
 
-    /** @param  Collection<int, OrderItem>  $lines
+    /** @param  array<array-key, array{items: array<string, true>}>  $groups
      * @return array<string, string> menu item id → category name */
-    private function categoryNames(Collection $lines): array
+    private function categoryNames(array $groups): array
     {
-        $ids = $lines->pluck('item_id')->filter()->unique();
+        $ids = collect($groups)->flatMap(fn (array $g) => array_keys($g['items']))->filter()->unique()->values();
 
         return Item::query()->withoutGlobalScopes()->withTrashed()->whereIn('id', $ids)->with('category')->get()
             ->mapWithKeys(fn (Item $i) => [$i->id => $i->category?->name ?? __('reports::reports.other')])->all();

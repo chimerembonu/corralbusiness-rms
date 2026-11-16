@@ -5,8 +5,6 @@ namespace App\Modules\Reports\Services;
 use App\Modules\Inventory\Enums\StockMovementType;
 use App\Modules\Inventory\Models\StockMovement;
 use App\Modules\Menu\Models\Item;
-use App\Modules\Orders\Enums\OrderItemStatus;
-use App\Modules\Orders\Models\OrderItem;
 use Illuminate\Support\Collection as BaseCollection;
 
 /**
@@ -28,38 +26,55 @@ class FoodCostService
      */
     public function report(string $from, string $to, ?string $branchId = null): array
     {
-        $orderIds = $this->reports->salesOrders($from, $to, $branchId)->pluck('id');
-        $lines = OrderItem::query()->withoutGlobalScopes()->whereIn('order_id', $orderIds)->where('status', '!=', OrderItemStatus::Voided->value)
-            ->whereNull('deleted_at') // removed lines were never sold; withoutGlobalScopes() also drops the soft-delete filter (test report H7)
-            ->get();
-        $costs = $this->lineCosts($lines->pluck('id'));
-        $categories = Item::query()->withoutGlobalScopes()->withTrashed()->whereIn('id', $lines->pluck('item_id')->filter()->unique())->with('category')->get()
-            ->mapWithKeys(fn (Item $i) => [$i->id => $i->category?->name ?? __('reports::reports.other')])->all();
-
-        $row = function (string $name, string $category, BaseCollection $group) use ($costs) {
-            $net = (int) $group->sum(fn (OrderItem $l) => $l->line_total->amount - $l->tax_total->amount);
-            $costed = $group->filter(fn (OrderItem $l) => isset($costs[$l->id]));
-            $costedNet = (int) $costed->sum(fn (OrderItem $l) => $l->line_total->amount - $l->tax_total->amount);
-            $cost = (int) $costed->sum(fn (OrderItem $l) => $costs[$l->id]);
-
-            return [
-                'name' => $name,
-                'category' => $category,
-                'quantity' => (int) $group->sum('quantity'),
-                'net' => $net,
-                'costed_net' => $costedNet,
-                'cost' => $cost,
-                'margin' => $costedNet - $cost,
-                'food_cost_pct' => $costedNet > 0 ? round($cost / $costedNet * 100, 1) : null,
-                'costed' => $costed->isEmpty() ? 'none' : ($costed->count() === $group->count() ? 'all' : 'some'),
-            ];
+        // Lines are read a page at a time and added up, never all loaded at once (test report 9 Nov 2026, H10).
+        $blank = ['item_id' => null, 'quantity' => 0, 'lines' => 0, 'net' => 0, 'costed_lines' => 0, 'costed_net' => 0, 'cost' => 0];
+        $perDish = [];
+        $perItem = [];
+        $add = static function (array &$groups, string $key, $line, int $net, ?int $cost) use ($blank): void {
+            $groups[$key] ??= ['item_id' => $line->item_id] + $blank;
+            $groups[$key]['quantity'] += $line->quantity;
+            $groups[$key]['lines']++;
+            $groups[$key]['net'] += $net;
+            if ($cost !== null) {
+                $groups[$key]['costed_lines']++;
+                $groups[$key]['costed_net'] += $net;
+                $groups[$key]['cost'] += $cost;
+            }
         };
+        foreach ($this->reports->soldLinePages($from, $to, $branchId) as $lines) {
+            $costs = $this->lineCosts($lines->pluck('id'));
+            foreach ($lines as $l) {
+                $net = $l->line_total - $l->tax_total;
+                $add($perDish, $l->name, $l, $net, $costs[$l->id] ?? null);
+                $add($perItem, (string) $l->item_id, $l, $net, $costs[$l->id] ?? null);
+            }
+        }
+        $categories = Item::query()->withoutGlobalScopes()->withTrashed()->whereIn('id', array_filter(array_keys($perItem)))->with('category')->get()
+            ->mapWithKeys(fn (Item $i) => [$i->id => $i->category?->name ?? __('reports::reports.other')])->all();
+        $perCategory = [];
+        foreach ($perItem as $g) {
+            $category = $categories[$g['item_id']] ?? __('reports::reports.other');
+            $perCategory[$category] ??= $blank;
+            foreach (['quantity', 'lines', 'net', 'costed_lines', 'costed_net', 'cost'] as $f) {
+                $perCategory[$category][$f] += $g[$f];
+            }
+        }
 
-        $dishes = $lines->groupBy(fn (OrderItem $l) => $l->displayName())
-            ->map(fn (BaseCollection $group, string $name) => $row($name, $categories[$group->first()->item_id] ?? __('reports::reports.other'), $group))
+        $row = fn (string $name, string $category, array $g) => [
+            'name' => $name,
+            'category' => $category,
+            'quantity' => $g['quantity'],
+            'net' => $g['net'],
+            'costed_net' => $g['costed_net'],
+            'cost' => $g['cost'],
+            'margin' => $g['costed_net'] - $g['cost'],
+            'food_cost_pct' => $g['costed_net'] > 0 ? round($g['cost'] / $g['costed_net'] * 100, 1) : null,
+            'costed' => $g['costed_lines'] === 0 ? 'none' : ($g['costed_lines'] === $g['lines'] ? 'all' : 'some'),
+        ];
+
+        $dishes = collect($perDish)->map(fn (array $g, $name) => $row((string) $name, $categories[$g['item_id']] ?? __('reports::reports.other'), $g))
             ->sortByDesc('net')->values()->all();
-        $byCategory = $lines->groupBy(fn (OrderItem $l) => $categories[$l->item_id] ?? __('reports::reports.other'))
-            ->map(fn (BaseCollection $group, string $category) => $row($category, $category, $group))
+        $byCategory = collect($perCategory)->map(fn (array $g, $category) => $row((string) $category, (string) $category, $g))
             ->sortByDesc('net')->values()->all();
 
         $net = (int) collect($dishes)->sum('net');
