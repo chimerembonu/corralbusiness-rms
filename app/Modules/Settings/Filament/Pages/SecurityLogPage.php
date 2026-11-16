@@ -58,7 +58,7 @@ class SecurityLogPage extends Page implements HasTable
 
     public function table(Table $table): Table
     {
-        $events = collect(['pin_failed', 'pin_locked_out', 'pin_inactive_user', 'approval_refused', 'login_failed', 'login_throttled'])
+        $events = collect(['pin_failed', 'pin_locked_out', 'pin_inactive_user', 'approval_refused', 'login_failed', 'login_throttled', 'till_session_refused'])
             ->mapWithKeys(fn ($e) => [$e => __("settings::settings.security_log.events.{$e}")])->all();
 
         return $table

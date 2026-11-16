@@ -29,7 +29,9 @@ class FoodCostService
     public function report(string $from, string $to, ?string $branchId = null): array
     {
         $orderIds = $this->reports->salesOrders($from, $to, $branchId)->pluck('id');
-        $lines = OrderItem::query()->withoutGlobalScopes()->whereIn('order_id', $orderIds)->where('status', '!=', OrderItemStatus::Voided->value)->get();
+        $lines = OrderItem::query()->withoutGlobalScopes()->whereIn('order_id', $orderIds)->where('status', '!=', OrderItemStatus::Voided->value)
+            ->whereNull('deleted_at') // removed lines were never sold; withoutGlobalScopes() also drops the soft-delete filter (test report H7)
+            ->get();
         $costs = $this->lineCosts($lines->pluck('id'));
         $categories = Item::query()->withoutGlobalScopes()->withTrashed()->whereIn('id', $lines->pluck('item_id')->filter()->unique())->with('category')->get()
             ->mapWithKeys(fn (Item $i) => [$i->id => $i->category?->name ?? __('reports::reports.other')])->all();

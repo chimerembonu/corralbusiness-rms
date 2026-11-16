@@ -64,21 +64,33 @@ class PaystackGateway extends AbstractGateway
 
     public function requestMomo(ChargeRequest $charge): GatewayResponse
     {
-        $response = $this->api()->post('/charge', [
-            'email' => $this->email($charge),
-            'amount' => $charge->amount->amount,
-            'currency' => $charge->currency,
-            'reference' => $charge->reference,
-            'mobile_money' => ['phone' => $charge->phone, 'provider' => config('payments.paystack.networks.'.$charge->network?->value)],
-            'metadata' => ['description' => $charge->description],
-        ]);
+        try {
+            $response = $this->api()->post('/charge', [
+                'email' => $this->email($charge),
+                'amount' => $charge->amount->amount,
+                'currency' => $charge->currency,
+                'reference' => $charge->reference,
+                'mobile_money' => ['phone' => $charge->phone, 'provider' => config('payments.paystack.networks.'.$charge->network?->value)],
+                'metadata' => ['description' => $charge->description],
+            ]);
+        } catch (ConnectionException) {
+            // Paystack may have received the charge before the line dropped: keep checking, never call it
+            // failed (a second prompt could charge the customer twice). Test report H2.
+            return GatewayResponse::pending($charge->reference, __('payments::payments.gateway.unsure_sent'));
+        }
 
-        return $this->chargeResponse($response);
+        return $this->chargeResponse($response, $charge->reference);
     }
 
     public function submitOtp(string $reference, ?string $providerReference, #[\SensitiveParameter] string $otp): GatewayResponse
     {
-        return $this->chargeResponse($this->api()->post('/charge/submit_otp', ['otp' => $otp, 'reference' => $providerReference ?? $reference]));
+        try {
+            $response = $this->api()->post('/charge/submit_otp', ['otp' => $otp, 'reference' => $providerReference ?? $reference]);
+        } catch (ConnectionException) {
+            return GatewayResponse::pending($providerReference ?? $reference, __('payments::payments.gateway.unsure_sent'));
+        }
+
+        return $this->chargeResponse($response, $providerReference ?? $reference);
     }
 
     public function status(string $reference, ?string $providerReference): GatewayResponse
@@ -203,11 +215,15 @@ class PaystackGateway extends AbstractGateway
         };
     }
 
-    private function chargeResponse(Response $response): GatewayResponse
+    private function chargeResponse(Response $response, ?string $sentReference = null): GatewayResponse
     {
         $data = (array) $response->json('data', []);
         $reference = $data['reference'] ?? null;
         $text = $data['display_text'] ?? $data['message'] ?? null;
+        // A server error (5xx) or gateway time-out says nothing about whether the charge started: keep checking.
+        if ($response->serverError() && ! isset($data['status'])) {
+            return GatewayResponse::pending($reference ?? $sentReference, __('payments::payments.gateway.unsure_sent'));
+        }
         if (! $response->successful() && ! isset($data['status'])) {
             return GatewayResponse::failed((string) ($response->json('message') ?? __('payments::payments.gateway.unreachable_send')), $reference);
         }

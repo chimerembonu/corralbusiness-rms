@@ -120,11 +120,12 @@
     {{-- Modals --}}
     @if ($modal === 'open' || $modal === 'pay_in' || $modal === 'pay_out')
         <div class="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/85 p-4" wire:key="modal-{{ $modal }}"
-             x-data="{ amount: $wire.entangle('amount'),
+             x-data="{ amount: $wire.entangle('amount'), typed: '',
                 fmt(p) { return '{{ config('rms.currency_symbol') }} ' + (p / 100).toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); },
                 pesewas() { const n = parseFloat(this.amount || '0'); return isNaN(n) ? 0 : Math.round(n * 100); },
-                press(k) { let v = this.amount; if (k === '.' && v.includes('.')) return; if (v.includes('.') && v.split('.')[1].length >= 2) return; if (v.length > 9) return; this.amount = (v === '0' && k !== '.') ? k : v + k; },
-                back() { this.amount = this.amount.slice(0, -1); } }">
+                {{-- A suggested amount (the usual float) is replaced by the first key, not added to: test report H6. --}}
+                press(k) { let v = this.amount === this.typed ? this.amount : ''; if (k === '.' && v.includes('.')) return; if (v.includes('.') && v.split('.')[1].length >= 2) return; if (v.length > 9) return; this.amount = this.typed = (v === '0' && k !== '.') ? k : v + k; },
+                back() { this.amount = this.typed = this.amount === this.typed ? this.amount.slice(0, -1) : ''; } }">
             <div class="w-full max-w-md rounded-3xl bg-slate-900 p-5 ring-1 ring-slate-700">
                 <div class="flex items-start justify-between">
                     <h2 class="text-lg font-bold">{{ $modal === 'open' ? $c('open_till') : ($modal === 'pay_in' ? $c('pay_in') : $c('pay_out')) }}</h2>

@@ -1,12 +1,12 @@
 @php($order = $this->order)
 @php($due = $order->balanceDue())
 @php($suggested = $this->suggested)
-<div class="flex h-full" x-data="{ amount: $wire.entangle('amount'), tip: $wire.entangle('tip'), field: 'amount', due: {{ $suggested->amount }}, method: $wire.entangle('method'),
+<div class="flex h-full" x-data="{ amount: $wire.entangle('amount'), tip: $wire.entangle('tip'), field: 'amount', typed: { amount: '', tip: '' }, due: {{ $suggested->amount }}, method: $wire.entangle('method'),
         toP(v) { const n = parseFloat(v || '0'); return isNaN(n) ? 0 : Math.round(n * 100); },
         pesewas() { return this.toP(this.amount); }, tipP() { return this.toP(this.tip); },
         fmt(p) { return '{{ config('rms.currency_symbol') }} ' + (p / 100).toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); },
-        press(k) { let v = this[this.field]; if (k === '.' && v.includes('.')) return; if (v.includes('.') && v.split('.')[1].length >= 2) return; if (v.length > 9) return; this[this.field] = (v === '0' && k !== '.') ? k : v + k; },
-        back() { this[this.field] = this[this.field].slice(0, -1); } }">
+        press(k) { const f = this.field; let v = this[f] === this.typed[f] ? this[f] : ''; if (k === '.' && v.includes('.')) return; if (v.includes('.') && v.split('.')[1].length >= 2) return; if (v.length > 9) return; this[f] = this.typed[f] = (v === '0' && k !== '.') ? k : v + k; },
+        back() { const f = this.field; this[f] = this.typed[f] = this[f] === this.typed[f] ? this[f].slice(0, -1) : ''; } }">
     <aside class="flex w-[38%] min-w-[320px] flex-col border-r border-slate-800 bg-slate-900">
         <div class="px-4 py-3">
             <div class="text-lg font-bold">#{{ $order->displayNumber() }} · {{ $order->table ? __('pos::pos.order.table').' '.$order->table->name : $order->type->label() }}</div>

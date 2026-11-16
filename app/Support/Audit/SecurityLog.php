@@ -47,6 +47,12 @@ final class SecurityLog
         self::write('login_throttled', null, null, ['email' => $email, 'panel' => $panel]);
     }
 
+    /** Someone signed in at a till with a PIN tried to open the back office (test report H1). */
+    public static function tillSessionRefused(?User $user, string $panel): void
+    {
+        self::write('till_session_refused', $user?->tenant_id, $user, ['panel' => $panel]);
+    }
+
     private static function write(string $event, ?string $tenantId, ?User $user, array $properties): void
     {
         try {
