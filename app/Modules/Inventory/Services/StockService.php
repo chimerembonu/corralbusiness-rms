@@ -30,7 +30,8 @@ class StockService
 
     /**
      * Record a movement. $quantity is signed: + into stock, − out of stock.
-     * Ingredients may go negative only for sales (the kitchen already used it); nothing else may.
+     * Ingredients may go negative only for sales (the kitchen already used it); nothing else may take them below zero,
+     * but anything may add to a negative level.
      */
     public function move(Ingredient|Item $subject, StockMovementType $type, float $quantity, ?User $by = null, ?string $reason = null, ?Model $reference = null, ?Money $unitCost = null, ?OrderItem $line = null): StockMovement
     {
@@ -46,7 +47,9 @@ class StockService
             $column = $subject instanceof Ingredient ? 'on_hand' : 'stock_qty';
             $after = round((float) $subject->{$column} + $quantity, 3);
 
-            if ($after < 0 && ! in_array($type, [StockMovementType::Sale, StockMovementType::StockTake], true)) {
+            // Only a movement that TAKES stock out can be refused for going below zero. Putting stock back (a void,
+            // a delivery) is always allowed, even while the level is still negative: test report 9 Nov 2026, H9.
+            if ($quantity < 0 && $after < 0 && ! in_array($type, [StockMovementType::Sale, StockMovementType::StockTake], true)) {
                 throw new InventoryException(__('inventory::inventory.errors.not_enough', ['name' => $subject->name, 'on_hand' => $this->qty((float) $subject->{$column})]));
             }
 

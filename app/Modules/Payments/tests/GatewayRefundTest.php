@@ -48,14 +48,30 @@ beforeEach(function () {
 
     config(['features.features.momo_prompt.available' => true]);
     installTestLicence('business');
-    $this->refundAnswer = fn () => Http::response(['status' => true, 'message' => 'Refund has been queued for processing', 'data' => ['id' => 3018284, 'status' => 'pending', 'reference' => 'x']]);
+    // Paystack as documented (docs-v2.paystack.com/docs/api/refund): a created refund gets Paystack's id and is
+    // listed under its transaction (GET /refund?reference=<transaction>); our own refund reference means nothing to it.
+    $this->paystackRefunds = [];
+    $this->posts = 0; // refund requests that reached Paystack (time-outs included)
+    $this->createRefund = function (Request $r) {
+        $id = 3018284 + count($this->paystackRefunds);
+        $this->paystackRefunds[] = ['id' => $id, 'transaction' => $r['transaction'], 'amount' => $r['amount']];
+
+        return ['id' => $id, 'status' => 'pending'];
+    };
+    $this->refundAnswer = fn (Request $r) => Http::response(['status' => true, 'message' => 'Refund has been queued for processing', 'data' => ($this->createRefund)($r)]);
+    $this->refundList = fn (Request $r) => Http::response(['status' => true, 'data' => collect($this->paystackRefunds)
+        ->where('transaction', $r->data()['reference'] ?? null)->map(fn ($x) => $x + ['status' => $this->refundState])->values()->all()]);
     $this->refundState = 'processed';
     Http::fake([
         'api.paystack.co/balance' => Http::response(['status' => true, 'data' => []]),
         'api.paystack.co/charge' => Http::response(['status' => true, 'data' => ['reference' => 'PSREF1', 'status' => 'pay_offline']]),
         'api.paystack.co/transaction/verify/*' => fn () => Http::response(['status' => true, 'data' => ['reference' => 'PSREF1', 'status' => 'success', 'amount' => $this->due->amount]]),
-        'api.paystack.co/refund?*' => fn (Request $r) => Http::response(['status' => true, 'data' => [['id' => 3018284, 'reference' => $r->data()['reference'] ?? '', 'status' => $this->refundState]]]),
-        'api.paystack.co/refund' => fn () => ($this->refundAnswer)(),
+        'api.paystack.co/refund?*' => fn (Request $r) => ($this->refundList)($r),
+        'api.paystack.co/refund' => function (Request $r) {
+            $this->posts++;
+
+            return ($this->refundAnswer)($r);
+        },
         'test.theteller.net/*' => Http::response(['code' => '000', 'status' => 'approved', 'reason' => 'Transaction Successful']),
     ]);
 });
@@ -95,7 +111,7 @@ it('sends the refund back through Paystack in the background and follows it unti
         ->and($refund->reason)->toBe('Wrong order')
         ->and($refund->approved_by_id)->toBe($this->manager->id);
     Http::assertSent(fn (Request $r) => $r->url() === 'https://api.paystack.co/refund' && $r->method() === 'POST'
-        && $r['transaction'] === 'PSREF1' && $r['amount'] === $this->due->amount && $r['reference'] === $refund->reference);
+        && $r['transaction'] === 'PSREF1' && $r['amount'] === $this->due->amount && str_contains($r['merchant_note'], $refund->reference));
 
     // The every-minute check asks Paystack how it is going.
     $this->travel(2)->minutes();
@@ -110,36 +126,88 @@ it('sends the refund back through Paystack in the background and follows it unti
         ->and(GatewayRefund::query()->count())->toBe(1);
 });
 
-it('keeps trying when Paystack cannot be reached, and never refunds twice', function () {
+/*
+ * Test report 9 Nov 2026, H3: Paystack does not know our refund reference, so after a time-out the app could not
+ * find the refund, decided it "never arrived" and sent another — paying the customer back twice.
+ */
+it('never refunds twice when the request timed out but reached Paystack', function () {
     $payment = paidByPrompt($this);
-    $this->refundAnswer = fn () => throw new ConnectionException('timed out');
+    // The refund is created at Paystack, but the answer never comes back.
+    $this->refundAnswer = function (Request $r) {
+        ($this->createRefund)($r);
+
+        throw new ConnectionException('timed out');
+    };
+
+    app(PaymentService::class)->refund($payment, 'Cold drink', $this->manager, $this->cashier);
+    $refund = GatewayRefund::query()->sole();
+    expect($refund->status)->toBe(RefundStatus::Sent)->and($this->posts)->toBe(1);
+
+    // The next checks find Paystack's refund for that payment and follow it; nothing is sent again, ever.
+    foreach (range(1, 5) as $minute) {
+        $this->travel(15)->minutes();
+        app(GatewayRefundService::class)->checkOutstanding();
+    }
+    expect($refund->fresh()->status)->toBe(RefundStatus::Refunded)
+        ->and($refund->fresh()->provider_reference)->toBe('3018284')
+        ->and($this->posts)->toBe(1)
+        ->and($this->paystackRefunds)->toHaveCount(1);
+});
+
+it('looks before sending again, so a refund Paystack already has is never sent twice', function () {
+    $payment = paidByPrompt($this);
+    $this->refundAnswer = fn () => Http::response('<html>Bad gateway</html>', 502); // nothing created... as far as we know
+    app(PaymentService::class)->refund($payment, 'Cold drink', $this->manager, $this->cashier);
+    $refund = GatewayRefund::query()->sole();
+    expect($refund->status)->toBe(RefundStatus::Sent);
+
+    // Paystack's list shows nothing for a while: after ten minutes the refund is queued again…
+    $this->travel(11)->minutes();
+    app(GatewayRefundService::class)->checkOutstanding();
+    expect($refund->fresh()->status)->toBe(RefundStatus::Queued);
+
+    // …and in the meantime the first one shows up after all: the next send finds it and only follows it.
+    $this->paystackRefunds[] = ['id' => 3018284, 'transaction' => 'PSREF1', 'amount' => $this->due->amount];
+    $this->refundAnswer = fn (Request $r) => Http::response(['status' => true, 'data' => ($this->createRefund)($r)]);
+    $this->travel(2)->minutes();
+    app(GatewayRefundService::class)->checkOutstanding();
+    $this->travel(2)->minutes();
+    app(GatewayRefundService::class)->checkOutstanding();
+
+    expect($refund->fresh()->status)->toBe(RefundStatus::Refunded)
+        ->and($this->posts)->toBe(1)
+        ->and($this->paystackRefunds)->toHaveCount(1);
+});
+
+it('stops after three sends and hands the refund to a manager, instead of sending forever', function () {
+    $payment = paidByPrompt($this);
+    $this->refundAnswer = fn () => Http::response('<html>Bad gateway</html>', 502); // never arrives
+
+    app(PaymentService::class)->refund($payment, 'Cold drink', $this->manager, $this->cashier);
+    $refund = GatewayRefund::query()->sole();
+    foreach (range(1, 20) as $i) {
+        $this->travel(11)->minutes();
+        app(GatewayRefundService::class)->checkOutstanding();
+    }
+
+    expect($this->posts)->toBe(3)
+        ->and($refund->fresh()->status)->toBe(RefundStatus::Failed)
+        ->and($refund->fresh()->status->needsHand())->toBeTrue()
+        ->and($refund->fresh()->message)->toContain('3 times')->and($refund->fresh()->message)->toContain('dashboard');
+});
+
+it('keeps trying while Paystack cannot be reached at all, and hands over after three days', function () {
+    $payment = paidByPrompt($this);
+    $this->refundList = fn () => throw new ConnectionException('no internet');
 
     app(PaymentService::class)->refund($payment, 'Cold drink', $this->manager, $this->cashier);
     $refund = GatewayRefund::query()->sole();
     expect($refund->status)->toBe(RefundStatus::Queued)->and($refund->message)->toContain('tried again every minute')
-        ->and($refund->attempts)->toBe(1);
+        ->and($this->posts)->toBe(0); // nothing is sent before Paystack can say whether a refund already exists
 
-    // The first one did arrive after all: Paystack says "already exists", so we just follow it.
-    $this->refundAnswer = fn () => Http::response(['status' => false, 'message' => 'A refund with reference already exists'], 409);
-    $this->travel(2)->minutes();
+    $this->travel(4)->days();
     app(GatewayRefundService::class)->checkOutstanding();
-    expect($refund->fresh()->status)->toBe(RefundStatus::Sent);
-
-    $this->travel(2)->minutes();
-    app(GatewayRefundService::class)->checkOutstanding();
-    expect($refund->fresh()->status)->toBe(RefundStatus::Refunded);
-    // Every refund request carried the same reference of ours, so Paystack can never pay it out twice.
-    expect(collect(Http::recorded())->filter(fn ($pair) => $pair[0]->method() === 'POST' && $pair[0]->url() === 'https://api.paystack.co/refund')
-        ->map(fn ($pair) => $pair[0]['reference'])->unique()->values()->all())->toBe([$refund->reference]);
-
-    // No internet for three days: a person gives the money back instead.
-    $other = GatewayRefund::query()->sole()->replicate()->fill(['reference' => 'RFOTHER0001', 'status' => RefundStatus::Queued, 'next_check_at' => null]);
-    $other->tenant_id = $refund->tenant_id;
-    $other->created_at = now()->subDays(4);
-    $other->save();
-    $this->refundAnswer = fn () => throw new ConnectionException('no internet');
-    app(GatewayRefundService::class)->checkOutstanding();
-    expect($other->fresh()->status)->toBe(RefundStatus::Failed)->and($other->fresh()->message)->toContain('three days');
+    expect($refund->fresh()->status)->toBe(RefundStatus::Failed)->and($refund->fresh()->message)->toContain('three days');
 });
 
 it('says "refund by hand" when Paystack refuses, and a manager confirms it was given back', function () {
@@ -165,6 +233,7 @@ it('says "refund by hand" when Paystack refuses, and a manager confirms it was g
 
     // Paystack itself giving up later (needs the customer's bank details) also lands on the managers' list.
     $refund->forceFill(['status' => RefundStatus::Sent, 'next_check_at' => null])->save();
+    $this->paystackRefunds[] = ['id' => 3018290, 'transaction' => 'PSREF1', 'amount' => $this->due->amount];
     $this->refundState = 'needs-attention';
     app(GatewayRefundService::class)->checkOutstanding();
     expect($refund->fresh()->status)->toBe(RefundStatus::Failed)->and($refund->fresh()->message)->toContain('bank details');

@@ -90,10 +90,20 @@ class GatewayRefundService
             $gateway = $this->gateways->make($refund->gateway);
             $transaction = $refund->transaction()->withoutGlobalScopes()->firstOrFail();
 
+            // Never send the same refund again and again (test report H3): after a few tries, a manager checks
+            // the provider's dashboard and gives the money back by hand if it really did not go.
+            $sending = $refund->status === RefundStatus::Queued;
+            if ($sending && $refund->sends >= (int) config('payments.refunds.max_sends', 3)) {
+                return $this->save($refund, RefundStatus::Failed, __('payments::payments.refunds.too_many_tries', ['provider' => $this->name($refund->gateway), 'times' => $refund->sends]));
+            }
+
             try {
-                $response = $refund->status === RefundStatus::Queued
+                if ($sending) {
+                    $refund->forceFill(['sends' => $refund->sends + 1, 'last_sent_at' => now()])->save();
+                }
+                $response = $sending
                     ? $gateway->refund($transaction->reference, $transaction->provider_reference, $refund->amount, $refund->reference)
-                    : $gateway->refundStatus($refund->reference, $refund->provider_reference);
+                    : $gateway->refundStatus($refund->reference, $refund->provider_reference, $transaction->provider_reference ?? $transaction->reference);
             } catch (Throwable $e) {
                 report($e);
 
@@ -187,8 +197,11 @@ class GatewayRefundService
             GatewayStatus::Succeeded => $this->save($refund, RefundStatus::Refunded, $response->message ?? __('payments::payments.refunds.refunded')),
             GatewayStatus::Failed => $this->save($refund, RefundStatus::Failed, __('payments::payments.refunds.refused', ['provider' => $this->name($refund->gateway), 'reason' => $response->message ?? '—'])),
             GatewayStatus::NeedsAttention => $this->save($refund, RefundStatus::Failed, $response->message ?? __('payments::payments.refunds.refused', ['provider' => $this->name($refund->gateway), 'reason' => '—'])),
-            // The provider has no such refund: it never arrived, so send it again (our reference stops a double refund).
-            GatewayStatus::Expired => $this->save($refund, RefundStatus::Queued, __('payments::payments.refunds.queued')),
+            // The provider has no such refund. Just after sending, its list may simply be behind: ask again. Later, it
+            // never arrived: send it again (the adapter first looks for an existing refund; sends are limited).
+            GatewayStatus::Expired => $refund->last_sent_at?->gt(now()->subMinutes(10))
+                ? $this->save($refund, RefundStatus::Sent, __('payments::payments.refunds.sent', ['provider' => $this->name($refund->gateway)]))
+                : $this->save($refund, RefundStatus::Queued, __('payments::payments.refunds.queued')),
             default => $this->save($refund, RefundStatus::Sent, $response->message ?? __('payments::payments.refunds.sent', ['provider' => $this->name($refund->gateway)])),
         };
     }

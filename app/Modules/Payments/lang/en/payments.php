@@ -146,10 +146,12 @@ return [
         'refused' => ':provider refused the refund (:reason). Give the customer the money back by hand.',
         'unreachable' => 'Could not reach :provider yet. The refund is tried again every minute.',
         'gave_up' => ':provider could not be reached for three days. Give the customer the money back by hand.',
+        'too_many_tries' => 'Sent to :provider :times times with no refund showing. Check the :provider dashboard first: if no refund is there, give the customer the money back by hand.',
         'demo' => 'Practice refund: no real money moved.',
         'done_by_hand_message' => 'Given back by hand, confirmed by :name.',
         'cash_reason' => 'Refund given back in cash, order :order',
         'paystack' => [
+            'unsure' => 'Paystack did not answer clearly. Checking whether the refund arrived before anything is sent again.',
             'pending' => 'Paystack is sending the money back.',
             'processed' => 'Paystack sent the money back. It can take up to 10 working days to reach the customer.',
             'failed' => 'Paystack could not send the money back, and returned it to your Paystack balance.',

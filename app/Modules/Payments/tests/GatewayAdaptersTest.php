@@ -26,6 +26,7 @@ it('Paystack: tests keys, sends a MoMo prompt, follows OTP, verifies, pays onlin
         'api.paystack.co/charge/submit_otp' => Http::response(['status' => true, 'data' => ['reference' => 'RMSTEST1', 'status' => 'pay_offline']]),
         'api.paystack.co/transaction/verify/*' => Http::response(['status' => true, 'data' => ['reference' => 'RMSTEST1', 'status' => 'success', 'amount' => 4500, 'currency' => 'GHS']]),
         'api.paystack.co/transaction/initialize' => Http::response(['status' => true, 'data' => ['authorization_url' => 'https://checkout.paystack.com/abc', 'reference' => 'RMSTEST1']]),
+        'api.paystack.co/refund?*' => Http::response(['status' => true, 'data' => []]), // no refund for this payment yet
         'api.paystack.co/refund' => Http::response(['status' => true, 'data' => ['id' => 77, 'status' => 'pending']]),
     ]);
 

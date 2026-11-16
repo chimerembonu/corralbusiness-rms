@@ -2,6 +2,7 @@
 
 use App\Modules\Inventory\Enums\StockMovementType;
 use App\Modules\Inventory\Enums\Unit;
+use App\Modules\Inventory\Exceptions\InventoryException;
 use App\Modules\Inventory\Filament\Resources\Recipes\Pages\EditRecipe;
 use App\Modules\Inventory\Filament\Resources\Recipes\Pages\ListRecipes;
 use App\Modules\Inventory\Filament\Resources\Recipes\RecipeResource;
@@ -9,6 +10,7 @@ use App\Modules\Inventory\Models\Ingredient;
 use App\Modules\Inventory\Models\RecipeLine;
 use App\Modules\Inventory\Models\StockMovement;
 use App\Modules\Inventory\Services\RecipeService;
+use App\Modules\Inventory\Services\StockService;
 use App\Modules\Orders\Enums\OrderType;
 use App\Modules\Orders\Services\OrderService;
 use App\Modules\Settings\Models\Branch;
@@ -187,4 +189,38 @@ it('is open to whoever manages the stock, once switched on', function () {
     $storekeeper->assignRole(Role::Inventory->value);
 
     $this->actingAs($storekeeper)->get(RecipeResource::getUrl())->assertOk()->assertSee('Recipes');
+});
+
+/*
+ * Test report 9 Nov 2026, H9: putting stock back was refused while the level was below zero (it only checked
+ * "is the level after this still negative?"), so voiding a dish failed in a busy kitchen that had used more
+ * than was recorded, and the stock was never restored.
+ */
+it('puts stock back on a void even while the level is below zero', function () {
+    switchRecipesOn($this);
+    $this->eggs->forceFill(['on_hand' => -5])->save(); // already below zero: the delivery has not been entered yet
+    $order = $this->orders->open(OrderType::Takeaway, $this->manager);
+    $line = $this->orders->addItem($order, $this->menu['jollof'], $this->menu['large'], 3, [$this->menu['chicken']->id => 1], null, $this->manager);
+    $this->orders->sendToKitchen($order, $this->manager);
+    expect((float) $this->eggs->fresh()->on_hand)->toBe(-8.0); // sales may go further below zero
+
+    $this->orders->voidItem($order->fresh(), $line->fresh(), 'Customer changed mind', $this->manager, $this->manager);
+
+    expect((float) $this->eggs->fresh()->on_hand)->toBe(-5.0)
+        ->and(StockMovement::query()->where('ingredient_id', $this->eggs->id)->where('type', StockMovementType::Void->value)->sum('quantity'))->toEqual(3);
+});
+
+it('still refuses to take stock below zero by hand', function () {
+    $this->eggs->forceFill(['on_hand' => 1])->save();
+
+    expect(fn () => app(StockService::class)->move($this->eggs, StockMovementType::Wastage, -2, $this->manager, 'Dropped'))
+        ->toThrow(InventoryException::class);
+});
+
+it('accepts a delivery while the level is below zero', function () {
+    $this->eggs->forceFill(['on_hand' => -40])->save(); // a month of sales before anyone entered a delivery
+
+    app(StockService::class)->move($this->eggs, StockMovementType::Purchase, 30, $this->manager, 'Delivery');
+
+    expect((float) $this->eggs->fresh()->on_hand)->toBe(-10.0);
 });

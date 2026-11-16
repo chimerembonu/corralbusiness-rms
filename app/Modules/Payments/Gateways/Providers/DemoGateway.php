@@ -72,7 +72,7 @@ class DemoGateway extends AbstractGateway
         return GatewayResponse::succeeded($refundReference, __('payments::payments.refunds.demo'));
     }
 
-    public function refundStatus(string $refundReference, ?string $providerRefundId): GatewayResponse
+    public function refundStatus(string $refundReference, ?string $providerRefundId, ?string $paymentReference = null): GatewayResponse
     {
         return GatewayResponse::succeeded($refundReference, __('payments::payments.refunds.demo'));
     }

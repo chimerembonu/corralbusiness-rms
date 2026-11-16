@@ -157,3 +157,15 @@ Real printers and cash drawer, Reverb across several machines, real Paystack/Pay
 Full suite after the fixes: **675 passed** (4,660 checks). Still open, with day-one workarounds above: H3, H4, H8, H9, H10.
 
 Also found while fixing: the backup tests share the real `storage/backups` folder, so they fail when the suite is run **in parallel** (`--parallel`); CI runs them one at a time and passes. Same root cause as Low 11.
+
+## Addendum — remaining High items fixed (16 Nov 2026, pull request #4)
+
+| # | Status |
+|---|---|
+| H3 | **Fixed.** Paystack ignores our refund reference (confirmed in its API documentation), so the app could not find a refund that timed out and sent another. Now it asks Paystack for refunds of that payment before sending and follows an existing one; a time-out or 5xx means "maybe sent, check"; a refund is sent at most 3 times, then a manager checks the Paystack dashboard. |
+| H4 | **Fixed.** The receipt web page shows the customer's TIN, as the printed receipt does. |
+| H8 | **Fixed.** Cancelling a sent order takes its tickets off the kitchen screens and prints "CANCELLED – DO NOT COOK" on the kitchen printers; a ticket whose last line is voided also leaves the screen. |
+| H9 | **Fixed.** Stock can always be put back (void, delivery) even while below zero; taking stock below zero by hand is still refused. |
+| H10 | **Fixed.** Reports add up a page at a time. On a seeded year (34,900 orders, 120,800 lines, 34,700 payments) every report is identical to the old code; peak memory 108 MB instead of 1,383 MB (the store server allows 256 MB). |
+
+Full suite after the fixes: **687 passed** (4,721 checks). **All 11 High items are now fixed.** The Medium and Low items remain as listed above.
